@@ -1,0 +1,61 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+  runtime      = "nodejs"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// We might want to store the configuration in the database and link it to the
+// checkin session to allow for changing the configuration without messing up
+// existing sessions.
+// model CheckinStepConfig {}
+
+model CheckinSession {
+  id       String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  stepData CheckinSessionStepData[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CheckinSessionStepData {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  // The step that was used
+  stepId          String
+  // The ID defined in the step config
+  idInFlow        String?
+  // The inputs provided in the `with` field in the step config after evaluation.
+  evaluatedInputs Json
+
+  outputs     Json?
+  completedAt DateTime?
+
+  sessionId String         @db.Uuid
+  session   CheckinSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CheckinSubject {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CheckinActor {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

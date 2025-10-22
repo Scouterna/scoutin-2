@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "Scoutin 2",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

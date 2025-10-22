@@ -1,0 +1,25 @@
+{
+  "name": "backend",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch --env-file .env src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@hono/arktype-validator": "^2.0.1",
+    "@hono/node-server": "^1.19.5",
+    "@prisma/adapter-pg": "^6.17.1",
+    "@prisma/client": "^6.17.1",
+    "arktype": "^2.1.23",
+    "hono": "^4.10.1",
+    "jose": "^6.1.0",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@standard-schema/spec": "^1.0.0",
+    "@types/node": "^24.8.1",
+    "prisma": "^6.17.1",
+    "typescript": "^5.9.3"
+  }
+}
