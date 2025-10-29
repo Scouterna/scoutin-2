@@ -20,6 +20,9 @@ importers:
       '@hono/node-server':
         specifier: ^1.19.5
         version: 1.19.5(hono@4.10.1)
+      '@hono/node-ws':
+        specifier: ^1.2.0
+        version: 1.2.0(@hono/node-server@1.19.5(hono@4.10.1))(hono@4.10.1)
       '@prisma/adapter-pg':
         specifier: ^6.17.1
         version: 6.17.1
@@ -60,6 +63,9 @@ importers:
       '@tanstack/react-devtools':
         specifier: ^0.2.2
         version: 0.2.2(@types/react-dom@19.1.9(@types/react@19.1.15))(@types/react@19.1.15)(csstype@3.1.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(solid-js@1.9.9)
+      '@tanstack/react-query':
+        specifier: ^5.90.5
+        version: 5.90.5(react@19.1.1)
       '@tanstack/react-router':
         specifier: ^1.132.0
         version: 1.132.19(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
@@ -75,6 +81,12 @@ importers:
       flowbite-react:
         specifier: ^0.12.9
         version: 0.12.9(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(tailwindcss@4.1.13)(typescript@5.9.2)
+      hono:
+        specifier: ^4.10.1
+        version: 4.10.1
+      jotai:
+        specifier: ^2.15.0
+        version: 2.15.0(@babel/core@7.28.4)(@babel/template@7.27.2)(@types/react@19.1.15)(react@19.1.1)
       react:
         specifier: ^19.0.0
         version: 19.1.1
@@ -85,6 +97,9 @@ importers:
         specifier: ^4.1.13
         version: 4.1.13
     devDependencies:
+      '@scouterna/scoutin-backend':
+        specifier: workspace:^
+        version: link:../backend
       '@testing-library/dom':
         specifier: ^10.4.0
         version: 10.4.1
@@ -551,6 +566,13 @@ packages:
     peerDependencies:
       hono: ^4
 
+  '@hono/node-ws@1.2.0':
+    resolution: {integrity: sha512-OBPQ8OSHBw29mj00wT/xGYtB6HY54j0fNSdVZ7gZM3TUeq0So11GXaWtFf1xWxQNfumKIsj0wRuLKWfVsO5GgQ==}
+    engines: {node: '>=18.14.1'}
+    peerDependencies:
+      '@hono/node-server': ^1.11.1
+      hono: ^4.6.0
+
   '@iarna/toml@2.2.5':
     resolution: {integrity: sha512-trnsAYxU3xnS1gPHPyU961coFyLkh4gAD/0zQ5mymY4yOZ+CYvsPqUbOFSw0aDM4y0tV7tiFxL/1XfXPNC6IPg==}
 
@@ -889,6 +911,9 @@ packages:
     resolution: {integrity: sha512-GG2R9I6QSlbNR9fEuX2sQCigY6K28w51h2634TWmkaHXlzQw+rWuIWr4nAGM9doA+kWRi1LFSFMvAiG3cOqjXQ==}
     engines: {node: '>=12'}
 
+  '@tanstack/query-core@5.90.5':
+    resolution: {integrity: sha512-wLamYp7FaDq6ZnNehypKI5fNvxHPfTYylE0m/ZpuuzJfJqhR5Pxg9gvGBHZx4n7J+V5Rg5mZxHHTlv25Zt5u+w==}
+
   '@tanstack/react-devtools@0.2.2':
     resolution: {integrity: sha512-Ig8ZYqUPJ+nwRvF/RpkQHPbgEkrL3b2PjeYBgXgT5OemyRUlmG12UutvMBV+bJuBsSOKHrNf29IvzC0Vw9Bt1A==}
     engines: {node: '>=18'}
@@ -897,6 +922,11 @@ packages:
       '@types/react-dom': '>=16.8'
       react: '>=16.8'
       react-dom: '>=16.8'
+
+  '@tanstack/react-query@5.90.5':
+    resolution: {integrity: sha512-pN+8UWpxZkEJ/Rnnj2v2Sxpx1WFlaa9L6a4UO89p6tTQbeo+m0MS8oYDjbggrR8QcTyjKoYWKS3xJQGr3ExT8Q==}
+    peerDependencies:
+      react: ^18 || ^19
 
   '@tanstack/react-router-devtools@1.132.19':
     resolution: {integrity: sha512-1k2Xb8t4y+dzTvIyWQpxCRio5Ij8Z7RQEj1IBxuQ//51jXVTUBbfg92Xg1PTYLquJOfzIInfFrGermOT8napOA==}
@@ -1469,6 +1499,24 @@ packages:
 
   jose@6.1.0:
     resolution: {integrity: sha512-TTQJyoEoKcC1lscpVDCSsVgYzUDg/0Bt3WE//WiTPK6uOCQC2KZS4MpugbMWt/zyjkopgZoXhZuCi00gLudfUA==}
+
+  jotai@2.15.0:
+    resolution: {integrity: sha512-nbp/6jN2Ftxgw0VwoVnOg0m5qYM1rVcfvij+MZx99Z5IK13eGve9FJoCwGv+17JvVthTjhSmNtT5e1coJnr6aw==}
+    engines: {node: '>=12.20.0'}
+    peerDependencies:
+      '@babel/core': '>=7.0.0'
+      '@babel/template': '>=7.0.0'
+      '@types/react': '>=17.0.0'
+      react: '>=17.0.0'
+    peerDependenciesMeta:
+      '@babel/core':
+        optional: true
+      '@babel/template':
+        optional: true
+      '@types/react':
+        optional: true
+      react:
+        optional: true
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -2563,6 +2611,15 @@ snapshots:
     dependencies:
       hono: 4.10.1
 
+  '@hono/node-ws@1.2.0(@hono/node-server@1.19.5(hono@4.10.1))(hono@4.10.1)':
+    dependencies:
+      '@hono/node-server': 1.19.5(hono@4.10.1)
+      hono: 4.10.1
+      ws: 8.18.3
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
   '@iarna/toml@2.2.5': {}
 
   '@isaacs/fs-minipass@4.0.1':
@@ -2858,6 +2915,8 @@ snapshots:
 
   '@tanstack/history@1.132.0': {}
 
+  '@tanstack/query-core@5.90.5': {}
+
   '@tanstack/react-devtools@0.2.2(@types/react-dom@19.1.9(@types/react@19.1.15))(@types/react@19.1.15)(csstype@3.1.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(solid-js@1.9.9)':
     dependencies:
       '@tanstack/devtools': 0.3.0(csstype@3.1.3)(solid-js@1.9.9)
@@ -2870,6 +2929,11 @@ snapshots:
       - csstype
       - solid-js
       - utf-8-validate
+
+  '@tanstack/react-query@5.90.5(react@19.1.1)':
+    dependencies:
+      '@tanstack/query-core': 5.90.5
+      react: 19.1.1
 
   '@tanstack/react-router-devtools@1.132.19(@tanstack/react-router@1.132.19(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(@tanstack/router-core@1.132.19)(@types/node@22.18.6)(csstype@3.1.3)(jiti@2.6.0)(lightningcss@1.30.1)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(solid-js@1.9.9)(tiny-invariant@1.3.3)(tsx@4.20.6)(yaml@2.8.1)':
     dependencies:
@@ -3541,6 +3605,13 @@ snapshots:
   jiti@2.6.0: {}
 
   jose@6.1.0: {}
+
+  jotai@2.15.0(@babel/core@7.28.4)(@babel/template@7.27.2)(@types/react@19.1.15)(react@19.1.1):
+    optionalDependencies:
+      '@babel/core': 7.28.4
+      '@babel/template': 7.27.2
+      '@types/react': 19.1.15
+      react: 19.1.1
 
   js-tokens@4.0.0: {}
 

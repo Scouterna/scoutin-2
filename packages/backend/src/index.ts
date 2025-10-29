@@ -5,9 +5,9 @@ loadConfig();
 
 async function main() {
   // Use dynamic import to make sure config is loaded before app is imported
-  const { default: app } = await import("./app.ts");
+  const { app, injectWebSocket } = await import("./app.ts");
 
-  serve(
+  const server = serve(
     {
       fetch: app.fetch,
       port: config.PORT,
@@ -16,6 +16,8 @@ async function main() {
       console.log(`Server is running on http://localhost:${info.port}`);
     },
   );
+
+  injectWebSocket(server);
 }
 
 await main();
