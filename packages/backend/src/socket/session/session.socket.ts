@@ -3,24 +3,21 @@ import {
   type InferListeners,
   type RouteMiddleware,
 } from "../socketRouter.ts";
-import type { ServerMessage } from "./serverTypes.ts";
+import type { MessageTypes } from "./messageTypes.ts";
 import { authRouter } from "./session.auth.ts";
 
-export const router = createSocketRouter<ServerMessage>();
+export const router = createSocketRouter<MessageTypes>();
 
-const requireAuth: RouteMiddleware<null, ServerMessage> = (
-  c,
-  evt,
-  ws,
-  next,
-) => {
+const requireAuth: RouteMiddleware<null, MessageTypes> = (c, evt, ws, next) => {
   const isAuthenticated = Boolean(c.get("wsSessionId"));
   if (!isAuthenticated) {
     console.warn("Unauthorized WebSocket message:", evt.data);
     ws.send({
       name: "auth",
-      status: "failure",
-      reason: "unauthorized",
+      data: {
+        status: "failure",
+        reason: "unauthorized",
+      },
     });
     return;
   }
@@ -30,8 +27,11 @@ const requireAuth: RouteMiddleware<null, ServerMessage> = (
 
 const routes = router
   .use(authRouter)
-  .bind("heartbeat", null, requireAuth, (_c, evt, _ws) => {
+  .bind("heartbeat", null, requireAuth, (_c, evt, ws) => {
     console.log("Hi!", evt.data);
+    ws.send({
+      name: "heartbeat",
+    });
   });
 
 export type Listeners = InferListeners<typeof routes>;

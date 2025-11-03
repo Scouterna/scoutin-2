@@ -2,7 +2,6 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { type } from "arktype";
 import type { Context } from "hono";
 import type { WSContext, WSEvents, WSMessageReceive } from "hono/ws";
-import type { Simplify } from "type-fest";
 
 type TypedEvent<TSchema extends StandardSchemaV1<object, object> | null> = Omit<
   MessageEvent<WSMessageReceive>,
@@ -35,9 +34,18 @@ type RouteBind = {
   middleware: RouteMiddleware<any, any>[];
 };
 
-export type InferListeners<T> = Simplify<
-  T extends { __listeners: infer U } ? U : never
->;
+export type InferListeners<T> = T extends { __listeners: infer U }
+  ? {
+      [K in keyof U]: U[K] extends { validator: StandardSchemaV1 }
+        ? {
+            name: K;
+            data: StandardSchemaV1.InferOutput<U[K]["validator"]>;
+          }
+        : {
+            name: K;
+          };
+    }[keyof U]
+  : never;
 
 type MessageHandler = Exclude<WSEvents["onMessage"], undefined>;
 
@@ -61,9 +69,7 @@ export function createSocketRouter<TServerMessage extends { name: string }>() {
     ) => Router<
       TRoutes & {
         [K in TName]: {
-          input: TSchema extends StandardSchemaV1
-            ? StandardSchemaV1.InferOutput<TSchema>
-            : null;
+          validator: TSchema;
         };
       }
     >;
