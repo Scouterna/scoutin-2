@@ -1,21 +1,14 @@
-import type { Context, Next } from "hono";
+import { type } from "arktype";
 import {
   createSocketRouter,
+  type InferListeners,
   type RouteMiddleare,
-  type TypedWSContext,
 } from "../socketRouter.ts";
-import type { ClientMessage } from "./clientTypes.ts";
 import type { ServerAuth, ServerMessage } from "./serverTypes.ts";
-import type { WSMessageReceive } from "hono/ws";
 
-export const router = createSocketRouter<ClientMessage, ServerMessage>();
+export const router = createSocketRouter<ServerMessage>();
 
-const requireAuth: RouteMiddleare<unknown, ServerMessage> = (
-  c,
-  evt,
-  ws,
-  next,
-) => {
+const requireAuth: RouteMiddleare<null, ServerMessage> = (c, evt, ws, next) => {
   const isAuthenticated = Boolean(c.get("wsSessionId"));
   if (!isAuthenticated) {
     console.warn("Unauthorized WebSocket message:", evt.data);
@@ -30,28 +23,36 @@ const requireAuth: RouteMiddleare<unknown, ServerMessage> = (
   next();
 };
 
-router.bind("auth", (c, evt, ws) => {
-  if (evt.data.token) {
-    // In a real application, you'd verify the token here.
-    c.set("wsSessionId", evt.data.token); // Using token as session ID for demo purposes.
+const routes = router
+  .bind(
+    "auth",
+    type({
+      token: "string",
+    }),
+    (c, evt, ws) => {
+      if (evt.data.token) {
+        // In a real application, you'd verify the token here.
+        c.set("wsSessionId", evt.data.token); // Using token as session ID for demo purposes.
 
-    const response: ServerAuth = {
-      name: "auth",
-      status: "success",
-    };
-    ws.send(response);
-    console.log("WebSocket authenticated successfully");
-  } else {
-    const response: ServerAuth = {
-      name: "auth",
-      status: "failure",
-      reason: "missing_token",
-    };
-    ws.send(response);
-    console.warn("WebSocket authentication failed: missing token");
-  }
-});
+        const response: ServerAuth = {
+          name: "auth",
+          status: "success",
+        };
+        ws.send(response);
+        console.log("WebSocket authenticated successfully");
+      } else {
+        const response: ServerAuth = {
+          name: "auth",
+          status: "failure",
+          reason: "missing_token",
+        };
+        ws.send(response);
+        console.warn("WebSocket authentication failed: missing token");
+      }
+    },
+  )
+  .bind("heartbeat", null, requireAuth, (_c, evt, _ws) => {
+    console.log("Hi!", evt.data);
+  });
 
-router.bind("heartbeat", requireAuth, (_c, evt, _ws) => {
-  console.log("Hi!", evt.data);
-});
+export type Listeners = InferListeners<typeof routes>;

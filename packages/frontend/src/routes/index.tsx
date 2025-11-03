@@ -2,9 +2,9 @@ import { useMutation } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Button } from "flowbite-react";
 import { useAtom } from "jotai";
+import { useCallback, useState } from "react";
 import * as session from "../api/session";
 import { sessionInfoAtom } from "../store/session";
-import { useCallback, useState } from "react";
 
 export const Route = createFileRoute("/")({
   component: App,
@@ -34,7 +34,7 @@ function App() {
       .catch((err) => {
         console.error("Failed to open WebSocket:", err);
       });
-  }, [sessionInfo]);
+  }, []);
 
   const authTest = useCallback(() => {
     if (!socket) {
