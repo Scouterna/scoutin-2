@@ -49,7 +49,9 @@ function App() {
     socket.send(
       JSON.stringify({
         name: "auth",
-        token: sessionInfo.token,
+        data: {
+          token: sessionInfo.token,
+        },
       }),
     );
   }, [socket, sessionInfo]);
@@ -62,6 +64,7 @@ function App() {
     socket.send(
       JSON.stringify({
         name: "heartbeat",
+        data: {},
       }),
     );
   }, [socket]);

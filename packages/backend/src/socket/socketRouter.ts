@@ -1,4 +1,5 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
+import { type } from "arktype";
 import type { Context } from "hono";
 import type { WSContext, WSEvents, WSMessageReceive } from "hono/ws";
 import type { Simplify } from "type-fest";
@@ -18,7 +19,7 @@ export type TypedWSContext<TMessage> = Omit<WSContext<WebSocket>, "send"> & {
 
 export type Next = () => Promise<void>;
 
-export type RouteMiddleare<
+export type RouteMiddleware<
   TSchema extends StandardSchemaV1<object, object> | null,
   TServerMessage,
 > = (
@@ -31,7 +32,7 @@ export type RouteMiddleare<
 type RouteBind = {
   validator: StandardSchemaV1<object, object> | null;
   // biome-ignore lint/suspicious/noExplicitAny: It makes sense here
-  middleware: RouteMiddleare<any, any>[];
+  middleware: RouteMiddleware<any, any>[];
 };
 
 export type InferListeners<T> = Simplify<
@@ -39,6 +40,11 @@ export type InferListeners<T> = Simplify<
 >;
 
 type MessageHandler = Exclude<WSEvents["onMessage"], undefined>;
+
+const parsePayload = type("string.json.parse").to({
+  name: "string",
+  data: "object",
+});
 
 export function createSocketRouter<TServerMessage extends { name: string }>() {
   const routes: Record<string, RouteBind> = {};
@@ -51,7 +57,7 @@ export function createSocketRouter<TServerMessage extends { name: string }>() {
     >(
       name: TName,
       validator: TSchema,
-      ...middleware: RouteMiddleare<TSchema, TServerMessage>[]
+      ...middleware: RouteMiddleware<TSchema, TServerMessage>[]
     ) => Router<
       TRoutes & {
         [K in TName]: {
@@ -67,21 +73,61 @@ export function createSocketRouter<TServerMessage extends { name: string }>() {
   const onMessage =
     (c: Context): MessageHandler =>
     (evt, ws) => {
-      if (!evt.data || typeof evt.data !== "string") {
-        console.warn("Received invalid message:", evt.data);
+      const payload = parsePayload(evt.data);
+      if (payload instanceof type.errors) {
+        console.warn("Failed to parse message:", payload.summary);
+        ws.send(
+          JSON.stringify({
+            name: "error",
+            data: {
+              code: "invalid_format",
+              message: "Invalid message format",
+            },
+          }),
+        );
         return;
       }
 
-      const data = JSON.parse(evt.data);
-      if (!("name" in data)) {
-        console.warn("Received message without name:", data);
-        return;
-      }
-
-      const route = routes[data.name];
+      const route = routes[payload.name];
       if (!route || route.middleware.length === 0) {
-        console.warn(`No handler for message name: ${data.name}`);
+        console.warn(`No handler for message name: ${payload.name}`);
+        ws.send(
+          JSON.stringify({
+            name: "error",
+            data: {
+              code: "unknown_message",
+              message: `Unknown message name: ${payload.name}`,
+            },
+          }),
+        );
         return;
+      }
+
+      let data: unknown = payload.data;
+      if (route.validator) {
+        const validationResult = route.validator["~standard"].validate(data);
+        if (validationResult instanceof Promise) {
+          throw new Error("Async validation is not supported in this context");
+        }
+
+        if (validationResult.issues) {
+          console.warn(
+            `Validation failed for message "${payload.name}":`,
+            validationResult.issues,
+          );
+          ws.send(
+            JSON.stringify({
+              name: "error",
+              data: {
+                code: "invalid_payload",
+                message: `Invalid payload for message "${payload.name}"`,
+              },
+            }),
+          );
+          return;
+        }
+
+        data = validationResult.value;
       }
 
       let index = -1;
@@ -117,7 +163,7 @@ export function createSocketRouter<TServerMessage extends { name: string }>() {
     name: string,
     validator: StandardSchemaV1<object, object> | null,
     // biome-ignore lint/suspicious/noExplicitAny: We don't care here
-    ...middleware: RouteMiddleare<any, any>[]
+    ...middleware: RouteMiddleware<any, any>[]
   ) => {
     routes[name] = {
       validator,

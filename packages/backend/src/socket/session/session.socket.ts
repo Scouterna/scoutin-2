@@ -2,13 +2,18 @@ import { type } from "arktype";
 import {
   createSocketRouter,
   type InferListeners,
-  type RouteMiddleare,
+  type RouteMiddleware,
 } from "../socketRouter.ts";
 import type { ServerAuth, ServerMessage } from "./serverTypes.ts";
 
 export const router = createSocketRouter<ServerMessage>();
 
-const requireAuth: RouteMiddleare<null, ServerMessage> = (c, evt, ws, next) => {
+const requireAuth: RouteMiddleware<null, ServerMessage> = (
+  c,
+  evt,
+  ws,
+  next,
+) => {
   const isAuthenticated = Boolean(c.get("wsSessionId"));
   if (!isAuthenticated) {
     console.warn("Unauthorized WebSocket message:", evt.data);
