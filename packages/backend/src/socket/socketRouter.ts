@@ -67,7 +67,11 @@ export function createSocketRouter<TServerMessage extends { name: string }>() {
         };
       }
     >;
+    use: <TSubRoutes extends Record<string, unknown>>(
+      subRouter: Router<TSubRoutes>,
+    ) => Router<TRoutes & TSubRoutes>;
     __listeners: TRoutes;
+    __routes: Record<string, RouteBind>;
   };
 
   const onMessage =
@@ -173,9 +177,21 @@ export function createSocketRouter<TServerMessage extends { name: string }>() {
     return router;
   };
 
+  const use = (
+    // biome-ignore lint/suspicious/noExplicitAny: We don't care here
+    subRouter: Router<any>,
+  ) => {
+    // Merge the sub-router's routes into this router's routes
+    Object.assign(routes, subRouter.__routes);
+
+    return router;
+  };
+
   const router = {
     onMessage,
     bind,
+    use,
+    __routes: routes,
     // biome-ignore lint/complexity/noBannedTypes: We need it here
   } as unknown as Router<{}>;
 

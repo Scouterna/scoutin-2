@@ -1,10 +1,10 @@
-import { type } from "arktype";
 import {
   createSocketRouter,
   type InferListeners,
   type RouteMiddleware,
 } from "../socketRouter.ts";
-import type { ServerAuth, ServerMessage } from "./serverTypes.ts";
+import type { ServerMessage } from "./serverTypes.ts";
+import { authRouter } from "./session.auth.ts";
 
 export const router = createSocketRouter<ServerMessage>();
 
@@ -29,33 +29,7 @@ const requireAuth: RouteMiddleware<null, ServerMessage> = (
 };
 
 const routes = router
-  .bind(
-    "auth",
-    type({
-      token: "string",
-    }),
-    (c, evt, ws) => {
-      if (evt.data.token) {
-        // In a real application, you'd verify the token here.
-        c.set("wsSessionId", evt.data.token); // Using token as session ID for demo purposes.
-
-        const response: ServerAuth = {
-          name: "auth",
-          status: "success",
-        };
-        ws.send(response);
-        console.log("WebSocket authenticated successfully");
-      } else {
-        const response: ServerAuth = {
-          name: "auth",
-          status: "failure",
-          reason: "missing_token",
-        };
-        ws.send(response);
-        console.warn("WebSocket authentication failed: missing token");
-      }
-    },
-  )
+  .use(authRouter)
   .bind("heartbeat", null, requireAuth, (_c, evt, _ws) => {
     console.log("Hi!", evt.data);
   });
