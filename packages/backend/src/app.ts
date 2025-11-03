@@ -4,13 +4,13 @@ import { cors } from "hono/cors";
 import { sessionRouter } from "./api/session/session.routes.ts";
 import { stepRouter } from "./api/step/step.routes.ts";
 import config from "./config.ts";
-import { verifyJWT } from "./tokens.ts";
+import { router as sessionSocketRouter } from "./socket/session/session.socket.ts";
 
 const app = new Hono({});
 
 declare module "hono" {
   interface ContextVariableMap {
-    wsAuthenticated?: boolean;
+    wsSessionId?: string;
   }
 }
 
@@ -28,33 +28,9 @@ const routes = app
   .route("/api/session", sessionRouter)
   .route("/api/step", stepRouter)
   .get(
-    "/ws",
+    "/ws/session",
     upgradeWebSocket((c) => ({
-      async onMessage(event, ws) {
-        const authenticated = c.get("wsAuthenticated") ?? false;
-
-        if (!authenticated) {
-          if (!event.data.toString().startsWith("auth:")) {
-            ws.close(1000, "Unauthorized");
-            return;
-          }
-
-          const token = event.data.toString().substring(5);
-          const verifiedToken = await verifyJWT(token);
-
-          if (!verifiedToken.valid) {
-            ws.close(1000, "Unauthorized");
-            return;
-          }
-
-          console.log(verifiedToken.payload);
-
-          c.set("wsAuthenticated", true);
-        }
-
-        console.log(`Message from client: ${event.data}`);
-        ws.send("Hello from server!");
-      },
+      onMessage: sessionSocketRouter.onMessage(c),
       onClose() {
         console.log("WebSocket connection closed");
       },

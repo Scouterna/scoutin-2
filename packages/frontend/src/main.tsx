@@ -9,7 +9,6 @@ import "./styles.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { loadPlugins } from "./plugins/loadPlugins.ts";
 import reportWebVitals from "./reportWebVitals.ts";
-import { ws } from "./api/api.ts";
 
 loadPlugins();
 
@@ -49,20 +48,3 @@ if (rootElement && !rootElement.innerHTML) {
 // to log results (for example: reportWebVitals(console.log))
 // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
 reportWebVitals();
-
-// Next up: Don't just create the WebSocket here. Create it when the session is
-// started and authenticate using token.
-const socket = ws.$ws();
-
-socket.addEventListener("message", (event) => {
-  console.log("Message from server:", event.data);
-});
-
-socket.addEventListener("open", () => {
-  console.log("WebSocket connection established");
-  socket.send("Hello from client!");
-});
-
-socket.addEventListener("close", () => {
-  console.log("WebSocket connection closed");
-});

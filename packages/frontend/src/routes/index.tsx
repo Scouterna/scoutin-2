@@ -4,13 +4,14 @@ import { Button } from "flowbite-react";
 import { useAtom } from "jotai";
 import * as session from "../api/session";
 import { sessionInfoAtom } from "../store/session";
+import { useCallback, useState } from "react";
 
 export const Route = createFileRoute("/")({
   component: App,
 });
 
 function App() {
-  const [_sessionInfo, setSessionInfo] = useAtom(sessionInfoAtom);
+  const [sessionInfo, setSessionInfo] = useAtom(sessionInfoAtom);
 
   const createSession = useMutation({
     mutationFn: session.create,
@@ -21,6 +22,49 @@ function App() {
       });
     },
   });
+
+  const [socket, setSocket] = useState<WebSocket | null>(null);
+
+  const createSocket = useCallback(() => {
+    session
+      .openSessionSocket()
+      .then((ws) => {
+        setSocket(ws);
+      })
+      .catch((err) => {
+        console.error("Failed to open WebSocket:", err);
+      });
+  }, [sessionInfo]);
+
+  const authTest = useCallback(() => {
+    if (!socket) {
+      console.error("No WebSocket connection available");
+      return;
+    }
+    if (!sessionInfo?.token) {
+      console.error("No session token available for WebSocket connection");
+      return;
+    }
+
+    socket.send(
+      JSON.stringify({
+        name: "auth",
+        token: sessionInfo.token,
+      }),
+    );
+  }, [socket, sessionInfo]);
+
+  const socketTest = useCallback(() => {
+    if (!socket) {
+      console.error("No WebSocket connection available");
+      return;
+    }
+    socket.send(
+      JSON.stringify({
+        name: "heartbeat",
+      }),
+    );
+  }, [socket]);
 
   return (
     <div className="flex flex-col justify-center items-center gap-8 mt-48">
@@ -34,6 +78,30 @@ function App() {
         disabled={createSession.isPending}
       >
         {createSession.isPending ? "Skapar session..." : "Checka in"}
+      </Button>
+
+      <Button
+        onClick={() => {
+          createSocket();
+        }}
+      >
+        Create WebSocket
+      </Button>
+
+      <Button
+        onClick={() => {
+          authTest();
+        }}
+      >
+        Authenticate WebSocket
+      </Button>
+
+      <Button
+        onClick={() => {
+          socketTest();
+        }}
+      >
+        Test WebSocket
       </Button>
     </div>
   );
