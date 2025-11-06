@@ -5,6 +5,8 @@ import { useAtom } from "jotai";
 import { useCallback, useState } from "react";
 import * as session from "../api/session";
 import { sessionInfoAtom } from "../store/session";
+import { createTypedSocket, type TypedSocket } from "../api/typedSocket";
+import type { MessageTypes, Listeners } from "@scouterna/scoutin-backend";
 
 export const Route = createFileRoute("/")({
   component: App,
@@ -23,13 +25,16 @@ function App() {
     },
   });
 
-  const [socket, setSocket] = useState<WebSocket | null>(null);
+  const [socket, setSocket] = useState<TypedSocket<
+    Listeners,
+    MessageTypes
+  > | null>(null);
 
   const createSocket = useCallback(() => {
     session
       .openSessionSocket()
       .then((ws) => {
-        setSocket(ws);
+        setSocket(createTypedSocket<Listeners, MessageTypes>(ws));
       })
       .catch((err) => {
         console.error("Failed to open WebSocket:", err);
@@ -46,27 +51,33 @@ function App() {
       return;
     }
 
-    socket.send(
-      JSON.stringify({
-        name: "auth",
-        data: {
-          token: sessionInfo.token,
-        },
-      }),
-    );
+    socket.send({
+      name: "auth:authenticate",
+      data: {
+        token: sessionInfo.token,
+      },
+    });
   }, [socket, sessionInfo]);
+
+  const clearAuthTest = useCallback(() => {
+    if (!socket) {
+      console.error("No WebSocket connection available");
+      return;
+    }
+
+    socket.send({
+      name: "auth:clear",
+    });
+  }, [socket]);
 
   const socketTest = useCallback(() => {
     if (!socket) {
       console.error("No WebSocket connection available");
       return;
     }
-    socket.send(
-      JSON.stringify({
-        name: "heartbeat",
-        data: {},
-      }),
-    );
+    socket.send({
+      name: "heartbeat",
+    });
   }, [socket]);
 
   return (
@@ -97,6 +108,14 @@ function App() {
         }}
       >
         Authenticate WebSocket
+      </Button>
+
+      <Button
+        onClick={() => {
+          clearAuthTest();
+        }}
+      >
+        Cleare authentication
       </Button>
 
       <Button

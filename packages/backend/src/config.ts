@@ -8,8 +8,8 @@ const Config = type({
     .pipe((value) => Number.parseInt(value, 10))
     .default("3000"),
   NODE_ENV: type("'development' | 'production'").default("development"),
-  DATABASE_URL: type.string,
-  TOKEN_SECRET: type.string,
+  DATABASE_URL: type("string"),
+  TOKEN_SECRET: type("string"),
 });
 type Config = typeof Config.infer;
 

@@ -7,14 +7,16 @@ import {
 export const messageTypes = createMessageRegistry()
   .register(
     "auth",
-    type(
+    type.or(
       {
         status: "'success'",
       },
-      "|",
       {
         status: "'failure'",
         reason: "string",
+      },
+      {
+        status: "'cleared'",
       },
     ),
   )

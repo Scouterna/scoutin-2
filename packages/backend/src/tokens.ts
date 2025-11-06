@@ -1,8 +1,7 @@
-import { SignJWT, jwtVerify } from "jose";
-import config from "./config.ts";
 import type { JWTPayload } from "hono/utils/jwt/types";
-import { error } from "console";
+import { SignJWT, jwtVerify } from "jose";
 import { JWSInvalid } from "jose/errors";
+import config from "./config.ts";
 
 const TOKEN_SECRET = new TextEncoder().encode(config.TOKEN_SECRET);
 

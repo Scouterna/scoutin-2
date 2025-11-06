@@ -1,29 +1,8 @@
-import {
-  createSocketRouter,
-  type InferListeners,
-  type RouteMiddleware,
-} from "../socketRouter.ts";
+import { createSocketRouter, type InferListeners } from "../socketRouter.ts";
 import type { MessageTypes } from "./messageTypes.ts";
-import { authRouter } from "./session.auth.ts";
+import { authRouter, requireAuth } from "./auth.socket.ts";
 
 export const router = createSocketRouter<MessageTypes>();
-
-const requireAuth: RouteMiddleware<null, MessageTypes> = (c, evt, ws, next) => {
-  const isAuthenticated = Boolean(c.get("wsSessionId"));
-  if (!isAuthenticated) {
-    console.warn("Unauthorized WebSocket message:", evt.data);
-    ws.send({
-      name: "auth",
-      data: {
-        status: "failure",
-        reason: "unauthorized",
-      },
-    });
-    return;
-  }
-
-  next();
-};
 
 const routes = router
   .use(authRouter)

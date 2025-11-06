@@ -51,7 +51,7 @@ type MessageHandler = Exclude<WSEvents["onMessage"], undefined>;
 
 const parsePayload = type("string.json.parse").to({
   name: "string",
-  data: "object",
+  data: "object?",
 });
 
 export function createSocketRouter<TServerMessage extends { name: string }>() {

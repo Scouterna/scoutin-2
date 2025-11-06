@@ -1,4 +1,3 @@
-import type { ClientMessage } from "@scouterna/scoutin-backend";
 import { api, ws } from "./api";
 
 export { ws } from "./api";
