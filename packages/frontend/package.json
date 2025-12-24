@@ -10,18 +10,23 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@fontsource-variable/source-sans-3": "^5.2.9",
+    "@scouterna/design-tokens": "0.0.3",
+    "@scouterna/ui-react": "2.2.0",
+    "@scouterna/ui-webc": "2.2.0",
+    "@tabler/icons": "^3.35.0",
     "@tailwindcss/vite": "^4.1.13",
     "@tanstack/react-devtools": "^0.2.2",
     "@tanstack/react-query": "^5.90.5",
     "@tanstack/react-router": "^1.132.0",
     "@tanstack/react-router-devtools": "^1.132.0",
     "@tanstack/router-plugin": "^1.132.0",
-    "flowbite": "^3.1.2",
-    "flowbite-react": "^0.12.9",
+    "clsx": "^2.1.1",
     "hono": "^4.10.1",
     "jotai": "^2.15.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.13"
   },
   "devDependencies": {
@@ -35,6 +40,7 @@
     "jsdom": "^26.0.0",
     "typescript": "^5.7.2",
     "vite": "^6.3.5",
+    "vite-plugin-svgr": "^4.5.0",
     "vitest": "^3.0.5",
     "web-vitals": "^4.2.4"
   }

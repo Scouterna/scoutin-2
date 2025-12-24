@@ -4,15 +4,15 @@ import viteReact from "@vitejs/plugin-react";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import { resolve } from "node:path";
 import tailwindcss from "@tailwindcss/vite";
-import flowbiteReact from "flowbite-react/plugin/vite";
+import svgr from "vite-plugin-svgr";
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
+    svgr(),
     tanstackRouter({ autoCodeSplitting: true }),
     viteReact(),
     tailwindcss(),
-    flowbiteReact()
   ],
   resolve: {
     alias: {
