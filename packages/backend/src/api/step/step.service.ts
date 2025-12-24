@@ -57,6 +57,10 @@ export async function getNextStep(
   };
 }
 
+/**
+ * Iterates through the step definitions in order and finds the next step that
+ * should be executed based on the provided context and step data.
+ */
 function findNextStepDefinition(
   context: Context,
   stepData: CheckinSessionStepDataModel[],
@@ -75,6 +79,8 @@ function findNextStepDefinition(
         );
       }
 
+      // Expressions use integers for booleans. We're lax about it here and
+      // coerce by checking for truthiness.
       if (!result.number()) {
         continue;
       }
@@ -86,6 +92,11 @@ function findNextStepDefinition(
   return null;
 }
 
+/**
+ * Creates the context object for the given session and step data from all
+ * previous steps. This function is pure and only creates a represtentation of
+ * the context without any side effects.
+ */
 function createContext(
   session: CheckinSessionModel,
   stepData: CheckinSessionStepDataModel[],
@@ -93,20 +104,23 @@ function createContext(
   const steps: Record<string, ContextStepData> = {};
 
   for (const data of stepData) {
-    if (data.idInFlow) {
-      steps[data.idInFlow] = {
-        outputs: {},
-      };
-
-      const validatedOutputs = StepOutputs(data.outputs);
-      if (validatedOutputs instanceof type.errors) {
-        throw new Error(
-          `Invalid step outputs for step data ${data.id}: \n${validatedOutputs.summary}`,
-        );
-      }
-
-      steps[data.idInFlow].outputs = validatedOutputs;
+    if (!data.idInFlow) {
+      continue;
     }
+
+    const stepData = {
+      outputs: {},
+    };
+    steps[data.idInFlow] = stepData;
+
+    const validatedOutputs = StepOutputs(data.outputs);
+    if (validatedOutputs instanceof type.errors) {
+      throw new Error(
+        `Invalid step outputs for step data ${data.id}: \n${validatedOutputs.summary}`,
+      );
+    }
+
+    stepData.outputs = validatedOutputs;
   }
 
   return {

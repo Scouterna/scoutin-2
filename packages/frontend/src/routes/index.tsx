@@ -91,7 +91,9 @@ function App() {
         }}
         disabled={createSession.isPending}
       >
-        {createSession.isPending ? "Skapar session..." : "Checka in"}
+        {createSession.isPending
+          ? "Skapar session..."
+          : "Checka in (skapa session)"}
       </Button>
 
       <Button
@@ -115,7 +117,7 @@ function App() {
           clearAuthTest();
         }}
       >
-        Cleare authentication
+        Clear authentication
       </Button>
 
       <Button

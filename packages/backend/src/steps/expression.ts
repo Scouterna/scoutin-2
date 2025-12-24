@@ -1,6 +1,6 @@
 import { data, Evaluator, Lexer, Parser } from "../lib/expressions/index.ts";
 
-const WHOLE_EXPR_REGEX = /^\$\{\{(.*?)\}\}$/;
+const WHOLE_EXPR_REGEX = /^\$\{\{(?<expr>.*?)\}\}$/;
 const PARTIAL_EXPR_REGEX = /\$\{\{(.*?)\}\}/g;
 
 export function recursivelyEvaluateExpressionsInObject(
@@ -38,8 +38,8 @@ export function evaluateExpressionsInString(
 ): string | data.ExpressionData {
   // If whole string is an expression, evaluate and return it directly
   const wholeExprMatch = str.trim().match(WHOLE_EXPR_REGEX);
-  if (wholeExprMatch) {
-    const expr = wholeExprMatch[1].trim();
+  if (wholeExprMatch?.groups?.expr) {
+    const expr = wholeExprMatch.groups.expr.trim();
     return evaluateExpression(expr, context);
   }
 
