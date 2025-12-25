@@ -7,6 +7,7 @@ import { useCallback, useState } from "react";
 import * as session from "../api/session";
 import { createTypedSocket, type TypedSocket } from "../api/typedSocket";
 import { sessionInfoAtom } from "../store/session";
+import { socketAtom } from "@/store/socket";
 
 export const Route = createFileRoute("/test")({
   component: App,
@@ -14,6 +15,7 @@ export const Route = createFileRoute("/test")({
 
 function App() {
   const [sessionInfo, setSessionInfo] = useAtom(sessionInfoAtom);
+  const [socket, setSocket] = useAtom(socketAtom);
 
   const createSession = useMutation({
     mutationFn: session.create,
@@ -24,22 +26,6 @@ function App() {
       });
     },
   });
-
-  const [socket, setSocket] = useState<TypedSocket<
-    Listeners,
-    MessageTypes
-  > | null>(null);
-
-  const createSocket = useCallback(() => {
-    session
-      .openSessionSocket()
-      .then((ws) => {
-        setSocket(createTypedSocket<Listeners, MessageTypes>(ws));
-      })
-      .catch((err) => {
-        console.error("Failed to open WebSocket:", err);
-      });
-  }, []);
 
   const authTest = useCallback(() => {
     if (!socket) {
@@ -93,14 +79,6 @@ function App() {
         {createSession.isPending
           ? "Skapar session..."
           : "Checka in (skapa session)"}
-      </ScoutButton>
-
-      <ScoutButton
-        onScoutClick={() => {
-          createSocket();
-        }}
-      >
-        Create WebSocket
       </ScoutButton>
 
       <ScoutButton

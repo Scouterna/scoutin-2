@@ -1,30 +1,31 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { HeroLayout } from "@/components/HeroLayout";
-import { sessionInfoAtom } from "@/store/session";
-import heroVideoUrl from "../../assets/hero_video_cropped.webm";
+import { currentScreenAtom } from "@/store/session";
+import heroVideoUrl from "../../assets/hero_website.mp4";
 import { StartContent } from "../components/StartContent";
+import { ScreenRenderer } from "../screens/ScreenRenderer";
 
 export const Route = createFileRoute("/")({
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const [sessionInfo, setSessionInfo] = useAtom(sessionInfoAtom);
+  const currentScreen = useAtomValue(currentScreenAtom);
 
   return (
     <HeroLayout
       heroContent={<StartContent />}
-      progressed={!!sessionInfo}
+      progressed={currentScreen != null}
       showBackButton={true}
       onBackClick={() => {
         // TODO: Don't clear the session always, just on "total reset". Also,
         // clear the authentication state.
-        setSessionInfo(null);
+        // setSessionInfo(null);
       }}
       backgroundVideoUrl={heroVideoUrl}
     >
-      <pre>{JSON.stringify(sessionInfo, null, 2)}</pre>
+      <ScreenRenderer />
     </HeroLayout>
   );
 }

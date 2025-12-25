@@ -1,10 +1,11 @@
+import type { Listeners, MessageTypes } from "@scouterna/scoutin-backend";
 import { ScoutButton, ScoutCard, ScoutLoader } from "@scouterna/ui-react";
 import { useAtom } from "jotai";
-import { useEffect, type ReactNode, useState } from "react";
-import { socketAtom } from "../store/socket";
-import { openSessionSocket } from "../api/session";
+import { type ReactNode, useEffect, useState } from "react";
 import { createTypedSocket } from "@/api/typedSocket";
-import type { Listeners, MessageTypes } from "@scouterna/scoutin-backend";
+import { openSessionSocket } from "../api/session";
+import { socketAtom } from "../store/socket";
+import { setupSocket } from "./socketLogic";
 
 const Wrapper = ({ children }: { children: ReactNode }) => {
   return (
@@ -55,6 +56,7 @@ export function SocketLoader({ children }: { children: ReactNode }) {
 
     createSocket()
       .then((s) => {
+        setupSocket(s);
         setSocket(s);
       })
       .catch((err) => {

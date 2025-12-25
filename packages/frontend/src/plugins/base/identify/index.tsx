@@ -6,4 +6,9 @@ export const setup = (ctx: PluginSetupContext) => {
     name: "base:identify:start",
     component: () => <StartScreen />,
   });
+
+  ctx.registerScreen({
+    name: "base:identify:dummy",
+    component: () => <div>Dummy Screen</div>,
+  });
 };

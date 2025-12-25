@@ -20,6 +20,19 @@ export const messageTypes = createMessageRegistry()
       },
     ),
   )
-  .register("heartbeat");
+  .register("heartbeat")
+  .register(
+    "stepMessage",
+    type({
+      name: "string",
+      payload: "object",
+    }),
+  )
+  .register(
+    "showScreen",
+    type({
+      screenId: "string",
+    }),
+  );
 
 export type MessageTypes = InferMessageTypes<typeof messageTypes>;

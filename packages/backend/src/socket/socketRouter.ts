@@ -65,7 +65,7 @@ export function createSocketRouter<TServerMessage extends { name: string }>() {
     >(
       name: TName,
       validator: TSchema,
-      ...middleware: RouteMiddleware<TSchema, TServerMessage>[]
+      ...middleware: RouteMiddleware<TSchema | null, TServerMessage>[]
     ) => Router<
       TRoutes & {
         [K in TName]: {

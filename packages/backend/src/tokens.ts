@@ -1,5 +1,6 @@
+import { type } from "arktype";
 import type { JWTPayload } from "hono/utils/jwt/types";
-import { SignJWT, jwtVerify } from "jose";
+import { jwtVerify, SignJWT } from "jose";
 import { JWSInvalid } from "jose/errors";
 import config from "./config.ts";
 
@@ -11,11 +12,12 @@ const ISSUER = `${URN_PREFIX}backend`;
 const AUDIENCE = ISSUER;
 const EXPIRATION_TIME = "2h";
 
-type ScopedJWTPayload = {
-  [key: `${typeof URN_PREFIX}${string}`]: unknown;
-};
+const TokenPayload = type({
+  [`${URN_PREFIX}sessionId`]: "string",
+});
+type TokenPayload = typeof TokenPayload.infer;
 
-export async function signJWT(payload: ScopedJWTPayload): Promise<string> {
+export async function signJWT(payload: TokenPayload): Promise<string> {
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -28,17 +30,22 @@ export async function signJWT(payload: ScopedJWTPayload): Promise<string> {
 export async function verifyJWT(token: string): Promise<
   | {
       valid: true;
-      payload: JWTPayload & ScopedJWTPayload;
+      payload: JWTPayload & TokenPayload;
     }
   | {
       valid: false;
     }
 > {
   try {
-    const { payload } = await jwtVerify<ScopedJWTPayload>(token, TOKEN_SECRET, {
+    const verified = await jwtVerify(token, TOKEN_SECRET, {
       issuer: ISSUER,
       audience: AUDIENCE,
     });
+
+    const payload = TokenPayload(verified.payload);
+    if (payload instanceof type.errors) {
+      return { valid: false };
+    }
 
     return {
       valid: true,
@@ -46,9 +53,7 @@ export async function verifyJWT(token: string): Promise<
     };
   } catch (e) {
     if (e instanceof JWSInvalid) {
-      return {
-        valid: false,
-      };
+      return { valid: false };
     }
 
     throw e;

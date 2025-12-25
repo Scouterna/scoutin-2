@@ -39,7 +39,7 @@ export function createTypedSocket<
   // TODO: Do we need cleanup of listeners on socket close?
 
   socket.addEventListener("message", (event) => {
-    console.log(event.data);
+    // console.log(event.data);
     try {
       const parsed = JSON.parse(event.data);
       if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {

@@ -12,6 +12,7 @@ export type StepImplementationMethod = {
 };
 
 export type StepImplementation = {
+  id: string;
   inputs?: StandardSchemaV1<object, object>;
   outputs?: StandardSchemaV1<object, object>;
   hooks?: {

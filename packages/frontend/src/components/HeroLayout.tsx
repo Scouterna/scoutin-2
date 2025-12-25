@@ -39,8 +39,10 @@ export function HeroLayout({
   const video = useRef<HTMLVideoElement>(null);
 
   const [heroActive, setHeroActive] = useState(true);
+  const [contentActive, setContentActive] = useState(false);
 
   const heroUnloadTimeout = useRef<NodeJS.Timeout | undefined>(undefined);
+  const contentUnloadTimeout = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const unloadHero = useCallback(() => {
     setHeroActive(false);
@@ -52,16 +54,42 @@ export function HeroLayout({
     video.current?.play();
   }, []);
 
+  const unloadContent = useCallback(() => {
+    setContentActive(false);
+  }, []);
+  const loadContent = useCallback(() => {
+    setContentActive(true);
+  }, []);
+
   useEffect(() => {
     if (progressed) {
-      heroUnloadTimeout.current = setTimeout(() => {
-        unloadHero();
-      }, 500);
+      loadContent();
+      clearTimeout(contentUnloadTimeout.current);
+
+      if (heroActive) {
+        heroUnloadTimeout.current = setTimeout(() => {
+          unloadHero();
+        }, 500);
+      }
     } else {
-      clearTimeout(heroUnloadTimeout.current);
       loadHero();
+      clearTimeout(heroUnloadTimeout.current);
+
+      if (contentActive) {
+        contentUnloadTimeout.current = setTimeout(() => {
+          unloadContent();
+        }, 500);
+      }
     }
-  }, [progressed, unloadHero, loadHero]);
+  }, [
+    progressed,
+    unloadHero,
+    loadHero,
+    unloadContent,
+    loadContent,
+    heroActive,
+    contentActive,
+  ]);
 
   return (
     <div className="relative w-full h-full flex bg-background-brand-base overflow-hidden">
@@ -190,7 +218,7 @@ export function HeroLayout({
           className="absolute top-0 -left-full w-full h-full fill-white pointer-events-none translate-x-[2px] rotate-180"
           aria-hidden
         />
-        {children}
+        {contentActive && children}
       </div>
     </div>
   );

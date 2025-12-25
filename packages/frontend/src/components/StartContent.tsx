@@ -1,11 +1,13 @@
 import { ScoutButton } from "@scouterna/ui-react";
-import { useAtom } from "jotai";
-import { sessionInfoAtom } from "@/store/session";
 import { useMutation } from "@tanstack/react-query";
+import { useAtomValue, useSetAtom } from "jotai";
 import { create } from "@/api/session";
+import { sessionInfoAtom } from "@/store/session";
+import { socketAtom } from "@/store/socket";
 
 export function StartContent() {
-  const [sessionInfo, setSessionInfo] = useAtom(sessionInfoAtom);
+  const setSessionInfo = useSetAtom(sessionInfoAtom);
+  const socket = useAtomValue(socketAtom);
 
   const createSession = useMutation({
     mutationFn: create,
@@ -13,6 +15,11 @@ export function StartContent() {
       setSessionInfo({
         id: data.sessionId,
         token: data.token,
+      });
+
+      socket?.send({
+        name: "auth:authenticate",
+        data: { token: data.token },
       });
     },
   });
