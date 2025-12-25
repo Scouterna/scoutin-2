@@ -1,6 +1,12 @@
 import { ScoutButton } from "@scouterna/ui-react";
 import ArrowLeftIcon from "@tabler/icons/outline/arrow-left.svg?raw";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { cn } from "@/utils";
 import ScouternaTagline from "../../assets/scouterna_tagline.svg?react";
 import topography from "../../assets/topography.png";
@@ -29,25 +35,33 @@ export function HeroLayout({
 }: Props) {
   const showVideo = backgroundVideoUrl && !prefersReducedMotion;
 
-  // Two column hero layout
   const [videoLoaded, setVideoLoaded] = useState(false);
   const video = useRef<HTMLVideoElement>(null);
-  const videoPauseTimeout = useRef<NodeJS.Timeout | undefined>(undefined);
+
+  const [heroActive, setHeroActive] = useState(true);
+
+  const heroUnloadTimeout = useRef<NodeJS.Timeout | undefined>(undefined);
+
+  const unloadHero = useCallback(() => {
+    setHeroActive(false);
+    video.current?.pause();
+  }, []);
+
+  const loadHero = useCallback(() => {
+    setHeroActive(true);
+    video.current?.play();
+  }, []);
 
   useEffect(() => {
-    if (!video.current) {
-      return;
-    }
-
     if (progressed) {
-      videoPauseTimeout.current = setTimeout(() => {
-        video.current?.pause();
+      heroUnloadTimeout.current = setTimeout(() => {
+        unloadHero();
       }, 500);
     } else {
-      clearTimeout(videoPauseTimeout.current);
-      video.current.play();
+      clearTimeout(heroUnloadTimeout.current);
+      loadHero();
     }
-  }, [progressed]);
+  }, [progressed, unloadHero, loadHero]);
 
   return (
     <div className="relative w-full h-full flex bg-background-brand-base overflow-hidden">
@@ -89,7 +103,7 @@ export function HeroLayout({
           !progressed ? "left-0" : "-left-full",
         )}
       >
-        {heroContent}
+        {heroActive && heroContent}
 
         <Wave
           className="absolute top-0 -right-full w-full h-full fill-white pointer-events-none -translate-x-[2px]"
