@@ -1,18 +1,21 @@
 import { ScoutButton } from "@scouterna/ui-react";
-import type { ReactNode } from "react";
+import ArrowLeftIcon from "@tabler/icons/outline/arrow-left.svg?raw";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { cn } from "@/utils";
 import ScouternaTagline from "../../assets/scouterna_tagline.svg?react";
 import topography from "../../assets/topography.png";
 import Wave from "../../assets/wave.svg?react";
-import ArrowLeftIcon from "@tabler/icons/outline/arrow-left.svg?raw";
 
-// import
+const prefersReducedMotion = window.matchMedia(
+  `(prefers-reduced-motion: reduce)`,
+).matches;
 
 export type Props = {
   children: ReactNode;
   heroContent: ReactNode;
   progressed: boolean;
   showBackButton: boolean;
+  backgroundVideoUrl?: string;
   onBackClick: () => void;
 };
 
@@ -21,12 +24,54 @@ export function HeroLayout({
   heroContent,
   progressed,
   showBackButton,
+  backgroundVideoUrl,
   onBackClick,
 }: Props) {
+  const showVideo = backgroundVideoUrl && !prefersReducedMotion;
+
   // Two column hero layout
+  const [videoLoaded, setVideoLoaded] = useState(false);
+  const video = useRef<HTMLVideoElement>(null);
+  const videoPauseTimeout = useRef<NodeJS.Timeout | undefined>(undefined);
+
+  useEffect(() => {
+    if (!video.current) {
+      return;
+    }
+
+    if (progressed) {
+      videoPauseTimeout.current = setTimeout(() => {
+        video.current?.pause();
+      }, 500);
+    } else {
+      clearTimeout(videoPauseTimeout.current);
+      video.current.play();
+    }
+  }, [progressed]);
 
   return (
     <div className="relative w-full h-full flex bg-background-brand-base overflow-hidden">
+      {showVideo && (
+        <video
+          ref={video}
+          key={backgroundVideoUrl}
+          className={cn(
+            "absolute top-0 left-0 w-full h-full object-cover pointer-events-none",
+            "transition-all duration-400",
+            videoLoaded
+              ? !progressed
+                ? "delay-600 opacity-30"
+                : "opacity-0"
+              : "opacity-0",
+          )}
+          src={backgroundVideoUrl}
+          autoPlay
+          muted
+          loop
+          onLoadedData={() => setVideoLoaded(true)}
+        />
+      )}
+
       <div
         className={cn(
           "absolute bottom-2 right-2 leading-none text-body-sm text-white",
