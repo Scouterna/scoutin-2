@@ -7,6 +7,9 @@ export type SessionTokenPayload = {
 };
 
 export async function createSession(): Promise<CheckinSessionModel> {
+  // Simulate delay for testing purposes
+  // await new Promise((resolve) => setTimeout(resolve, 1500));
+
   return await prisma.checkinSession.create({
     data: {},
   });

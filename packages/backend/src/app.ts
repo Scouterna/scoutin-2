@@ -29,12 +29,17 @@ const routes = app
   .route("/api/step", stepRouter)
   .get(
     "/ws/session",
-    upgradeWebSocket((c) => ({
-      onMessage: sessionSocketRouter.onMessage(c),
-      onClose() {
-        console.log("WebSocket connection closed");
-      },
-    })),
+    upgradeWebSocket(async (c) => {
+      // Simulate delay for testing purposes
+      // await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      return {
+        onMessage: sessionSocketRouter.onMessage(c),
+        onClose() {
+          console.log("WebSocket connection closed");
+        },
+      };
+    }),
   );
 
 export { app, injectWebSocket };

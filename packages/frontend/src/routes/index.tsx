@@ -1,36 +1,30 @@
-import { ScoutButton } from "@scouterna/ui-react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useAtom } from "jotai";
 import { HeroLayout } from "@/components/HeroLayout";
+import { sessionInfoAtom } from "@/store/session";
 import heroVideoUrl from "../../assets/hero_video_cropped.webm";
+import { StartContent } from "../components/StartContent";
 
 export const Route = createFileRoute("/")({
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const [progressed, setProgressed] = useState(false);
+  const [sessionInfo, setSessionInfo] = useAtom(sessionInfoAtom);
 
   return (
     <HeroLayout
-      heroContent={
-        <ScoutButton
-          variant="primary"
-          onScoutClick={() => {
-            setProgressed(true);
-          }}
-        >
-          Checka in
-        </ScoutButton>
-      }
-      progressed={progressed}
+      heroContent={<StartContent />}
+      progressed={!!sessionInfo}
       showBackButton={true}
       onBackClick={() => {
-        setProgressed(false);
+        // TODO: Don't clear the session always, just on "total reset". Also,
+        // clear the authentication state.
+        setSessionInfo(null);
       }}
       backgroundVideoUrl={heroVideoUrl}
     >
-      Content
+      <pre>{JSON.stringify(sessionInfo, null, 2)}</pre>
     </HeroLayout>
   );
 }
