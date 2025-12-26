@@ -58,3 +58,50 @@ model CheckinActor {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model Participant {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // lookupValues is an array of hashes that can be used to lookup the participant.
+  lookupValues   String[]
+  // dataSource determines where the participant information came from. A participant can be present in multiple data sources.
+  dataSource     String
+  // The ID of the participant in the data source.
+  idInDataSource String
+
+  firstName String
+  lastName  String
+
+  participantsOnParticipantGroups ParticipantsOnParticipantGroups[]
+
+  @@unique([dataSource, idInDataSource])
+}
+
+model ParticipantGroup {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  dataSource     String
+  idInDataSource String
+
+  name String
+
+  participantsOnParticipantGroups ParticipantsOnParticipantGroups[]
+}
+
+model ParticipantsOnParticipantGroups {
+  participant   Participant @relation(fields: [participantId], references: [id])
+  participantId String      @db.Uuid
+
+  participantGroup   ParticipantGroup @relation(fields: [participantGroupId], references: [id])
+  participantGroupId String           @db.Uuid
+
+  role String
+
+  @@id([participantId, participantGroupId])
+}

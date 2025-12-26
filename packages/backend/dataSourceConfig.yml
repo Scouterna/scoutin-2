@@ -1,0 +1,11 @@
+dataSources:
+  staff:
+    provider: scoutnet
+    projectId: 56033
+    includeIndividuals: true
+    includeGroups: false
+    keys:
+      groups: ${SCOUTNET_STAFF_GROUPS_KEY}
+      participants: ${SCOUTNET_STAFF_PARTICIPANTS_KEY}
+      checkin: ${SCOUTNET_STAFF_CHECKIN_KEY}
+      questions: ${SCOUTNET_STAFF_QUESTIONS_KEY}

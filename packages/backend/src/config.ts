@@ -10,6 +10,8 @@ const Config = type({
   NODE_ENV: type("'development' | 'production'").default("development"),
   DATABASE_URL: type("string"),
   TOKEN_SECRET: type("string"),
+  DATASOURCE_HASHING_SECRET: type("string"),
+  DATASOURCE_HASHING_SALT: type("string"),
 });
 type Config = typeof Config.infer;
 
