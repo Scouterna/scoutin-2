@@ -3,7 +3,7 @@ import { prometheus } from "@hono/prometheus";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import config from "../config/config.ts";
-import { loadAllDataSourcesIntoDatabase } from "../data/data.service.ts";
+import { loadAllDataSourcesIntoDatabase } from "../domains/participants/data.service.ts";
 import { sessionRouter } from "../domains/sessions/session.routes.ts";
 import { router as sessionSocketRouter } from "../domains/sessions/session.socket.ts";
 import { stepRouter } from "../domains/workflows/step.routes.ts";

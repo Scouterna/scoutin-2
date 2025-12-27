@@ -1,6 +1,6 @@
 import { createAuthorizationHeader, createClient } from "@scouterna/scoutnet";
 import { type } from "arktype";
-import { prisma } from "../app/prisma.ts";
+import { prisma } from "../../app/prisma.ts";
 import { hashLookupValue } from "./data.service.ts";
 
 export const ScoutnetDataSource = type({
