@@ -1,3 +1,3 @@
-export type { AppType } from "./app.ts";
-export type { MessageTypes } from "./socket/session/messageTypes.ts";
-export type { Listeners } from "./socket/session/session.socket.ts";
+export type { AppType } from "./app/app.ts";
+export type { MessageTypes } from "./core/websocket/messageTypes.ts";
+export type { Listeners } from "./domains/sessions/session.socket.ts";

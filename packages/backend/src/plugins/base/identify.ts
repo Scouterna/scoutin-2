@@ -1,5 +1,5 @@
 import { type } from "arktype";
-import type { StepImplementation } from "../stepImplementation.ts";
+import type { StepImplementation } from "../../core/workflow/stepImplementation.ts";
 
 const SearchByStringInputSchema = type({
   query: type("string"),

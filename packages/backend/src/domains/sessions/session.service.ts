@@ -1,6 +1,6 @@
+import { prisma } from "../../app/prisma.ts";
 import type { CheckinSessionModel } from "../../generated/prisma/models.ts";
-import { prisma } from "../../prisma.ts";
-import { signJWT } from "../../tokens.ts";
+import { signJWT } from "./tokens.ts";
 
 export type SessionTokenPayload = {
   sessionId: string;

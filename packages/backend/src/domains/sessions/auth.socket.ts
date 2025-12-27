@@ -1,11 +1,14 @@
 import { type } from "arktype";
-import { getNextStep } from "../../api/step/step.service.ts";
-import { prisma } from "../../prisma.ts";
-import { stepRegistry } from "../../steps/steps.ts";
-import { verifyJWT } from "../../tokens.ts";
-import { createSocketRouter, type RouteMiddleware } from "../socketRouter.ts";
-import type { MessageTypes } from "./messageTypes.ts";
-import { createStepContext } from "../../steps/stepContext.ts";
+import { prisma } from "../../app/prisma.ts";
+import type { MessageTypes } from "../../core/websocket/messageTypes.ts";
+import {
+  createSocketRouter,
+  type RouteMiddleware,
+} from "../../core/websocket/socketRouter.ts";
+import { createStepContext } from "../../core/workflow/stepContext.ts";
+import { getNextStep } from "../workflows/step.service.ts";
+import { stepRegistry } from "../workflows/steps.ts";
+import { verifyJWT } from "./tokens.ts";
 
 export const requireAuth: RouteMiddleware<null, MessageTypes> = (
   c,

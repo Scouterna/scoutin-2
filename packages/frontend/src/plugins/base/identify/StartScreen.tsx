@@ -5,7 +5,7 @@ import { socketAtom } from "@/store/socket";
 export function StartScreen() {
   const socket = useAtomValue(socketAtom);
 
-  const onNextClick = () => {
+  const _onNextClick = () => {
     socket?.send({
       name: "step:callMethod",
       data: {

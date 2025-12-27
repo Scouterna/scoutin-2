@@ -2,12 +2,12 @@ import { createNodeWebSocket } from "@hono/node-ws";
 import { prometheus } from "@hono/prometheus";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { sessionRouter } from "./api/session/session.routes.ts";
-import { stepRouter } from "./api/step/step.routes.ts";
-import config from "./config.ts";
-import { loadAllDataSourcesIntoDatabase } from "./data/data.service.ts";
+import config from "../config/config.ts";
+import { loadAllDataSourcesIntoDatabase } from "../data/data.service.ts";
+import { sessionRouter } from "../domains/sessions/session.routes.ts";
+import { router as sessionSocketRouter } from "../domains/sessions/session.socket.ts";
+import { stepRouter } from "../domains/workflows/step.routes.ts";
 import { registry } from "./metrics.ts";
-import { router as sessionSocketRouter } from "./socket/session/session.socket.ts";
 
 // TODO: Move this to a job runner
 await loadAllDataSourcesIntoDatabase();

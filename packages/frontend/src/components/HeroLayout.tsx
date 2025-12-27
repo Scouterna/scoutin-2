@@ -1,8 +1,8 @@
 import { ScoutButton } from "@scouterna/ui-react";
 import ArrowLeftIcon from "@tabler/icons/outline/arrow-left.svg?raw";
 import {
-  useCallback,
   type ReactNode,
+  useCallback,
   useEffect,
   useRef,
   useState,

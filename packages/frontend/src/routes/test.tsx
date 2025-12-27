@@ -1,13 +1,11 @@
-import type { Listeners, MessageTypes } from "@scouterna/scoutin-backend";
 import { ScoutButton } from "@scouterna/ui-react";
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAtom } from "jotai";
-import { useCallback, useState } from "react";
-import * as session from "../api/session";
-import { createTypedSocket, type TypedSocket } from "../api/typedSocket";
-import { sessionInfoAtom } from "../store/session";
+import { useCallback } from "react";
 import { socketAtom } from "@/store/socket";
+import * as session from "../api/session";
+import { sessionInfoAtom } from "../store/session";
 
 export const Route = createFileRoute("/test")({
   component: App,
@@ -15,7 +13,7 @@ export const Route = createFileRoute("/test")({
 
 function App() {
   const [sessionInfo, setSessionInfo] = useAtom(sessionInfoAtom);
-  const [socket, setSocket] = useAtom(socketAtom);
+  const [socket, _setSocket] = useAtom(socketAtom);
 
   const createSession = useMutation({
     mutationFn: session.create,

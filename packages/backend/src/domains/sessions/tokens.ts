@@ -2,7 +2,7 @@ import { type } from "arktype";
 import type { JWTPayload } from "hono/utils/jwt/types";
 import { jwtVerify, SignJWT } from "jose";
 import { JWSInvalid } from "jose/errors";
-import config from "./config.ts";
+import config from "../../config/config.ts";
 
 const TOKEN_SECRET = new TextEncoder().encode(config.TOKEN_SECRET);
 

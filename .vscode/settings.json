@@ -1,5 +1,5 @@
 {
   "search.exclude": {
-    "packages/backend/src/lib/expressions": true
+    "packages/backend/src/core/expressions/github-actions-expressions": true
   }
 }

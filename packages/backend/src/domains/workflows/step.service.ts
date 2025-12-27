@@ -1,16 +1,16 @@
 import { readFile } from "node:fs/promises";
 import { type } from "arktype";
+import { prisma } from "../../app/prisma.ts";
+import type { StepDefinition } from "../../config/stepConfig.ts";
+import { loadStepConfig } from "../../config/stepConfigLoader.ts";
+import {
+  evaluateExpressionsInString,
+  recursivelyEvaluateExpressionsInObject,
+} from "../../core/expressions/expressions.ts";
 import type {
   CheckinSessionModel,
   CheckinSessionStepDataModel,
 } from "../../generated/prisma/models.ts";
-import { prisma } from "../../prisma.ts";
-import {
-  evaluateExpressionsInString,
-  recursivelyEvaluateExpressionsInObject,
-} from "../../steps/expression.ts";
-import type { StepDefinition } from "../../steps/stepConfig.ts";
-import { loadStepConfig } from "../../steps/stepConfigLoader.ts";
 
 // TODO: Move this somewhere else
 const stepConfig = loadStepConfig(await readFile("./stepConfig.yml", "utf-8"));

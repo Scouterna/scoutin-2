@@ -1,5 +1,5 @@
-import type { MessageTypes } from "../socket/session/messageTypes.ts";
-import type { TypedWSContext } from "../socket/socketRouter.ts";
+import type { MessageTypes } from "../websocket/messageTypes.ts";
+import type { TypedWSContext } from "../websocket/socketRouter.ts";
 import type { StepMethodContext } from "./stepImplementation.ts";
 
 export function createStepContext(

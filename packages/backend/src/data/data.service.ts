@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { hash } from "argon2";
-import config from "../config.ts";
-import { lookupHashSeconds } from "../metrics.ts";
-import { prisma } from "../prisma.ts";
+import { lookupHashSeconds } from "../app/metrics.ts";
+import { prisma } from "../app/prisma.ts";
+import config from "../config/config.ts";
 import { type DataSource, loadDataSourceConfig } from "./dataSource.ts";
 import { importScoutnetData } from "./scoutnet.ts";
 

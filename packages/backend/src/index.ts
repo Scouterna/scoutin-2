@@ -1,11 +1,11 @@
 import { serve } from "@hono/node-server";
-import config, { loadConfig } from "./config.ts";
+import config, { loadConfig } from "./config/config.ts";
 
 loadConfig();
 
 async function main() {
   // Use dynamic import to make sure config is loaded before app is imported
-  const { app, injectWebSocket } = await import("./app.ts");
+  const { app, injectWebSocket } = await import("./app/app.ts");
 
   const server = serve(
     {

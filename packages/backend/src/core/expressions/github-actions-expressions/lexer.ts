@@ -344,7 +344,7 @@ export class Lexer {
     }
 
     let tokenType = TokenType.IDENTIFIER;
-    let tokenValue = undefined;
+    let tokenValue;
 
     const lexeme = this.input.substring(this.start, this.offset);
 

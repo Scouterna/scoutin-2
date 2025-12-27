@@ -2,7 +2,7 @@ import { type } from "arktype";
 import {
   createMessageRegistry,
   type InferMessageTypes,
-} from "../messageRegistry.ts";
+} from "./messageRegistry.ts";
 
 export const messageTypes = createMessageRegistry()
   .register(
