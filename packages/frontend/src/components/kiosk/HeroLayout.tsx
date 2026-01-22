@@ -8,9 +8,9 @@ import {
   useState,
 } from "react";
 import { cn } from "@/utils";
-import ScouternaTagline from "../../assets/scouterna_tagline.svg?react";
-import topography from "../../assets/topography.png";
-import Wave from "../../assets/wave.svg?react";
+import ScouternaTagline from "../../../assets/scouterna_tagline.svg?react";
+import topography from "../../../assets/topography.png";
+import Wave from "../../../assets/wave.svg?react";
 
 const prefersReducedMotion = window.matchMedia(
   `(prefers-reduced-motion: reduce)`,
@@ -134,7 +134,7 @@ export function HeroLayout({
         {heroActive && heroContent}
 
         <Wave
-          className="absolute top-0 -right-full w-full h-full fill-white pointer-events-none -translate-x-[2px]"
+          className="absolute top-0 -right-full w-full h-full fill-white pointer-events-none -translate-x-0.5"
           aria-hidden
         />
       </div>
@@ -215,7 +215,7 @@ export function HeroLayout({
         )}
       >
         <Wave
-          className="absolute top-0 -left-full w-full h-full fill-white pointer-events-none translate-x-[2px] rotate-180"
+          className="absolute top-0 -left-full w-full h-full fill-white pointer-events-none translate-x-0.5 rotate-180"
           aria-hidden
         />
         {contentActive && children}

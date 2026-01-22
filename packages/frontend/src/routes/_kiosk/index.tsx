@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useAtomValue } from "jotai";
-import { HeroLayout } from "@/components/HeroLayout";
+import { HeroLayout } from "@/components/kiosk/HeroLayout";
 import { currentScreenAtom } from "@/store/session";
-import heroVideoUrl from "../../assets/hero_website.mp4";
-import { StartContent } from "../components/StartContent";
-import { ScreenRenderer } from "../screens/ScreenRenderer";
+import heroVideoUrl from "../../../assets/hero_website.mp4";
+import { StartContent } from "../../components/kiosk/StartContent";
+import { ScreenRenderer } from "../../screens/ScreenRenderer";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_kiosk/")({
   component: RouteComponent,
 });
 

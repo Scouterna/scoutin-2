@@ -25,13 +25,23 @@ export function StartContent() {
   });
 
   return (
-    <ScoutButton
-      variant="primary"
-      onScoutClick={() => {
-        createSession.mutate();
-      }}
-    >
-      {createSession.isPending ? "Skapar session..." : "Checka in"}
-    </ScoutButton>
+    <div className="flex flex-col gap-8">
+      <h1 className="text-heading-lg font-semibold text-blue-700 leading-tight">
+        Välkommen till Jamboree26!
+      </h1>
+
+      <p className="text-body-2xl">
+        Klicka på knappen för att checka in som kår eller funktionär .
+      </p>
+
+      <ScoutButton
+        variant="primary"
+        onScoutClick={() => {
+          createSession.mutate();
+        }}
+      >
+        {createSession.isPending ? "Skapar session..." : "Checka in"}
+      </ScoutButton>
+    </div>
   );
 }

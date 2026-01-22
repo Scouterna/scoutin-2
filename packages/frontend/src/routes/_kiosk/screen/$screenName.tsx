@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { findScreen } from "../../plugins/plugins";
+import { findScreen } from "../../../plugins/plugins";
 
-export const Route = createFileRoute("/screen/$screenName")({
+export const Route = createFileRoute("/_kiosk/screen/$screenName")({
   component: RouteComponent,
 });
 

@@ -1,6 +1,6 @@
+import { type } from "arktype";
 import { parse } from "yaml";
 import { DataSourceConfig } from "./dataSourceConfig.ts";
-import { type } from "arktype";
 
 function replaceEnvVariables(value: string): string {
   return value.replace(/\$\{([a-z0-9_]+)\}/gi, (_, varName) => {

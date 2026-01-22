@@ -1,15 +1,11 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { Provider as StoreProvider } from "jotai";
 import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
-
-// Import the generated route tree
-import { routeTree } from "./routeTree.gen";
-
-import "./styles.css";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { loadPlugins } from "./plugins/loadPlugins.ts";
 import reportWebVitals from "./reportWebVitals.ts";
+import { routeTree } from "./routeTree.gen";
 import { store } from "./store/store";
 
 loadPlugins();

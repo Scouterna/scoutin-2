@@ -5,7 +5,13 @@ import { hashLookupValue } from "./data.service.ts";
 
 export const ScoutnetDataSource = type({
   provider: "'scoutnet'",
-  projectId: "string | number",
+  projectId: type("string | number").pipe((v) => String(v)),
+  /**
+   * If provided, only participants registered with these fee IDs will be imported.
+   */
+  "feeIds?": type("(string | number)[]").pipe((arr) =>
+    arr.map((v) => String(v)),
+  ),
   includeIndividuals: "boolean",
   includeGroups: "boolean",
   keys: type({
@@ -27,6 +33,7 @@ const ScoutnetParticipant = type({
   member_no: type("number | string").pipe((v) => String(v)),
   first_name: "string",
   last_name: "string",
+  fee_id: type("number | string").pipe((v) => String(v)),
   "ssno?": "string",
   "date_of_birth?": "string",
   "cancelled?": "boolean",
@@ -37,6 +44,8 @@ export async function importScoutnetData(
   dataSourceName: string,
 ) {
   const client = getClient();
+
+  // TODO: Care about includeIndividuals and includeGroups. Some events could have both groups and individuals.
 
   const res = await client.GET("/project/get/participants", {
     headers: {
@@ -57,33 +66,48 @@ export async function importScoutnetData(
     throw new Error("No participants data received from Scoutnet");
   }
 
-  const participants = Object.values(res.data.participants);
-  const validParticipants = participants.flatMap((p) => {
-    const out = ScoutnetParticipant(p);
-    if (out instanceof type.errors) {
-      console.warn(
-        `Invalid participant data from Scoutnet for participant "${p.member_no}": ${out.summary}`,
-      );
-      return [];
-    }
-    return [out];
-  });
+  const participants = Object.values(res.data.participants)
+    // Remap data to validated participant objects
+    .flatMap((p) => {
+      const out = ScoutnetParticipant(p);
+      if (out instanceof type.errors) {
+        console.warn(
+          `Invalid participant data from Scoutnet for participant "${p.member_no}": ${out.summary}`,
+        );
+        return [];
+      }
+      return [out];
+    })
+    // Filter out participants that do not match criteria
+    .filter((p) => {
+      if (p.cancelled) {
+        return false;
+      }
+
+      if (!dataSource.feeIds || dataSource.feeIds.length === 0) {
+        return true;
+      }
+
+      return dataSource.feeIds.includes(p.fee_id);
+    });
 
   // TODO: Make sure we soft delete cancelled participants and participants that
   // are no longer present in Scoutnet. Soft delete should entail keeping them
   // in the database so that our relations don't break, but marking them as
   // deleted and anonymizing personal data.
+  // TODO: Actually, delete anything that exists in the database but was not in
+  // the filtered array.
 
   const lookupValuesByParticipantId = new Map<string, string[]>();
 
-  for (const p of validParticipants) {
+  for (const p of participants) {
     const rawLookupValues = [p.member_no];
 
     if (p.date_of_birth && p.ssno) {
       // We store the full SSNO and assume that if the century is not included
       // when searching for a participant, it will be added before querying
       // the database.
-      rawLookupValues.push(`${p.date_of_birth.replaceAll("-", "")}${p.ssno}`);
+      rawLookupValues.push(`${p.date_of_birth.replaceAll("-", "")}-${p.ssno}`);
     }
 
     const lookupValues = await Promise.all(
@@ -94,7 +118,7 @@ export async function importScoutnetData(
   }
 
   await prisma.$transaction(
-    validParticipants.map((p) => {
+    participants.map((p) => {
       const lookupValues = lookupValuesByParticipantId.get(p.member_no);
 
       if (!lookupValues) {

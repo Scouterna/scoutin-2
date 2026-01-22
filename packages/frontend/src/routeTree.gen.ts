@@ -9,86 +9,184 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TestRouteImport } from './routes/test'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as ScreenScreenNameRouteImport } from './routes/screen/$screenName'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as KioskRouteImport } from './routes/_kiosk'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as KioskIndexRouteImport } from './routes/_kiosk/index'
+import { Route as AdminSessionsRouteImport } from './routes/admin/sessions'
+import { Route as KioskTestRouteImport } from './routes/_kiosk/test'
+import { Route as KioskScreenScreenNameRouteImport } from './routes/_kiosk/screen/$screenName'
 
-const TestRoute = TestRouteImport.update({
-  id: '/test',
-  path: '/test',
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
+const KioskRoute = KioskRouteImport.update({
+  id: '/_kiosk',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AdminRoute,
 } as any)
-const ScreenScreenNameRoute = ScreenScreenNameRouteImport.update({
+const KioskIndexRoute = KioskIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => KioskRoute,
+} as any)
+const AdminSessionsRoute = AdminSessionsRouteImport.update({
+  id: '/sessions',
+  path: '/sessions',
+  getParentRoute: () => AdminRoute,
+} as any)
+const KioskTestRoute = KioskTestRouteImport.update({
+  id: '/test',
+  path: '/test',
+  getParentRoute: () => KioskRoute,
+} as any)
+const KioskScreenScreenNameRoute = KioskScreenScreenNameRouteImport.update({
   id: '/screen/$screenName',
   path: '/screen/$screenName',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => KioskRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/test': typeof TestRoute
-  '/screen/$screenName': typeof ScreenScreenNameRoute
+  '/': typeof KioskIndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/test': typeof KioskTestRoute
+  '/admin/sessions': typeof AdminSessionsRoute
+  '/admin/': typeof AdminIndexRoute
+  '/screen/$screenName': typeof KioskScreenScreenNameRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/test': typeof TestRoute
-  '/screen/$screenName': typeof ScreenScreenNameRoute
+  '/test': typeof KioskTestRoute
+  '/admin/sessions': typeof AdminSessionsRoute
+  '/': typeof KioskIndexRoute
+  '/admin': typeof AdminIndexRoute
+  '/screen/$screenName': typeof KioskScreenScreenNameRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/test': typeof TestRoute
-  '/screen/$screenName': typeof ScreenScreenNameRoute
+  '/_kiosk': typeof KioskRouteWithChildren
+  '/admin': typeof AdminRouteWithChildren
+  '/_kiosk/test': typeof KioskTestRoute
+  '/admin/sessions': typeof AdminSessionsRoute
+  '/_kiosk/': typeof KioskIndexRoute
+  '/admin/': typeof AdminIndexRoute
+  '/_kiosk/screen/$screenName': typeof KioskScreenScreenNameRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/test' | '/screen/$screenName'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/test'
+    | '/admin/sessions'
+    | '/admin/'
+    | '/screen/$screenName'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/test' | '/screen/$screenName'
-  id: '__root__' | '/' | '/test' | '/screen/$screenName'
+  to: '/test' | '/admin/sessions' | '/' | '/admin' | '/screen/$screenName'
+  id:
+    | '__root__'
+    | '/_kiosk'
+    | '/admin'
+    | '/_kiosk/test'
+    | '/admin/sessions'
+    | '/_kiosk/'
+    | '/admin/'
+    | '/_kiosk/screen/$screenName'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  TestRoute: typeof TestRoute
-  ScreenScreenNameRoute: typeof ScreenScreenNameRoute
+  KioskRoute: typeof KioskRouteWithChildren
+  AdminRoute: typeof AdminRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/test': {
-      id: '/test'
-      path: '/test'
-      fullPath: '/test'
-      preLoaderRoute: typeof TestRouteImport
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
+    '/_kiosk': {
+      id: '/_kiosk'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof KioskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_kiosk/': {
+      id: '/_kiosk/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof KioskIndexRouteImport
+      parentRoute: typeof KioskRoute
     }
-    '/screen/$screenName': {
-      id: '/screen/$screenName'
+    '/admin/sessions': {
+      id: '/admin/sessions'
+      path: '/sessions'
+      fullPath: '/admin/sessions'
+      preLoaderRoute: typeof AdminSessionsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_kiosk/test': {
+      id: '/_kiosk/test'
+      path: '/test'
+      fullPath: '/test'
+      preLoaderRoute: typeof KioskTestRouteImport
+      parentRoute: typeof KioskRoute
+    }
+    '/_kiosk/screen/$screenName': {
+      id: '/_kiosk/screen/$screenName'
       path: '/screen/$screenName'
       fullPath: '/screen/$screenName'
-      preLoaderRoute: typeof ScreenScreenNameRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof KioskScreenScreenNameRouteImport
+      parentRoute: typeof KioskRoute
     }
   }
 }
 
+interface KioskRouteChildren {
+  KioskTestRoute: typeof KioskTestRoute
+  KioskIndexRoute: typeof KioskIndexRoute
+  KioskScreenScreenNameRoute: typeof KioskScreenScreenNameRoute
+}
+
+const KioskRouteChildren: KioskRouteChildren = {
+  KioskTestRoute: KioskTestRoute,
+  KioskIndexRoute: KioskIndexRoute,
+  KioskScreenScreenNameRoute: KioskScreenScreenNameRoute,
+}
+
+const KioskRouteWithChildren = KioskRoute._addFileChildren(KioskRouteChildren)
+
+interface AdminRouteChildren {
+  AdminSessionsRoute: typeof AdminSessionsRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminSessionsRoute: AdminSessionsRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  TestRoute: TestRoute,
-  ScreenScreenNameRoute: ScreenScreenNameRoute,
+  KioskRoute: KioskRouteWithChildren,
+  AdminRoute: AdminRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

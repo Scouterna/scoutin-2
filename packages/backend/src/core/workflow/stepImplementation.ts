@@ -3,7 +3,10 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
 export type StepMethodContext = {
   sendMessage(name: string, payload?: Record<string, unknown>): Promise<void>;
   setCompleted(outputs?: Record<string, unknown>): Promise<void>;
-  showScreen(screenId: string): Promise<void>;
+  showScreen(
+    screenId: string,
+    payload?: Record<string, unknown>,
+  ): Promise<void>;
 };
 
 export type StepImplementationMethod = {

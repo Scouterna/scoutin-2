@@ -32,6 +32,7 @@ export const messageTypes = createMessageRegistry()
     "showScreen",
     type({
       screenId: "string",
+      payload: "object",
     }),
   );
 

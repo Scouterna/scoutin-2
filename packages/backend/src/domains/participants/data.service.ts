@@ -3,9 +3,9 @@ import { hash } from "argon2";
 import { lookupHashSeconds } from "../../app/metrics.ts";
 import { prisma } from "../../app/prisma.ts";
 import config from "../../config/config.ts";
-import { type DataSource } from "../../config/dataSourceConfig.ts";
-import { importScoutnetData } from "./scoutnet.ts";
+import type { DataSource } from "../../config/dataSourceConfig.ts";
 import { loadDataSourceConfig } from "../../config/dataSourceConfigLoader.ts";
+import { importScoutnetData } from "./scoutnet.ts";
 
 const dataSourceConfig = await loadDataSourceConfig(
   await readFile("./dataSourceConfig.yml", "utf-8"),

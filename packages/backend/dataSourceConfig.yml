@@ -2,6 +2,8 @@ dataSources:
   staff:
     provider: scoutnet
     projectId: 56033
+    feeIds:
+      - 32016
     includeIndividuals: true
     includeGroups: false
     keys:

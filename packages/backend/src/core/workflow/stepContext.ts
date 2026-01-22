@@ -15,10 +15,10 @@ export function createStepContext(
     setCompleted() {
       throw new Error("Not implemented");
     },
-    async showScreen(screenId) {
+    async showScreen(screenId, payload = {}) {
       await ws.send({
         name: "showScreen",
-        data: { screenId },
+        data: { screenId, payload },
       });
     },
   };

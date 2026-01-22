@@ -1,7 +1,7 @@
 import type { Listeners, MessageTypes } from "@scouterna/scoutin-backend";
 import { ScoutButton, ScoutCard, ScoutLoader } from "@scouterna/ui-react";
 import { useAtom } from "jotai";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { createTypedSocket } from "@/api/typedSocket";
 import { openSessionSocket } from "../api/session";
 import { socketAtom } from "../store/socket";
@@ -24,7 +24,7 @@ const ErrorInfo = ({ message }: { message: string }) => {
           <p className="mb-4">
             Ett fel uppstod när anslutningen till servern skulle upprättas:
           </p>
-          <pre className="bg-gray-100 p-2 rounded text-left whitespace-pre-wrap break-words">
+          <pre className="bg-gray-100 p-2 rounded text-left whitespace-pre-wrap wrap-break-word">
             {message}
           </pre>
         </div>
@@ -48,11 +48,17 @@ const createSocket = async () => {
 };
 
 export function SocketLoader({ children }: { children: ReactNode }) {
-  const [socket, setSocket] = useAtom(socketAtom);
-  const [socketError, setSocketError] = useState<string | null>();
+  const loaded = useRef(false);
 
+  const [socket, setSocket] = useAtom(socketAtom);
+  const [socketError, setSocketError] = useState<string | null>(null);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: setSocket should not be a dependency
   useEffect(() => {
-    if (socket) return;
+    if (socket || loaded.current) return;
+
+    // Ensure we only try to load the socket once, even during strict mode re-renders
+    loaded.current = true;
 
     createSocket()
       .then((s) => {
@@ -63,7 +69,7 @@ export function SocketLoader({ children }: { children: ReactNode }) {
         console.error("Failed to create WebSocket:", err);
         setSocketError(String(err));
       });
-  }, [setSocket, socket]);
+  }, [socket]);
 
   if (socketError) {
     return (

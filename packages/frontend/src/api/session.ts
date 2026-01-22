@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import { api, ws } from "./api";
 
 export { ws } from "./api";
@@ -28,6 +29,9 @@ export function openSessionSocket(): Promise<WebSocket> {
 
       socket.addEventListener("close", () => {
         console.log("WebSocket connection closed");
+        toast.error("WebSocket connection closed", {
+          duration: Infinity,
+        });
       });
     } catch (e) {
       reject(e);

@@ -4,10 +4,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useAtom } from "jotai";
 import { useCallback } from "react";
 import { socketAtom } from "@/store/socket";
-import * as session from "../api/session";
-import { sessionInfoAtom } from "../store/session";
+import * as session from "../../api/session";
+import { sessionInfoAtom } from "../../store/session";
 
-export const Route = createFileRoute("/test")({
+export const Route = createFileRoute("/_kiosk/test")({
   component: App,
 });
 
