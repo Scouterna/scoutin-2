@@ -1,7 +1,7 @@
 import { type } from "arktype";
 import type { JWTPayload } from "hono/utils/jwt/types";
 import { jwtVerify, SignJWT } from "jose";
-import { JWSInvalid } from "jose/errors";
+import { JOSEError, JWSInvalid } from "jose/errors";
 import config from "../../config/config.ts";
 
 const TOKEN_SECRET = new TextEncoder().encode(config.TOKEN_SECRET);
@@ -52,7 +52,7 @@ export async function verifyJWT(token: string): Promise<
       payload,
     };
   } catch (e) {
-    if (e instanceof JWSInvalid) {
+    if (e instanceof JOSEError) {
       return { valid: false };
     }
 

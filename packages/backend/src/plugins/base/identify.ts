@@ -161,7 +161,7 @@ export const identify: StepImplementation<State> = {
           throw new Error("Actors set in state but empty");
         }
 
-        ctx.setCompleted({
+        await ctx.setCompleted({
           dataSource: actor.dataSource,
           actorId: actor.id,
         });
