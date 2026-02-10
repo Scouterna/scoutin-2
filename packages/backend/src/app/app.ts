@@ -7,7 +7,7 @@ import { loadAllDataSourcesIntoDatabase } from "../domains/participants/data.ser
 import { sessionRouter } from "../domains/sessions/session.routes.ts";
 import { router as sessionSocketRouter } from "../domains/sessions/session.socket.ts";
 import { stepRouter } from "../domains/workflows/step.routes.ts";
-import { registry } from "./metrics.ts";
+import { activeWebSocketConnections, registry } from "./metrics.ts";
 
 // TODO: Move this to a job runner
 await loadAllDataSourcesIntoDatabase();
@@ -40,9 +40,12 @@ const routes = app
       // Simulate delay for testing purposes
       // await new Promise((resolve) => setTimeout(resolve, 1500));
 
+      activeWebSocketConnections.inc();
+
       return {
         onMessage: sessionSocketRouter.onMessage(c),
         onClose() {
+          activeWebSocketConnections.dec();
           console.log("WebSocket connection closed");
         },
       };

@@ -105,7 +105,7 @@ export const identify: StepImplementation<State> = {
         }
 
         const actors = participants.map(participantToActor);
-        await ctx.setState("actors", actors);
+        ctx.setState("actors", actors);
 
         if (actors.length === 1 && actors[0]) {
           await ctx.showScreen("base:identify:previewActor", {
@@ -123,7 +123,7 @@ export const identify: StepImplementation<State> = {
         actorId: type("string"),
       }),
       async handler(ctx, inputs) {
-        const actors = await ctx.getState("actors");
+        const actors = ctx.getState("actors");
         if (!actors) {
           throw new Error("Actors not set in state");
         }
@@ -135,6 +135,8 @@ export const identify: StepImplementation<State> = {
           );
         }
 
+        ctx.setState("actors", [actor]);
+
         await ctx.showScreen("base:identify:previewActor", {
           actor,
         });
@@ -142,9 +144,15 @@ export const identify: StepImplementation<State> = {
     }),
     confirmActor: typedMethod({
       async handler(ctx) {
-        const actors = await ctx.getState("actors");
+        const actors = ctx.getState("actors");
         if (!actors) {
           throw new Error("Actors not set in state");
+        }
+
+        if (actors.length !== 1) {
+          throw new Error(
+            `Expected exactly one actor in state, but found ${actors.length}`,
+          );
         }
 
         const actor = actors[0];

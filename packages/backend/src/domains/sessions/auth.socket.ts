@@ -1,4 +1,5 @@
 import { type } from "arktype";
+import { authAttempts } from "../../app/metrics.ts";
 import { prisma } from "../../app/prisma.ts";
 import type { MessageTypes } from "../../core/websocket/messageTypes.ts";
 import {
@@ -9,7 +10,7 @@ import { executeStep } from "../../core/workflow/step.ts";
 import { getNextStep } from "../workflows/step.service.ts";
 import { verifyJWT } from "./tokens.ts";
 
-export const requireAuth: RouteMiddleware<null, MessageTypes> = (
+export const requireAuth: RouteMiddleware<null, MessageTypes> = async (
   c,
   evt,
   ws,
@@ -28,7 +29,7 @@ export const requireAuth: RouteMiddleware<null, MessageTypes> = (
     return;
   }
 
-  next();
+  await next();
 };
 
 export const authRouter = createSocketRouter<MessageTypes>()
@@ -40,6 +41,7 @@ export const authRouter = createSocketRouter<MessageTypes>()
     async (c, evt, ws) => {
       if (!evt.data.token) {
         console.warn("WebSocket authentication failed: missing token");
+        authAttempts.inc({ outcome: "missing_token" });
         ws.send({
           name: "auth",
           data: {
@@ -54,6 +56,7 @@ export const authRouter = createSocketRouter<MessageTypes>()
 
       if (!token?.valid) {
         console.warn("WebSocket authentication failed: invalid token");
+        authAttempts.inc({ outcome: "invalid_token" });
         ws.send({
           name: "auth",
           data: {
@@ -77,6 +80,7 @@ export const authRouter = createSocketRouter<MessageTypes>()
 
       if (!session) {
         console.warn("WebSocket authentication failed: session not found");
+        authAttempts.inc({ outcome: "session_not_found" });
         ws.send({
           name: "auth",
           data: {
@@ -89,6 +93,7 @@ export const authRouter = createSocketRouter<MessageTypes>()
 
       c.set("wsSessionId", sessionId);
 
+      authAttempts.inc({ outcome: "success" });
       ws.send({
         name: "auth",
         data: {

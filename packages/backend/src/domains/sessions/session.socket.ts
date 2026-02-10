@@ -1,4 +1,5 @@
 import { type } from "arktype";
+import { stepMethodCallSeconds } from "../../app/metrics.ts";
 import { prisma } from "../../app/prisma.ts";
 import type { MessageTypes } from "../../core/websocket/messageTypes.ts";
 import {
@@ -67,7 +68,16 @@ const routes = router
         validatedInputs = validationResult.value;
       }
 
-      await method.handler(ctx, validatedInputs);
+      const endTimer = stepMethodCallSeconds.startTimer({
+        step_id: step.id,
+        method_name: evt.data.name,
+      });
+
+      try {
+        await method.handler(ctx, validatedInputs);
+      } finally {
+        endTimer();
+      }
     },
   );
 

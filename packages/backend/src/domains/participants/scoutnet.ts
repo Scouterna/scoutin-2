@@ -96,7 +96,8 @@ export async function importScoutnetData(
   // in the database so that our relations don't break, but marking them as
   // deleted and anonymizing personal data.
   // TODO: Actually, delete anything that exists in the database but was not in
-  // the filtered array.
+  // the filtered array. This means that if a participant is cancelled or
+  // removed from Scoutnet, they will be deleted from our database.
 
   const lookupValuesByParticipantId = new Map<string, string[]>();
 

@@ -21,6 +21,8 @@ model CheckinSession {
   id       String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   stepData CheckinSessionStepData[]
 
+  // TODO: It might be a good idea to add an expiry time to sessions
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -78,6 +80,7 @@ model Participant {
   participantsOnParticipantGroups ParticipantsOnParticipantGroups[]
 
   @@unique([dataSource, idInDataSource])
+  @@index([lookupValues], type: Gin)
 }
 
 model ParticipantGroup {

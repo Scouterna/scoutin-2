@@ -1,3 +1,4 @@
+import { stepCompletions } from "../../app/metrics.ts";
 import { completeStep } from "../../domains/workflows/step.service.ts";
 import type { MessageTypes } from "../websocket/messageTypes.ts";
 import type { TypedWSContext } from "../websocket/socketRouter.ts";
@@ -47,6 +48,8 @@ export function createStepContext(
       if (!stepMeta) {
         throw new Error("No step metadata found in context");
       }
+
+      stepCompletions.inc({ step_id: stepImplementation.id });
 
       await completeStep(
         sessionId,
