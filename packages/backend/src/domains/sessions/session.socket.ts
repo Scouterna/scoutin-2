@@ -24,7 +24,7 @@ const routes = router
     "step:callMethod",
     type({
       name: "string",
-      inputs: "object",
+      "inputs?": "object",
     }),
     requireAuth,
     async (c, evt, ws) => {
@@ -36,29 +36,38 @@ const routes = router
       if (!session) {
         throw new Error("Session not found");
       }
+      // TODO: There is a lot going on here, refactor.
       const nextStep = await getNextStep(session);
       const step = stepRegistry.get(nextStep.uses);
-      const ctx = createStepContext(ws);
+      if (!step) {
+        throw new Error(`Step implementation ${nextStep.uses} not found`);
+      }
 
-      const method = step?.publicMethods?.[evt.data.name];
+      const ctx = createStepContext(c, ws, step);
+
+      const method = step.publicMethods?.[evt.data.name];
       if (!method) {
-        throw new Error(
-          `Method ${evt.data.name} not found on step ${step?.id}`,
-        );
+        throw new Error(`Method ${evt.data.name} not found on step ${step.id}`);
       }
 
-      const validationResult = await method.inputs["~standard"].validate(
-        evt.data.inputs,
-      );
-      if (validationResult.issues) {
-        throw new Error(
-          `Invalid inputs for method ${evt.data.name}: ${JSON.stringify(
-            validationResult.issues,
-          )}`,
+      let validatedInputs: unknown;
+
+      if (method.inputs) {
+        const validationResult = await method.inputs["~standard"].validate(
+          evt.data.inputs,
         );
+        if (validationResult.issues) {
+          throw new Error(
+            `Invalid inputs for method ${evt.data.name}: ${JSON.stringify(
+              validationResult.issues,
+            )}`,
+          );
+        }
+
+        validatedInputs = validationResult.value;
       }
 
-      await method.handler(ctx, validationResult.value);
+      await method.handler(ctx, validatedInputs);
     },
   );
 

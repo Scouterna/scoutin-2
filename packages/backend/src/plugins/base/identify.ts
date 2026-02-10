@@ -2,10 +2,7 @@ import { type } from "arktype";
 import type { StepImplementation } from "../../core/workflow/stepImplementation.ts";
 import { findParticipantsByLookupValue } from "../../domains/participants/data.service.ts";
 import type { Participant } from "../../generated/prisma/client.ts";
-
-const SearchByStringInputSchema = type({
-  query: type("string"),
-});
+import { typedMethod } from "../../plugin-utils/implementation.ts";
 
 /**
  * Normalizes Swedish personal identity number (personnummer).
@@ -65,33 +62,40 @@ type Actor = {
   id: string;
   firstName: string;
   lastName: string;
+  dataSource: string;
 };
 
 const participantToActor = (p: Participant): Actor => ({
   id: p.id,
   firstName: p.firstName,
   lastName: p.lastName,
+  dataSource: p.dataSource,
 });
 
-export const identify: StepImplementation = {
+type State = {
+  actors?: Actor[];
+};
+
+export const identify: StepImplementation<State> = {
   id: "base:identify",
   outputs: type({
     dataSource: type("string"),
+    actorId: type("string"),
   }),
   hooks: {
-    onStepStart(ctx) {
-      ctx.showScreen("base:identify:start");
+    async onStepStart(ctx) {
+      await ctx.showScreen("base:identify:start");
     },
   },
   publicMethods: {
-    searchByString: {
-      inputs: SearchByStringInputSchema,
-      async handler(ctx, inputs: typeof SearchByStringInputSchema.infer) {
+    searchByString: typedMethod({
+      inputs: type({
+        query: type("string"),
+      }),
+      async handler(ctx, inputs) {
         const normalizedQuery = normalizeQuery(inputs.query);
         const participants =
           await findParticipantsByLookupValue(normalizedQuery);
-
-        console.log(participants.length);
 
         if (participants.length === 0) {
           await ctx.sendMessage("base:identify:noResults", {
@@ -100,25 +104,60 @@ export const identify: StepImplementation = {
           return;
         }
 
-        if (participants.length === 1 && participants[0]) {
-          const p = participants[0];
-          ctx.showScreen("base:identify:previewActor", {
-            actor: participantToActor(p),
+        const actors = participants.map(participantToActor);
+        await ctx.setState("actors", actors);
+
+        if (actors.length === 1 && actors[0]) {
+          await ctx.showScreen("base:identify:previewActor", {
+            actor: actors[0],
           });
-          return;
+        } else {
+          await ctx.showScreen("base:identify:selectActor", {
+            actors,
+          });
+        }
+      },
+    }),
+    selectActor: typedMethod({
+      inputs: type({
+        actorId: type("string"),
+      }),
+      async handler(ctx, inputs) {
+        const actors = await ctx.getState("actors");
+        if (!actors) {
+          throw new Error("Actors not set in state");
         }
 
-        ctx.showScreen("base:identify:selectActor", {
-          actors: participants.map(participantToActor),
+        const actor = actors.find((a) => a.id === inputs.actorId);
+        if (!actor) {
+          throw new Error(
+            `Selected actor with id ${inputs.actorId} not found in state`,
+          );
+        }
+
+        await ctx.showScreen("base:identify:previewActor", {
+          actor,
         });
       },
-    },
-    // dummy: {
-    //   inputs: type({}),
-    //   async handler(ctx, data) {
-    //     // ctx.sendMessage("stepMessage", { info: "Dummy method called" });
-    //     ctx.showScreen("base:identify:dummy");
-    //   },
-    // },
+    }),
+    confirmActor: typedMethod({
+      async handler(ctx) {
+        const actors = await ctx.getState("actors");
+        if (!actors) {
+          throw new Error("Actors not set in state");
+        }
+
+        const actor = actors[0];
+
+        if (!actor) {
+          throw new Error("Actors set in state but empty");
+        }
+
+        ctx.setCompleted({
+          dataSource: actor.dataSource,
+          actorId: actor.id,
+        });
+      },
+    }),
   },
 };

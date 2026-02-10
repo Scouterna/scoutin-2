@@ -19,5 +19,5 @@ export function ScreenRenderer() {
     );
   }
 
-  return <currentScreen.component />;
+  return <currentScreen.component payload={currentScreenInfo.payload} />;
 }

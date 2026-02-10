@@ -30,7 +30,7 @@ model CheckinSessionStepData {
 
   // The step that was used
   stepId          String
-  // The ID defined in the step config
+  // The user defined ID in the step config
   idInFlow        String?
   // The inputs provided in the `with` field in the step config after evaluation.
   evaluatedInputs Json

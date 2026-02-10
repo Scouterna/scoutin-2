@@ -1,21 +1,12 @@
 import { ScoutButton, ScoutField, ScoutInput } from "@scouterna/ui-react";
 import { useAtomValue } from "jotai";
+import { useState } from "react";
 import { socketAtom } from "@/store/socket";
 
 export function StartScreen() {
   const socket = useAtomValue(socketAtom);
 
-  const _onNextClick = () => {
-    socket?.send({
-      name: "step:callMethod",
-      data: {
-        name: "dummy",
-        inputs: {},
-      },
-    });
-  };
-
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const valid = e.currentTarget.checkValidity();
     if (!valid) {
@@ -34,14 +25,22 @@ export function StartScreen() {
     });
   };
 
+  const [scoutInputValidity, setScoutInputValidity] = useState("");
+
   return (
-    <form noValidate onSubmit={onSubmit} className="flex flex-col gap-2">
+    <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-2">
       <ScoutField label="Person- eller medlemsnummer">
         <ScoutInput
           name="query"
-          validate={(value) =>
-            value.length === 0 ? "Fältet får inte vara tomt" : null
-          }
+          value="3177789"
+          validity={scoutInputValidity}
+          onScoutValidate={(e) => {
+            if (e.detail.value.length === 0) {
+              setScoutInputValidity("Fältet får inte vara tomt");
+            } else {
+              setScoutInputValidity("");
+            }
+          }}
         />
       </ScoutField>
 

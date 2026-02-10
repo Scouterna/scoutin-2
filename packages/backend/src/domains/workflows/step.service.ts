@@ -92,6 +92,29 @@ function findNextStepDefinition(
   return null;
 }
 
+export async function completeStep(
+  sessionId: string,
+  stepId: string,
+  idInFlow: string | null | undefined,
+  inputs: Record<string, unknown> | null | undefined,
+  outputs: Record<string, unknown>,
+) {
+  // Making sure that what we try to store in the database is actually serializable.
+  const jsonifiedInputs = JSON.parse(JSON.stringify(inputs));
+  const jsonifiedOutputs = JSON.parse(JSON.stringify(outputs));
+
+  await prisma.checkinSessionStepData.create({
+    data: {
+      sessionId,
+      stepId,
+      idInFlow,
+      evaluatedInputs: jsonifiedInputs,
+      outputs: jsonifiedOutputs,
+      completedAt: new Date(),
+    },
+  });
+}
+
 /**
  * Creates the context object for the given session and step data from all
  * previous steps. This function is pure and only creates a represtentation of

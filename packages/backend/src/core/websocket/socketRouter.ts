@@ -1,7 +1,7 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { type } from "arktype";
-import type { Context } from "hono";
 import type { WSContext, WSEvents, WSMessageReceive } from "hono/ws";
+import type { TypedContext } from "./types.ts";
 
 type TypedEvent<TSchema extends StandardSchemaV1<object, object> | null> = Omit<
   MessageEvent<WSMessageReceive>,
@@ -22,7 +22,7 @@ export type RouteMiddleware<
   TSchema extends StandardSchemaV1<object, object> | null,
   TServerMessage,
 > = (
-  c: Context,
+  c: TypedContext,
   evt: TypedEvent<TSchema>,
   ws: TypedWSContext<TServerMessage>,
   next: Next,
@@ -58,7 +58,7 @@ export function createSocketRouter<TServerMessage extends { name: string }>() {
   const routes: Record<string, RouteBind> = {};
 
   type Router<TRoutes extends Record<string, unknown>> = {
-    onMessage: (c: Context) => MessageHandler;
+    onMessage: (c: TypedContext) => MessageHandler;
     bind: <
       TName extends string,
       TSchema extends StandardSchemaV1<object, object> | null,
@@ -81,7 +81,7 @@ export function createSocketRouter<TServerMessage extends { name: string }>() {
   };
 
   const onMessage =
-    (c: Context): MessageHandler =>
+    (c: TypedContext): MessageHandler =>
     (evt, ws) => {
       const payload = parsePayload(evt.data);
       if (payload instanceof type.errors) {

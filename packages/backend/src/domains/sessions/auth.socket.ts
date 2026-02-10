@@ -5,9 +5,8 @@ import {
   createSocketRouter,
   type RouteMiddleware,
 } from "../../core/websocket/socketRouter.ts";
-import { createStepContext } from "../../core/workflow/stepContext.ts";
+import { executeStep } from "../../core/workflow/step.ts";
 import { getNextStep } from "../workflows/step.service.ts";
-import { stepRegistry } from "../workflows/steps.ts";
 import { verifyJWT } from "./tokens.ts";
 
 export const requireAuth: RouteMiddleware<null, MessageTypes> = (
@@ -99,9 +98,7 @@ export const authRouter = createSocketRouter<MessageTypes>()
       console.log("WebSocket authenticated successfully");
 
       const nextStep = await getNextStep(session);
-      const step = stepRegistry.get(nextStep.uses);
-      const ctx = createStepContext(ws);
-      await step?.hooks?.onStepStart?.(ctx);
+      await executeStep(c, ws, nextStep);
     },
   )
   .bind("auth:clear", null, (c, _evt, ws) => {

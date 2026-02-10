@@ -9,6 +9,7 @@ export const sessionInfoAtom = atom<SessionInfo | null>(null);
 
 export type CurrentScreen = {
   screenId: string;
+  payload: object;
 };
 
 export const currentScreenAtom = atom<CurrentScreen | null>(null);

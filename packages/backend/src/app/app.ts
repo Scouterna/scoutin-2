@@ -12,7 +12,7 @@ import { registry } from "./metrics.ts";
 // TODO: Move this to a job runner
 await loadAllDataSourcesIntoDatabase();
 
-const app = new Hono({});
+const app = new Hono();
 
 const { printMetrics, registerMetrics } = prometheus({
   registry,
@@ -20,12 +20,6 @@ const { printMetrics, registerMetrics } = prometheus({
 
 app.use("*", registerMetrics);
 app.get("/metrics", printMetrics);
-
-declare module "hono" {
-  interface ContextVariableMap {
-    wsSessionId?: string;
-  }
-}
 
 if (config.NODE_ENV === "development") {
   app.use("/api/*", cors());

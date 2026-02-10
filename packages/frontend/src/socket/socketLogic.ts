@@ -4,7 +4,7 @@ import { currentScreenAtom } from "@/store/session";
 import { store } from "@/store/store";
 
 export function setupSocket(socket: TypedSocket<Listeners, MessageTypes>) {
-  socket.on("showScreen", ({ screenId }) => {
-    store.set(currentScreenAtom, { screenId });
+  socket.on("showScreen", ({ screenId, payload }) => {
+    store.set(currentScreenAtom, { screenId, payload });
   });
 }

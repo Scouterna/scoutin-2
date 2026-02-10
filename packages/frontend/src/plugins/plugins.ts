@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 type ScreenConfig = {
   name: string;
-  component: () => ReactNode;
+  component: ({ payload }: { payload: object }) => ReactNode;
 };
 
 const screenRegistry: Record<string, ScreenConfig> = {};
