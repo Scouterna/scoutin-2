@@ -4,6 +4,7 @@ import { prisma } from "../../app/prisma.ts";
 import { hashLookupValue } from "./data.service.ts";
 
 export const ScoutnetDataSource = type({
+  name: "Record<string, string>",
   provider: "'scoutnet'",
   projectId: type("string | number").pipe((v) => String(v)),
   /**

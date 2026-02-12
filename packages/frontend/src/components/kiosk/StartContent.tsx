@@ -31,7 +31,7 @@ export function StartContent() {
       </h1>
 
       <p className="text-body-2xl">
-        Klicka på knappen för att checka in som kår eller funktionär .
+        Klicka på knappen för att checka in som kår eller funktionär.
       </p>
 
       <ScoutButton

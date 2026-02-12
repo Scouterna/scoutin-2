@@ -1,6 +1,9 @@
 import { type } from "arktype";
 import type { StepImplementation } from "../../core/workflow/stepImplementation.ts";
-import { findParticipantsByLookupValue } from "../../domains/participants/data.service.ts";
+import {
+  dataSourceConfig,
+  findParticipantsByLookupValue,
+} from "../../domains/participants/data.service.ts";
 import type { Participant } from "../../generated/prisma/client.ts";
 import { typedMethod } from "../../plugin-utils/implementation.ts";
 
@@ -63,14 +66,26 @@ type Actor = {
   firstName: string;
   lastName: string;
   dataSource: string;
+  dataSourceName: Record<string, string>;
 };
 
-const participantToActor = (p: Participant): Actor => ({
-  id: p.id,
-  firstName: p.firstName,
-  lastName: p.lastName,
-  dataSource: p.dataSource,
-});
+const participantToActor = (p: Participant): Actor => {
+  const dataSource = dataSourceConfig.dataSources[p.dataSource];
+
+  if (!dataSource) {
+    throw new Error(
+      `Data source with name ${p.dataSource} not found in config for participant ${p.id}`,
+    );
+  }
+
+  return {
+    id: p.id,
+    firstName: p.firstName,
+    lastName: p.lastName,
+    dataSource: p.dataSource,
+    dataSourceName: dataSource.name,
+  };
+};
 
 type State = {
   actors?: Actor[];

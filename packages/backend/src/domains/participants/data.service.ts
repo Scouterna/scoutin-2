@@ -7,7 +7,8 @@ import type { DataSource } from "../../config/dataSourceConfig.ts";
 import { loadDataSourceConfig } from "../../config/dataSourceConfigLoader.ts";
 import { importScoutnetData } from "./scoutnet.ts";
 
-const dataSourceConfig = await loadDataSourceConfig(
+// TODO: Don't just load it from an arbitrary file, but have it configurable
+export const dataSourceConfig = await loadDataSourceConfig(
   await readFile("./dataSourceConfig.yml", "utf-8"),
 );
 

@@ -32,7 +32,7 @@ export function StartScreen() {
       <ScoutField label="Person- eller medlemsnummer">
         <ScoutInput
           name="query"
-          value="3177789"
+          value="3192927"
           validity={scoutInputValidity}
           onScoutValidate={(e) => {
             if (e.detail.value.length === 0) {
