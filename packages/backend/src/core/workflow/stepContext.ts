@@ -1,8 +1,13 @@
 import { stepCompletions } from "../../app/metrics.ts";
-import { completeStep } from "../../domains/workflows/step.service.ts";
+import { prisma } from "../../app/prisma.ts";
+import {
+  completeStep,
+  getCurrentStep,
+} from "../../domains/workflows/step.service.ts";
 import type { MessageTypes } from "../websocket/messageTypes.ts";
 import type { TypedWSContext } from "../websocket/socketRouter.ts";
 import type { TypedContext } from "../websocket/types.ts";
+import { startStep } from "./step.ts";
 import type {
   StepImplementation,
   StepMethodContext,
@@ -13,7 +18,13 @@ export function createStepContext(
   ws: TypedWSContext<MessageTypes>,
   stepImplementation: StepImplementation,
 ): StepMethodContext {
+  const sessionId = c.get("wsSessionId");
+  if (!sessionId) {
+    throw new Error("No session ID found in context");
+  }
+
   return {
+    sessionId,
     async sendMessage(name, payload = {}) {
       await ws.send({
         name: "stepMessage",
@@ -51,13 +62,16 @@ export function createStepContext(
 
       stepCompletions.inc({ step_id: stepImplementation.id });
 
-      await completeStep(
+      const { session } = await completeStep(
         sessionId,
         stepImplementation.id,
         stepMeta.idInFlow,
         stepMeta.evaluatedInputs,
         validatedOutputs,
       );
+
+      const currentStep = await getCurrentStep(session);
+      await startStep(c, ws, currentStep);
     },
     setState(key, value) {
       c.set("stepState", {
@@ -77,6 +91,28 @@ export function createStepContext(
         name: "showScreen",
         data: { screenId, payload },
       });
+    },
+    async setActor(options) {
+      if ("administrator" in options) {
+        throw new Error("Setting administrator actor is not implemented yet");
+      }
+
+      const sessionId = c.get("wsSessionId");
+      if (!sessionId) {
+        throw new Error("No session ID found in context");
+      }
+
+      await prisma.checkinActor.create({
+        data: {
+          checkinSessions: {
+            connect: { id: sessionId },
+          },
+          participantId: options.participantId,
+        },
+      });
+    },
+    async overrideSession(newSessionId) {
+      c.set("wsSessionId", newSessionId);
     },
   };
 }

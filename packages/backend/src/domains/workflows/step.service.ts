@@ -31,7 +31,7 @@ export const Context = type({
 });
 export type Context = typeof Context.infer;
 
-export async function getNextStep(
+export async function getCurrentStep(
   session: CheckinSessionModel,
 ): Promise<StepDefinition> {
   const sessionStepData = await prisma.checkinSessionStepData.findMany({
@@ -66,7 +66,7 @@ function findNextStepDefinition(
   stepData: CheckinSessionStepDataModel[],
 ): StepDefinition | null {
   for (const stepDefinition of stepConfig.steps) {
-    const data = stepData.find((s) => s.stepId === stepDefinition.id);
+    const data = stepData.find((s) => s.stepId === stepDefinition.uses);
     const completed = data?.completedAt != null;
 
     if (completed) continue;
@@ -75,7 +75,7 @@ function findNextStepDefinition(
       const result = evaluateExpressionsInString(stepDefinition.if, context);
       if (typeof result === "string") {
         throw new Error(
-          `Step condition for step ${stepDefinition.id} did not evaluate to a boolean.`,
+          `Step condition for step ${stepDefinition.uses} did not evaluate to a boolean.`,
         );
       }
 
@@ -103,7 +103,7 @@ export async function completeStep(
   const jsonifiedInputs = JSON.parse(JSON.stringify(inputs));
   const jsonifiedOutputs = JSON.parse(JSON.stringify(outputs));
 
-  await prisma.checkinSessionStepData.create({
+  const { session } = await prisma.checkinSessionStepData.create({
     data: {
       sessionId,
       stepId,
@@ -112,7 +112,12 @@ export async function completeStep(
       outputs: jsonifiedOutputs,
       completedAt: new Date(),
     },
+    include: {
+      session: true,
+    },
   });
+
+  return { session };
 }
 
 /**

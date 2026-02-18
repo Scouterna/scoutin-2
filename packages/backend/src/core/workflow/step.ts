@@ -5,7 +5,7 @@ import type { TypedContext } from "../websocket/types.ts";
 import { createStepContext } from "./stepContext.ts";
 
 // TODO: I'm unsure if this should live here or in the domains/workflows
-export async function executeStep(
+export async function startStep(
   c: TypedContext,
   ws: TypedWSContext<unknown>,
   stepDef: StepDefinition,

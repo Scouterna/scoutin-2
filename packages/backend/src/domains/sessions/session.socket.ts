@@ -7,7 +7,7 @@ import {
   type InferListeners,
 } from "../../core/websocket/socketRouter.ts";
 import { createStepContext } from "../../core/workflow/stepContext.ts";
-import { getNextStep } from "../workflows/step.service.ts";
+import { getCurrentStep } from "../workflows/step.service.ts";
 import { stepRegistry } from "../workflows/steps.ts";
 import { authRouter, requireAuth } from "./auth.socket.ts";
 
@@ -38,10 +38,10 @@ const routes = router
         throw new Error("Session not found");
       }
       // TODO: There is a lot going on here, refactor.
-      const nextStep = await getNextStep(session);
-      const step = stepRegistry.get(nextStep.uses);
+      const currentStep = await getCurrentStep(session);
+      const step = stepRegistry.get(currentStep.uses);
       if (!step) {
-        throw new Error(`Step implementation ${nextStep.uses} not found`);
+        throw new Error(`Step implementation ${currentStep.uses} not found`);
       }
 
       const ctx = createStepContext(c, ws, step);

@@ -21,6 +21,9 @@ model CheckinSession {
   id       String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   stepData CheckinSessionStepData[]
 
+  actor   CheckinActor? @relation(fields: [actorId], references: [id])
+  actorId String?       @db.Uuid
+
   // TODO: It might be a good idea to add an expiry time to sessions
 
   createdAt DateTime @default(now())
@@ -57,8 +60,13 @@ model CheckinSubject {
 model CheckinActor {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
+  participant   Participant? @relation(fields: [participantId], references: [id])
+  participantId String?      @db.Uuid
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  checkinSessions CheckinSession[]
 }
 
 model Participant {
@@ -78,6 +86,7 @@ model Participant {
   lastName  String
 
   participantsOnParticipantGroups ParticipantsOnParticipantGroups[]
+  checkinActors                   CheckinActor[]
 
   @@unique([dataSource, idInDataSource])
   @@index([lookupValues], type: Gin)

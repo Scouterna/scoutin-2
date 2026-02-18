@@ -1,6 +1,15 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 
+export type SetActorOptions =
+  | {
+      participantId: string;
+    }
+  | {
+      administrator: true;
+    };
+
 export type StepMethodContext<TState = Record<string, unknown>> = {
+  sessionId: string;
   sendMessage(name: string, payload?: Record<string, unknown>): Promise<void>;
   setCompleted(outputs?: Record<string, unknown>): Promise<void>;
   showScreen(
@@ -10,6 +19,8 @@ export type StepMethodContext<TState = Record<string, unknown>> = {
   setState(key: keyof TState, value: TState[keyof TState]): void;
   getState(key: keyof TState): TState[keyof TState];
   clearState(): void;
+  setActor(options: SetActorOptions): Promise<void>;
+  overrideSession(newSessionId: string): void;
 };
 
 export type StepImplementationMethod<TState> = {
