@@ -67,7 +67,15 @@ export function SocketLoader({ children }: { children: ReactNode }) {
       })
       .catch((err) => {
         console.error("Failed to create WebSocket:", err);
-        setSocketError(String(err));
+
+        let errorString = String(err);
+        if (err instanceof Error) {
+          errorString = `${err.name}: ${err.message}\n${err.stack}`;
+        } else if (err instanceof Event && err.type === "error") {
+          errorString = `WebSocket error`;
+        }
+
+        setSocketError(errorString);
       });
   }, [socket]);
 

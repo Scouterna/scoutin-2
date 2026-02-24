@@ -8,6 +8,10 @@ export type SetActorOptions =
       administrator: true;
     };
 
+export type SetSubjectsOptions = {
+  participantIds: string[];
+};
+
 export type StepMethodContext<TState = Record<string, unknown>> = {
   sessionId: string;
   sendMessage(name: string, payload?: Record<string, unknown>): Promise<void>;
@@ -20,6 +24,7 @@ export type StepMethodContext<TState = Record<string, unknown>> = {
   getState(key: keyof TState): TState[keyof TState];
   clearState(): void;
   setActor(options: SetActorOptions): Promise<void>;
+  setSubjects(options: SetSubjectsOptions): Promise<void>;
   overrideSession(newSessionId: string): void;
 };
 

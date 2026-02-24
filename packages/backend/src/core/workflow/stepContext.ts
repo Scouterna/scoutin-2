@@ -111,6 +111,32 @@ export function createStepContext(
         },
       });
     },
+    async setSubjects({ participantIds }) {
+      const sessionId = c.get("wsSessionId");
+      if (!sessionId) {
+        throw new Error("No session ID found in context");
+      }
+
+      const existingSubjects = await prisma.checkinSubject.findMany({
+        where: { checkinSessionId: sessionId },
+      });
+
+      if (existingSubjects.length > 0) {
+        // TODO: Can we handle this gracefully? We could delete old subjects and
+        // set new ones, but that could have unintended consequences. Maybe we
+        // should just let the user start a new session?
+        throw new Error(
+          "Subjects have already been set for this session, cannot set again",
+        );
+      }
+
+      await prisma.checkinSubject.createMany({
+        data: participantIds.map((participantId) => ({
+          checkinSessionId: sessionId,
+          participantId,
+        })),
+      });
+    },
     async overrideSession(newSessionId) {
       c.set("wsSessionId", newSessionId);
     },
