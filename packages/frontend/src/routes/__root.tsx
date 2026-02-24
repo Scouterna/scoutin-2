@@ -1,5 +1,6 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { Toaster } from "sonner";
+import { RouteErrorComponent } from "../components/RouteErrorComponent";
 import { SocketLoader } from "../socket/SocketLoader";
 
 export const Route = createRootRoute({
@@ -12,4 +13,5 @@ export const Route = createRootRoute({
       </SocketLoader>
     </div>
   ),
+  errorComponent: RouteErrorComponent,
 });

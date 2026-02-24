@@ -57,7 +57,15 @@ export function createTypedSocket<
       if (listeners.has(name)) {
         // biome-ignore lint/style/noNonNullAssertion: We check has above
         for (const listener of listeners.get(name)!) {
-          listener(data);
+          try {
+            listener(data);
+          } catch (handlerError) {
+            console.error(
+              `Error in message handler for "${name}":`,
+              handlerError,
+            );
+            // Note: We don't show toast here to avoid spam, but log to console
+          }
         }
       } else {
         console.warn(`No listeners for message: ${name}`);

@@ -2,6 +2,7 @@ import { ScoutButton } from "@scouterna/ui-react";
 import { useMutation } from "@tanstack/react-query";
 import { useAtomValue, useSetAtom } from "jotai";
 import { create } from "@/api/session";
+import { showErrorToast } from "@/lib/errors";
 import { sessionInfoAtom } from "@/store/session";
 import { socketAtom } from "@/store/socket";
 
@@ -21,6 +22,10 @@ export function StartContent() {
         name: "auth:authenticate",
         data: { token: data.token },
       });
+    },
+    onError: (error) => {
+      console.error("Failed to create session:", error);
+      showErrorToast(error, "Kunde inte starta en ny session");
     },
   });
 

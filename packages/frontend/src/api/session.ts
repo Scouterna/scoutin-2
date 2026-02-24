@@ -1,11 +1,31 @@
 import { toast } from "sonner";
+import { createAppError } from "../lib/errors";
 import { api, ws } from "./api";
 
 export { ws } from "./api";
 
 export async function create() {
-  const res = await api.session.$post();
-  return await res.json();
+  try {
+    const res = await api.session.$post();
+
+    if (!res.ok) {
+      throw createAppError(
+        "network",
+        `Kunde inte skapa session: ${res.statusText}`,
+        { status: res.status },
+      );
+    }
+
+    return await res.json();
+  } catch (error) {
+    // Network errors (no response from server)
+    if (error instanceof TypeError) {
+      throw createAppError("network", "Kunde inte ansluta till servern", error);
+    }
+
+    // Re-throw AppErrors as-is
+    throw error;
+  }
 }
 
 export function openSessionSocket(): Promise<WebSocket> {
