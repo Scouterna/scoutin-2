@@ -48,8 +48,8 @@ importers:
         specifier: ^7.3.0
         version: 7.3.0(prisma@7.3.0(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3))(typescript@5.9.3)
       '@scouterna/scoutnet':
-        specifier: ^0.3.22
-        version: 0.3.22
+        specifier: ^0.3.24
+        version: 0.3.24
       argon2:
         specifier: ^0.44.0
         version: 0.44.0
@@ -1178,8 +1178,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@scouterna/scoutnet@0.3.22':
-    resolution: {integrity: sha512-HY1wFhkDWSOiW0XulnebYdSLMfqQYDORv9U+/6W+J5T8Ugz/W03O53v5OFQwaEA1ieD+N5NGRm/POdXWoAoBNg==}
+  '@scouterna/scoutnet@0.3.24':
+    resolution: {integrity: sha512-6Acxr000Zs1pN/yULUlaGElkpgeayY17lN5+Tmzth7qr/s1OYWPS835fLsm+jNT6FOItLHFWGwhbaobvC1On6A==}
 
   '@scouterna/tailwind-theme@0.0.4':
     resolution: {integrity: sha512-RIDYKRWYxDfmwEoIEbGc1zyIaanjCdw9ehrJEfahZjqyBtHq5nWTyrPMiTBBO1lh4z7c53Ymwr2rYAUOrf5AXQ==}
@@ -3691,7 +3691,7 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.52.3':
     optional: true
 
-  '@scouterna/scoutnet@0.3.22':
+  '@scouterna/scoutnet@0.3.24':
     dependencies:
       openapi-fetch: 0.13.8
 

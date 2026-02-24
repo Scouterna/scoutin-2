@@ -20,7 +20,7 @@
     "@hono/prometheus": "^1.0.2",
     "@prisma/adapter-pg": "^7.3.0",
     "@prisma/client": "^7.3.0",
-    "@scouterna/scoutnet": "^0.3.22",
+    "@scouterna/scoutnet": "^0.3.24",
     "argon2": "^0.44.0",
     "arktype": "^2.1.29",
     "hono": "^4.11.5",
