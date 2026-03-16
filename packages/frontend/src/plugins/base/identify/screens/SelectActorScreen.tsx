@@ -53,7 +53,6 @@ export function SelectActorScreen({ payload }: { payload: object }) {
         {validPayload.actors.map((actor, index) => (
           <Fragment key={actor.id}>
             <ScoutListViewItem
-              key={actor.id}
               primary={`Som ${actor.dataSourceName.sv}`}
               action="chevron"
               onClick={() => handleSelect(actor)}

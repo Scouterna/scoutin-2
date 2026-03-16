@@ -3,7 +3,6 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { Provider as StoreProvider } from "jotai";
 import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
-import { showErrorToast, showNetworkErrorToast } from "./lib/errors.ts";
 import { loadPlugins } from "./plugins/loadPlugins.ts";
 import reportWebVitals from "./reportWebVitals.ts";
 import { routeTree } from "./routeTree.gen";
@@ -45,16 +44,6 @@ const queryClient = new QueryClient({
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     },
     mutations: {
-      onError: (error) => {
-        console.error("Mutation error:", error);
-
-        // Check if it's a network error
-        if (error instanceof TypeError && error.message.includes("fetch")) {
-          showNetworkErrorToast();
-        } else {
-          showErrorToast(error);
-        }
-      },
       retry: false, // Don't retry mutations by default
     },
   },

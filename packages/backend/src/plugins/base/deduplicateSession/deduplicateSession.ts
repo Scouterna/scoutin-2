@@ -25,7 +25,7 @@ export const deduplicateSession: StepImplementation = {
       const sessions = await prisma.checkinSession.findMany({
         where: {
           actor: {
-            participantId: currentSession.actor?.participantId,
+            participantId: currentSession.actor.participantId,
           },
         },
       });
@@ -35,7 +35,6 @@ export const deduplicateSession: StepImplementation = {
         return;
       }
 
-      console.log("alles gut");
       await ctx.setCompleted();
     },
   },

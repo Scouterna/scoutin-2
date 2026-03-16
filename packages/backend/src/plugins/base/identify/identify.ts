@@ -119,10 +119,6 @@ export const identify: StepImplementation<State> = {
 
         const actor = actors[0];
 
-        if (!actor) {
-          throw new Error("Actors set in state but empty");
-        }
-
         await ctx.setActor({ participantId: actor.id });
 
         await ctx.setCompleted({

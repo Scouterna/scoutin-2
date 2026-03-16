@@ -5,7 +5,6 @@ export const setActorAsSubject: StepImplementation = {
   id: "base:setActorAsSubject",
   hooks: {
     async onStepStart(ctx) {
-      console.log("Running", "base:setActorAsSubject");
       const currentSession = await prisma.checkinSession.findUnique({
         where: { id: ctx.sessionId },
         include: { actor: true },
@@ -20,7 +19,7 @@ export const setActorAsSubject: StepImplementation = {
         // administrator, we probably want to let them choose a participant to
         // impersonate.
         throw new Error(
-          "No actor associated with session, skipping deduplication",
+          "No actor associated with session, cannot set actor as subject",
         );
       }
 

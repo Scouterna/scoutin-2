@@ -1,6 +1,5 @@
-import { ScoutButton, ScoutField, ScoutInput } from "@scouterna/ui-react";
+import { ScoutButton } from "@scouterna/ui-react";
 import { useAtomValue } from "jotai";
-import { useState } from "react";
 import { socketAtom } from "@/store/socket";
 
 export function StartOverPromptScreen() {

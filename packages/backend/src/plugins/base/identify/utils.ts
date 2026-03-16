@@ -25,8 +25,9 @@ const normalizePersonalIdentityNumber = (ssno: string) => {
 
   let yearPadding = "";
   if (year.length === 2) {
-    const currentYearLastTwo = new Date().getFullYear() % 100;
-    const currentYearFirstTwo = Math.floor(new Date().getFullYear() / 100);
+    const currentYear = new Date().getFullYear();
+    const currentYearLastTwo = currentYear % 100;
+    const currentYearFirstTwo = Math.floor(currentYear / 100);
 
     // Check if the date is more than 100 years ago
     if (yearNumber > currentYearLastTwo) {
