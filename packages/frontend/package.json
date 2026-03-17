@@ -26,6 +26,7 @@
     "@tanstack/react-router": "^1.154.8",
     "@tanstack/react-router-devtools": "^1.154.8",
     "@tanstack/react-table": "^8.21.3",
+    "@tanstack/react-virtual": "^3.13.23",
     "@tanstack/router-plugin": "^1.154.8",
     "arktype": "^2.1.29",
     "clsx": "^2.1.1",

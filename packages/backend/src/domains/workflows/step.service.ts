@@ -92,6 +92,86 @@ function findNextStepDefinition(
   return null;
 }
 
+export type SessionStepStatus = {
+  uses: string;
+  id?: string;
+  if?: string;
+  status: "completed" | "active" | "skipped" | "pending";
+  completedAt?: Date;
+  outputs?: Record<string, unknown>;
+};
+
+/**
+ * Gets the status of all steps for a given session. This is used to render the
+ * session details page in the admin interface.
+ */
+export async function getStepStatuses(
+  session: CheckinSessionModel,
+): Promise<SessionStepStatus[]> {
+  const sessionStepData = await prisma.checkinSessionStepData.findMany({
+    where: { sessionId: session.id },
+  });
+
+  const context = createContext(session, sessionStepData);
+  const statuses: SessionStepStatus[] = [];
+  let foundActive = false;
+
+  for (const stepDef of stepConfig.steps) {
+    const data = sessionStepData.find((s) => s.stepId === stepDef.uses);
+
+    if (data?.completedAt != null) {
+      statuses.push({
+        uses: stepDef.uses,
+        id: stepDef.id,
+        if: stepDef.if,
+        status: "completed",
+        completedAt: data.completedAt,
+        outputs:
+          data.outputs != null
+            ? (data.outputs as Record<string, unknown>)
+            : undefined,
+      });
+      continue;
+    }
+
+    if (!foundActive) {
+      if (stepDef.if) {
+        try {
+          const result = evaluateExpressionsInString(stepDef.if, context);
+          if (typeof result === "string" || !result.number()) {
+            statuses.push({
+              uses: stepDef.uses,
+              id: stepDef.id,
+              if: stepDef.if,
+              status: "skipped",
+            });
+            continue;
+          }
+        } catch {
+          // If the condition can't be evaluated, conservatively treat as active
+        }
+      }
+      foundActive = true;
+      statuses.push({
+        uses: stepDef.uses,
+        id: stepDef.id,
+        if: stepDef.if,
+        status: "active",
+      });
+      continue;
+    }
+
+    statuses.push({
+      uses: stepDef.uses,
+      id: stepDef.id,
+      if: stepDef.if,
+      status: "pending",
+    });
+  }
+
+  return statuses;
+}
+
 export async function completeStep(
   sessionId: string,
   stepId: string,

@@ -7,6 +7,7 @@ import { loadAllDataSourcesIntoDatabase } from "../domains/participants/data.ser
 import { sessionRouter } from "../domains/sessions/session.routes.ts";
 import { router as sessionSocketRouter } from "../domains/sessions/session.socket.ts";
 import { stepRouter } from "../domains/workflows/step.routes.ts";
+import { adminRouter } from "./admin.ts";
 import { activeWebSocketConnections, registry } from "./metrics.ts";
 
 // TODO: Move this to a job runner
@@ -34,6 +35,7 @@ app.get("/", (c) => {
 const routes = app
   .route("/api/session", sessionRouter)
   .route("/api/step", stepRouter)
+  .route("/api/admin", adminRouter)
   .get(
     "/ws/session",
     upgradeWebSocket(async (c) => {

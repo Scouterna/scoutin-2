@@ -15,6 +15,8 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as KioskIndexRouteImport } from './routes/_kiosk/index'
 import { Route as AdminSessionsRouteImport } from './routes/admin/sessions'
 import { Route as KioskTestRouteImport } from './routes/_kiosk/test'
+import { Route as AdminSessionsIndexRouteImport } from './routes/admin/sessions.index'
+import { Route as AdminSessionsSessionIdRouteImport } from './routes/admin/sessions.$sessionId'
 import { Route as KioskScreenScreenNameRouteImport } from './routes/_kiosk/screen/$screenName'
 
 const AdminRoute = AdminRouteImport.update({
@@ -46,6 +48,16 @@ const KioskTestRoute = KioskTestRouteImport.update({
   path: '/test',
   getParentRoute: () => KioskRoute,
 } as any)
+const AdminSessionsIndexRoute = AdminSessionsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminSessionsRoute,
+} as any)
+const AdminSessionsSessionIdRoute = AdminSessionsSessionIdRouteImport.update({
+  id: '/$sessionId',
+  path: '/$sessionId',
+  getParentRoute: () => AdminSessionsRoute,
+} as any)
 const KioskScreenScreenNameRoute = KioskScreenScreenNameRouteImport.update({
   id: '/screen/$screenName',
   path: '/screen/$screenName',
@@ -56,26 +68,31 @@ export interface FileRoutesByFullPath {
   '/': typeof KioskIndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/test': typeof KioskTestRoute
-  '/admin/sessions': typeof AdminSessionsRoute
+  '/admin/sessions': typeof AdminSessionsRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/screen/$screenName': typeof KioskScreenScreenNameRoute
+  '/admin/sessions/$sessionId': typeof AdminSessionsSessionIdRoute
+  '/admin/sessions/': typeof AdminSessionsIndexRoute
 }
 export interface FileRoutesByTo {
   '/test': typeof KioskTestRoute
-  '/admin/sessions': typeof AdminSessionsRoute
   '/': typeof KioskIndexRoute
   '/admin': typeof AdminIndexRoute
   '/screen/$screenName': typeof KioskScreenScreenNameRoute
+  '/admin/sessions/$sessionId': typeof AdminSessionsSessionIdRoute
+  '/admin/sessions': typeof AdminSessionsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_kiosk': typeof KioskRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
   '/_kiosk/test': typeof KioskTestRoute
-  '/admin/sessions': typeof AdminSessionsRoute
+  '/admin/sessions': typeof AdminSessionsRouteWithChildren
   '/_kiosk/': typeof KioskIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/_kiosk/screen/$screenName': typeof KioskScreenScreenNameRoute
+  '/admin/sessions/$sessionId': typeof AdminSessionsSessionIdRoute
+  '/admin/sessions/': typeof AdminSessionsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -86,8 +103,16 @@ export interface FileRouteTypes {
     | '/admin/sessions'
     | '/admin/'
     | '/screen/$screenName'
+    | '/admin/sessions/$sessionId'
+    | '/admin/sessions/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/test' | '/admin/sessions' | '/' | '/admin' | '/screen/$screenName'
+  to:
+    | '/test'
+    | '/'
+    | '/admin'
+    | '/screen/$screenName'
+    | '/admin/sessions/$sessionId'
+    | '/admin/sessions'
   id:
     | '__root__'
     | '/_kiosk'
@@ -97,6 +122,8 @@ export interface FileRouteTypes {
     | '/_kiosk/'
     | '/admin/'
     | '/_kiosk/screen/$screenName'
+    | '/admin/sessions/$sessionId'
+    | '/admin/sessions/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -148,6 +175,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KioskTestRouteImport
       parentRoute: typeof KioskRoute
     }
+    '/admin/sessions/': {
+      id: '/admin/sessions/'
+      path: '/'
+      fullPath: '/admin/sessions/'
+      preLoaderRoute: typeof AdminSessionsIndexRouteImport
+      parentRoute: typeof AdminSessionsRoute
+    }
+    '/admin/sessions/$sessionId': {
+      id: '/admin/sessions/$sessionId'
+      path: '/$sessionId'
+      fullPath: '/admin/sessions/$sessionId'
+      preLoaderRoute: typeof AdminSessionsSessionIdRouteImport
+      parentRoute: typeof AdminSessionsRoute
+    }
     '/_kiosk/screen/$screenName': {
       id: '/_kiosk/screen/$screenName'
       path: '/screen/$screenName'
@@ -172,13 +213,27 @@ const KioskRouteChildren: KioskRouteChildren = {
 
 const KioskRouteWithChildren = KioskRoute._addFileChildren(KioskRouteChildren)
 
+interface AdminSessionsRouteChildren {
+  AdminSessionsSessionIdRoute: typeof AdminSessionsSessionIdRoute
+  AdminSessionsIndexRoute: typeof AdminSessionsIndexRoute
+}
+
+const AdminSessionsRouteChildren: AdminSessionsRouteChildren = {
+  AdminSessionsSessionIdRoute: AdminSessionsSessionIdRoute,
+  AdminSessionsIndexRoute: AdminSessionsIndexRoute,
+}
+
+const AdminSessionsRouteWithChildren = AdminSessionsRoute._addFileChildren(
+  AdminSessionsRouteChildren,
+)
+
 interface AdminRouteChildren {
-  AdminSessionsRoute: typeof AdminSessionsRoute
+  AdminSessionsRoute: typeof AdminSessionsRouteWithChildren
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
-  AdminSessionsRoute: AdminSessionsRoute,
+  AdminSessionsRoute: AdminSessionsRouteWithChildren,
   AdminIndexRoute: AdminIndexRoute,
 }
 

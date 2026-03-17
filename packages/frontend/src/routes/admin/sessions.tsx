@@ -1,10 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { SessionTable } from "../../components/admin/SessionTable";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/admin/sessions")({
-  component: RouteComponent,
+  component: () => <Outlet />,
 });
-
-function RouteComponent() {
-  return <SessionTable />;
-}

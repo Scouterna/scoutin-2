@@ -1,8 +1,9 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { Provider as StoreProvider } from "jotai";
 import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
+import { queryClient } from "./lib/queryClient.ts";
 import { loadPlugins } from "./plugins/loadPlugins.ts";
 import reportWebVitals from "./reportWebVitals.ts";
 import { routeTree } from "./routeTree.gen";
@@ -26,28 +27,6 @@ declare module "@tanstack/react-router" {
     router: typeof router;
   }
 }
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: (failureCount, error) => {
-        // Don't retry on 4xx errors (client errors)
-        if (error && typeof error === "object" && "status" in error) {
-          const status = (error as { status: number }).status;
-          if (status >= 400 && status < 500) {
-            return false;
-          }
-        }
-        // Retry network errors up to 2 times
-        return failureCount < 2;
-      },
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    },
-    mutations: {
-      retry: false, // Don't retry mutations by default
-    },
-  },
-});
 
 // Render the app
 const rootElement = document.getElementById("app");

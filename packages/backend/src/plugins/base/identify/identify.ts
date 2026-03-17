@@ -117,7 +117,8 @@ export const identify: StepImplementation<State> = {
           );
         }
 
-        const actor = actors[0];
+        // biome-ignore lint/style/noNonNullAssertion: Length is checked above
+        const actor = actors[0]!;
 
         await ctx.setActor({ participantId: actor.id });
 
