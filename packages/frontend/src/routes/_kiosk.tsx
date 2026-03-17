@@ -1,7 +1,13 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { useState } from "react";
+import { SocketLoader } from "../socket/SocketLoader";
 
 export const Route = createFileRoute("/_kiosk")({
+  beforeLoad: () => {
+    if (!localStorage.getItem("kioskKey")) {
+      throw redirect({ to: "/setup" });
+    }
+  },
   component: RouteComponent,
 });
 
@@ -15,5 +21,9 @@ function RouteComponent() {
   loadStyles().finally(() => setLoaded(true));
   if (!loaded) return null;
 
-  return <Outlet />;
+  return (
+    <SocketLoader>
+      <Outlet />
+    </SocketLoader>
+  );
 }

@@ -1,5 +1,6 @@
 import { ScoutButton } from "@scouterna/ui-react";
 import { useMutation } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { useAtomValue, useSetAtom } from "jotai";
 import { create } from "@/api/session";
 import { showErrorToast } from "@/lib/errors";
@@ -9,6 +10,7 @@ import { socketAtom } from "@/store/socket";
 export function StartContent() {
   const setSessionInfo = useSetAtom(sessionInfoAtom);
   const socket = useAtomValue(socketAtom);
+  const navigate = useNavigate();
 
   const createSession = useMutation({
     mutationFn: create,
@@ -24,6 +26,19 @@ export function StartContent() {
       });
     },
     onError: (error) => {
+      if (
+        error &&
+        typeof error === "object" &&
+        "details" in error &&
+        error.details &&
+        typeof error.details === "object" &&
+        "status" in error.details &&
+        error.details.status === 401
+      ) {
+        localStorage.removeItem("kioskKey");
+        navigate({ to: "/setup" });
+        return;
+      }
       console.error("Failed to create session:", error);
       showErrorToast(error, "Kunde inte starta en ny session");
     },

@@ -6,7 +6,11 @@ export { ws } from "./api";
 
 export async function create() {
   try {
-    const res = await api.session.$post();
+    const key = localStorage.getItem("kioskKey") ?? "";
+    const res = await api.session.$post(
+      {},
+      { headers: { Authorization: `Bearer ${key}` } },
+    );
 
     if (!res.ok) {
       throw createAppError(

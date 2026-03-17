@@ -17,6 +17,21 @@ datasource db {
 // existing sessions.
 // model CheckinStepConfig {}
 
+model Kiosk {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String
+  keyHash    String    @unique
+  lastSeenAt DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+model KioskSetupToken {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code      String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+}
+
 model CheckinSession {
   id       String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   stepData CheckinSessionStepData[]

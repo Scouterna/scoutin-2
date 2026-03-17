@@ -9,16 +9,23 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SetupRouteImport } from './routes/setup'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as KioskRouteImport } from './routes/_kiosk'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as KioskIndexRouteImport } from './routes/_kiosk/index'
 import { Route as AdminSessionsRouteImport } from './routes/admin/sessions'
+import { Route as AdminKiosksRouteImport } from './routes/admin/kiosks'
 import { Route as KioskTestRouteImport } from './routes/_kiosk/test'
 import { Route as AdminSessionsIndexRouteImport } from './routes/admin/sessions.index'
 import { Route as AdminSessionsSessionIdRouteImport } from './routes/admin/sessions.$sessionId'
 import { Route as KioskScreenScreenNameRouteImport } from './routes/_kiosk/screen/$screenName'
 
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -41,6 +48,11 @@ const KioskIndexRoute = KioskIndexRouteImport.update({
 const AdminSessionsRoute = AdminSessionsRouteImport.update({
   id: '/sessions',
   path: '/sessions',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminKiosksRoute = AdminKiosksRouteImport.update({
+  id: '/kiosks',
+  path: '/kiosks',
   getParentRoute: () => AdminRoute,
 } as any)
 const KioskTestRoute = KioskTestRouteImport.update({
@@ -67,7 +79,9 @@ const KioskScreenScreenNameRoute = KioskScreenScreenNameRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof KioskIndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/setup': typeof SetupRoute
   '/test': typeof KioskTestRoute
+  '/admin/kiosks': typeof AdminKiosksRoute
   '/admin/sessions': typeof AdminSessionsRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/screen/$screenName': typeof KioskScreenScreenNameRoute
@@ -75,7 +89,9 @@ export interface FileRoutesByFullPath {
   '/admin/sessions/': typeof AdminSessionsIndexRoute
 }
 export interface FileRoutesByTo {
+  '/setup': typeof SetupRoute
   '/test': typeof KioskTestRoute
+  '/admin/kiosks': typeof AdminKiosksRoute
   '/': typeof KioskIndexRoute
   '/admin': typeof AdminIndexRoute
   '/screen/$screenName': typeof KioskScreenScreenNameRoute
@@ -86,7 +102,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_kiosk': typeof KioskRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
+  '/setup': typeof SetupRoute
   '/_kiosk/test': typeof KioskTestRoute
+  '/admin/kiosks': typeof AdminKiosksRoute
   '/admin/sessions': typeof AdminSessionsRouteWithChildren
   '/_kiosk/': typeof KioskIndexRoute
   '/admin/': typeof AdminIndexRoute
@@ -99,7 +117,9 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/setup'
     | '/test'
+    | '/admin/kiosks'
     | '/admin/sessions'
     | '/admin/'
     | '/screen/$screenName'
@@ -107,7 +127,9 @@ export interface FileRouteTypes {
     | '/admin/sessions/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/setup'
     | '/test'
+    | '/admin/kiosks'
     | '/'
     | '/admin'
     | '/screen/$screenName'
@@ -117,7 +139,9 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_kiosk'
     | '/admin'
+    | '/setup'
     | '/_kiosk/test'
+    | '/admin/kiosks'
     | '/admin/sessions'
     | '/_kiosk/'
     | '/admin/'
@@ -129,10 +153,18 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   KioskRoute: typeof KioskRouteWithChildren
   AdminRoute: typeof AdminRouteWithChildren
+  SetupRoute: typeof SetupRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -166,6 +198,13 @@ declare module '@tanstack/react-router' {
       path: '/sessions'
       fullPath: '/admin/sessions'
       preLoaderRoute: typeof AdminSessionsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/kiosks': {
+      id: '/admin/kiosks'
+      path: '/kiosks'
+      fullPath: '/admin/kiosks'
+      preLoaderRoute: typeof AdminKiosksRouteImport
       parentRoute: typeof AdminRoute
     }
     '/_kiosk/test': {
@@ -228,11 +267,13 @@ const AdminSessionsRouteWithChildren = AdminSessionsRoute._addFileChildren(
 )
 
 interface AdminRouteChildren {
+  AdminKiosksRoute: typeof AdminKiosksRoute
   AdminSessionsRoute: typeof AdminSessionsRouteWithChildren
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminKiosksRoute: AdminKiosksRoute,
   AdminSessionsRoute: AdminSessionsRouteWithChildren,
   AdminIndexRoute: AdminIndexRoute,
 }
@@ -242,6 +283,7 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   KioskRoute: KioskRouteWithChildren,
   AdminRoute: AdminRouteWithChildren,
+  SetupRoute: SetupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import config from "../config/config.ts";
 import { loadAllDataSourcesIntoDatabase } from "../domains/participants/data.service.ts";
+import { kiosksRouter } from "../domains/kiosks/kiosks.routes.ts";
 import { sessionRouter } from "../domains/sessions/session.routes.ts";
 import { router as sessionSocketRouter } from "../domains/sessions/session.socket.ts";
 import { stepRouter } from "../domains/workflows/step.routes.ts";
@@ -36,6 +37,7 @@ const routes = app
   .route("/api/session", sessionRouter)
   .route("/api/step", stepRouter)
   .route("/api/admin", adminRouter)
+  .route("/api/kiosk", kiosksRouter)
   .get(
     "/ws/session",
     upgradeWebSocket(async (c) => {
