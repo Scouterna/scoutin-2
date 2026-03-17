@@ -1,5 +1,10 @@
 import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "../../app/prisma.ts";
+import { PrismaClientKnownRequestError } from "../../generated/prisma/internal/prismaNamespace.ts";
+
+function isNotFound(e: unknown): boolean {
+  return e instanceof PrismaClientKnownRequestError && e.code === "P2025";
+}
 
 // Unambiguous uppercase alphanumeric: no 0/O (look alike), no 1/I/L (look alike)
 const CODE_CHARS = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
@@ -61,7 +66,31 @@ export async function validateKioskKey(key: string): Promise<boolean> {
       select: { id: true },
     });
     return true;
-  } catch {
+  } catch (e) {
+    if (!isNotFound(e)) console.error("Unexpected error in validateKioskKey:", e);
+    return false;
+  }
+}
+
+export async function renameKiosk(id: string, name: string) {
+  try {
+    return await prisma.kiosk.update({
+      where: { id },
+      data: { name },
+      select: { id: true, name: true },
+    });
+  } catch (e) {
+    if (!isNotFound(e)) console.error("Unexpected error in renameKiosk:", e);
+    return null;
+  }
+}
+
+export async function deleteKiosk(id: string): Promise<boolean> {
+  try {
+    await prisma.kiosk.delete({ where: { id } });
+    return true;
+  } catch (e) {
+    if (!isNotFound(e)) console.error("Unexpected error in deleteKiosk:", e);
     return false;
   }
 }
