@@ -104,12 +104,18 @@ export function createStepContext(
 
       await prisma.checkinActor.create({
         data: {
-          checkinSessions: {
-            connect: { id: sessionId },
-          },
+          sessionId,
           participantId: options.participantId,
         },
       });
+    },
+    async clearActor() {
+      const sessionId = c.get("wsSessionId");
+      if (!sessionId) {
+        throw new Error("No session ID found in context");
+      }
+
+      await prisma.checkinActor.delete({ where: { sessionId } });
     },
     async setSubjects({ participantIds }) {
       const sessionId = c.get("wsSessionId");
@@ -135,6 +141,16 @@ export function createStepContext(
           checkinSessionId: sessionId,
           participantId,
         })),
+      });
+    },
+    async clearSubjects() {
+      const sessionId = c.get("wsSessionId");
+      if (!sessionId) {
+        throw new Error("No session ID found in context");
+      }
+
+      await prisma.checkinSubject.deleteMany({
+        where: { checkinSessionId: sessionId },
       });
     },
     async overrideSession(newSessionId) {

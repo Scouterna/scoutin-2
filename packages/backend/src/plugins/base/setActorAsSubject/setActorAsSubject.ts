@@ -4,6 +4,9 @@ import type { StepImplementation } from "../../../core/workflow/stepImplementati
 export const setActorAsSubject: StepImplementation = {
   id: "base:setActorAsSubject",
   hooks: {
+    async onStepRollback(ctx) {
+      await ctx.clearSubjects();
+    },
     async onStepStart(ctx) {
       const currentSession = await prisma.checkinSession.findUnique({
         where: { id: ctx.sessionId },

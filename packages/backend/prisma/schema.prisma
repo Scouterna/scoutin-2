@@ -36,8 +36,7 @@ model CheckinSession {
   id       String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   stepData CheckinSessionStepData[]
 
-  actor   CheckinActor? @relation(fields: [actorId], references: [id], onDelete: Cascade)
-  actorId String?       @db.Uuid
+  actor    CheckinActor?
 
   subjects CheckinSubject[]
 
@@ -86,10 +85,11 @@ model CheckinActor {
   participant   Participant? @relation(fields: [participantId], references: [id])
   participantId String?      @db.Uuid
 
+  checkinSession   CheckinSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId        String         @unique @db.Uuid
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  checkinSessions CheckinSession[]
 }
 
 model Participant {

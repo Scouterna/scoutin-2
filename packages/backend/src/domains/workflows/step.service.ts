@@ -172,6 +172,36 @@ export async function getStepStatuses(
   return statuses;
 }
 
+/**
+ * Finds the last completed step for a session, in stepConfig order.
+ * Returns null if no steps have been completed.
+ */
+export async function findLastCompletedStep(
+  session: CheckinSessionModel,
+): Promise<{ def: StepDefinition; data: CheckinSessionStepDataModel } | null> {
+  const sessionStepData = await prisma.checkinSessionStepData.findMany({
+    where: { sessionId: session.id },
+  });
+
+  let result: { def: StepDefinition; data: CheckinSessionStepDataModel } | null =
+    null;
+
+  for (const stepDefinition of stepConfig.steps) {
+    const data = sessionStepData.find(
+      (s) => s.stepId === stepDefinition.uses && s.completedAt != null,
+    );
+    if (data) {
+      result = { def: stepDefinition, data };
+    }
+  }
+
+  return result;
+}
+
+export async function deleteStepData(id: string): Promise<void> {
+  await prisma.checkinSessionStepData.delete({ where: { id } });
+}
+
 export async function completeStep(
   sessionId: string,
   stepId: string,

@@ -24,7 +24,9 @@ export type StepMethodContext<TState = Record<string, unknown>> = {
   getState(key: keyof TState): TState[keyof TState];
   clearState(): void;
   setActor(options: SetActorOptions): Promise<void>;
+  clearActor(): Promise<void>;
   setSubjects(options: SetSubjectsOptions): Promise<void>;
+  clearSubjects(): Promise<void>;
   overrideSession(newSessionId: string): void;
 };
 
@@ -44,6 +46,7 @@ export type StepImplementation<
   outputs?: StandardSchemaV1<Record<string, unknown>, Record<string, unknown>>;
   hooks?: {
     onStepStart?(context: StepMethodContext<TState>): Promise<void> | void;
+    onStepRollback?(context: StepMethodContext<TState>): Promise<void> | void;
   };
   publicMethods?: {
     [method: string]: StepImplementationMethod<TState>;

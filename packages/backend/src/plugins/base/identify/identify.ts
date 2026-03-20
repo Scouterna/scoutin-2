@@ -48,6 +48,9 @@ export const identify: StepImplementation<State> = {
     async onStepStart(ctx) {
       await ctx.showScreen("base:identify:start");
     },
+    async onStepRollback(ctx) {
+      await ctx.clearActor();
+    },
   },
   publicMethods: {
     searchByString: typedMethod({

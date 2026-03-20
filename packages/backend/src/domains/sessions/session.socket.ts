@@ -6,6 +6,7 @@ import {
   createSocketRouter,
   type InferListeners,
 } from "../../core/websocket/socketRouter.ts";
+import { goBack } from "../../core/workflow/step.ts";
 import { createStepContext } from "../../core/workflow/stepContext.ts";
 import { getCurrentStep } from "../workflows/step.service.ts";
 import { stepRegistry } from "../workflows/steps.ts";
@@ -79,6 +80,9 @@ const routes = router
         endTimer();
       }
     },
-  );
+  )
+  .bind("step:goBack", null, requireAuth, async (c, _evt, ws) => {
+    await goBack(c, ws);
+  });
 
 export type Listeners = InferListeners<typeof routes>;
