@@ -25,5 +25,6 @@ export async function startStep(
     evaluatedInputs: stepDef.with,
   });
 
+  await ws.send({ name: "stepStarted" });
   await step.hooks?.onStepStart?.(ctx);
 }

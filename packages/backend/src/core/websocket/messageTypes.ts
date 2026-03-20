@@ -34,6 +34,7 @@ export const messageTypes = createMessageRegistry()
       screenId: "string",
       payload: "object",
     }),
-  );
+  )
+  .register("stepStarted");
 
 export type MessageTypes = InferMessageTypes<typeof messageTypes>;

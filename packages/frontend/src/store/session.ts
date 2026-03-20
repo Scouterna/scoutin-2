@@ -13,3 +13,4 @@ export type CurrentScreen = {
 };
 
 export const currentScreenAtom = atom<CurrentScreen | null>(null);
+export const screenHistoryAtom = atom<CurrentScreen[]>([]);
