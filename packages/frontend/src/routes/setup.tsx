@@ -1,4 +1,9 @@
-import { ScoutButton, ScoutCard, ScoutField, ScoutInput } from "@scouterna/ui-react";
+import {
+  ScoutButton,
+  ScoutCard,
+  ScoutField,
+  ScoutInput,
+} from "@scouterna/ui-react";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { api } from "@/api/api";
@@ -67,14 +72,16 @@ function SetupPage() {
       <ScoutCard>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-4">
           <div>
-            <h1 className="text-heading-base font-semibold">Set up kiosk</h1>
+            <h1 className="text-heading-base font-semibold">
+              Konfigurera kiosk
+            </h1>
             <p className="text-body-base text-gray-600">
-              Enter the activation code from the admin panel and give this kiosk
-              a name.
+              Ange aktiveringskoden från adminpanelen och ge den här kiosken ett
+              namn.
             </p>
           </div>
 
-          <ScoutField label="Activation code">
+          <ScoutField label="Aktiveringskod">
             <ScoutInput
               value={code}
               placeholder="XXXX-XXXX"
@@ -82,18 +89,21 @@ function SetupPage() {
             />
           </ScoutField>
 
-          <ScoutField label="Kiosk name">
+          <ScoutField label="Namn på kiosken">
             <ScoutInput
               value={name}
-              placeholder="e.g. Reception desk"
+              placeholder="T.ex. Kiosk 1 eller Kårens entré"
               onScoutInputChange={(e) => setName(e.detail.value)}
             />
           </ScoutField>
 
           {error && <p className="text-body-base text-red-600">{error}</p>}
+          {loading && (
+            <p className="text-body-base text-gray-600">Aktiverar…</p>
+          )}
 
           <ScoutButton type="submit" variant="primary">
-            {loading ? "Activating…" : "Activate"}
+            Aktivera
           </ScoutButton>
         </form>
       </ScoutCard>

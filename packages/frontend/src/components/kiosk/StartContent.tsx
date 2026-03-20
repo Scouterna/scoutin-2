@@ -57,10 +57,12 @@ export function StartContent() {
       <ScoutButton
         variant="primary"
         onScoutClick={() => {
-          createSession.mutate();
+          if (!createSession.isPending) {
+            createSession.mutate();
+          }
         }}
       >
-        {createSession.isPending ? "Skapar session..." : "Checka in"}
+        Checka in
       </ScoutButton>
     </div>
   );
