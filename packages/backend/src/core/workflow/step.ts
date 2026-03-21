@@ -35,6 +35,33 @@ export async function startStep(
   await step.hooks?.onStepStart?.(ctx);
 }
 
+export async function restartStep(
+  c: TypedContext,
+  ws: TypedWSContext<unknown>,
+): Promise<void> {
+  const sessionId = c.get("wsSessionId");
+  if (!sessionId) {
+    throw new Error("No session ID found in context");
+  }
+
+  const session = await prisma.checkinSession.findUnique({
+    where: { id: sessionId },
+  });
+  if (!session) {
+    throw new Error("Session not found");
+  }
+
+  const currentStep = await getCurrentStep(session);
+  const step = stepRegistry.get(currentStep.uses);
+  if (!step) {
+    throw new Error(`Step implementation ${currentStep.uses} not found`);
+  }
+
+  const ctx = createStepContext(c, ws, step);
+  await step.hooks?.onStepRollback?.(ctx);
+  await startStep(c, ws, currentStep);
+}
+
 export async function goBack(
   c: TypedContext,
   ws: TypedWSContext<unknown>,

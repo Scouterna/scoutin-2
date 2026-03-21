@@ -53,7 +53,16 @@ export function PreviewActorScreen({ payload }: { payload: object }) {
       </table>
 
       <div className="flex gap-4 justify-end mt-2">
-        <ScoutButton>Nej, det stämmer inte</ScoutButton>
+        <ScoutButton
+          onScoutClick={() =>
+            socket?.send({
+              name: "step:callMethod",
+              data: { name: "denyActor" },
+            })
+          }
+        >
+          Nej, det stämmer inte
+        </ScoutButton>
         <ScoutButton variant="primary" onClick={handleConfirm}>
           Ja, det stämmer!
         </ScoutButton>

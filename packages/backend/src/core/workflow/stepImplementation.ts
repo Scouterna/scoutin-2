@@ -28,6 +28,7 @@ export type StepMethodContext<TState = Record<string, unknown>> = {
   setSubjects(options: SetSubjectsOptions): Promise<void>;
   clearSubjects(): Promise<void>;
   overrideSession(newSessionId: string): void;
+  restartStep(): Promise<void>;
 };
 
 export type StepImplementationMethod<TState> = {

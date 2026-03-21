@@ -7,7 +7,7 @@ import {
 import type { MessageTypes } from "../websocket/messageTypes.ts";
 import type { TypedWSContext } from "../websocket/socketRouter.ts";
 import type { TypedContext } from "../websocket/types.ts";
-import { startStep } from "./step.ts";
+import { restartStep, startStep } from "./step.ts";
 import type {
   StepImplementation,
   StepMethodContext,
@@ -115,7 +115,10 @@ export function createStepContext(
         throw new Error("No session ID found in context");
       }
 
-      await prisma.checkinActor.delete({ where: { sessionId } });
+      // `delete()` throws if no record is found, which would be OK in our case.
+      // `deleteMany()` doesn't throw so we use that instead.
+      // https://github.com/prisma/prisma/discussions/21682#discussioncomment-7425337
+      await prisma.checkinActor.deleteMany({ where: { sessionId } });
     },
     async setSubjects({ participantIds }) {
       const sessionId = c.get("wsSessionId");
@@ -155,6 +158,9 @@ export function createStepContext(
     },
     async overrideSession(newSessionId) {
       c.set("wsSessionId", newSessionId);
+    },
+    async restartStep() {
+      await restartStep(c, ws);
     },
   };
 }

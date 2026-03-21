@@ -107,6 +107,11 @@ export const identify: StepImplementation<State> = {
         });
       },
     }),
+    denyActor: typedMethod({
+      async handler(ctx) {
+        await ctx.restartStep();
+      },
+    }),
     confirmActor: typedMethod({
       async handler(ctx) {
         const actors = ctx.getState("actors");
