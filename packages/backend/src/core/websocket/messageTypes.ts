@@ -6,7 +6,7 @@ import {
 
 export const messageTypes = createMessageRegistry()
   .register(
-    "auth",
+    "auth:status",
     type.or(
       {
         status: "'success'",
@@ -22,19 +22,20 @@ export const messageTypes = createMessageRegistry()
   )
   .register("heartbeat")
   .register(
-    "stepMessage",
+    "step:message",
     type({
       name: "string",
       payload: "object",
     }),
   )
   .register(
-    "showScreen",
+    "step:showScreen",
     type({
       screenId: "string",
       payload: "object",
     }),
   )
-  .register("stepStarted");
+  .register("step:started")
+  .register("session:terminated");
 
 export type MessageTypes = InferMessageTypes<typeof messageTypes>;

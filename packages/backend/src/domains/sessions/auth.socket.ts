@@ -20,7 +20,7 @@ export const requireAuth: RouteMiddleware<null, MessageTypes> = async (
   if (!isAuthenticated) {
     console.warn("Unauthorized WebSocket message:", evt.data);
     ws.send({
-      name: "auth",
+      name: "auth:status",
       data: {
         status: "failure",
         reason: "unauthorized",
@@ -43,7 +43,7 @@ export const authRouter = createSocketRouter<MessageTypes>()
         console.warn("WebSocket authentication failed: missing token");
         authAttempts.inc({ outcome: "missing_token" });
         ws.send({
-          name: "auth",
+          name: "auth:status",
           data: {
             status: "failure",
             reason: "missing_token",
@@ -58,7 +58,7 @@ export const authRouter = createSocketRouter<MessageTypes>()
         console.warn("WebSocket authentication failed: invalid token");
         authAttempts.inc({ outcome: "invalid_token" });
         ws.send({
-          name: "auth",
+          name: "auth:status",
           data: {
             status: "failure",
             reason: "invalid_token",
@@ -82,7 +82,7 @@ export const authRouter = createSocketRouter<MessageTypes>()
         console.warn("WebSocket authentication failed: session not found");
         authAttempts.inc({ outcome: "session_not_found" });
         ws.send({
-          name: "auth",
+          name: "auth:status",
           data: {
             status: "failure",
             reason: "session_not_found",
@@ -95,7 +95,7 @@ export const authRouter = createSocketRouter<MessageTypes>()
 
       authAttempts.inc({ outcome: "success" });
       ws.send({
-        name: "auth",
+        name: "auth:status",
         data: {
           status: "success",
         },
@@ -109,7 +109,7 @@ export const authRouter = createSocketRouter<MessageTypes>()
   .bind("auth:clear", null, (c, _evt, ws) => {
     c.set("wsSessionId", undefined);
     ws.send({
-      name: "auth",
+      name: "auth:status",
       data: {
         status: "cleared",
       },

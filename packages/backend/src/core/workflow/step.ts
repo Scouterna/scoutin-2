@@ -31,7 +31,7 @@ export async function startStep(
     evaluatedInputs: stepDef.with,
   });
 
-  await ws.send({ name: "stepStarted" });
+  await ws.send({ name: "step:started" });
   await step.hooks?.onStepStart?.(ctx);
 }
 
@@ -53,7 +53,8 @@ export async function goBack(
 
   const lastCompleted = await findLastCompletedStep(session);
   if (!lastCompleted) {
-    throw new Error("No completed steps to go back to");
+    await ws.send({ name: "session:terminated" });
+    return;
   }
 
   const step = stepRegistry.get(lastCompleted.def.uses);

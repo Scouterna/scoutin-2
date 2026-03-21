@@ -27,7 +27,7 @@ export function createStepContext(
     sessionId,
     async sendMessage(name, payload = {}) {
       await ws.send({
-        name: "stepMessage",
+        name: "step:message",
         data: { name, payload },
       });
     },
@@ -88,7 +88,7 @@ export function createStepContext(
     },
     async showScreen(screenId, payload = {}) {
       await ws.send({
-        name: "showScreen",
+        name: "step:showScreen",
         data: { screenId, payload },
       });
     },

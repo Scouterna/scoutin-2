@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useCallback } from "react";
 import { HeroLayout } from "@/components/kiosk/HeroLayout";
-import { currentScreenAtom } from "@/store/session";
+import { currentScreenAtom, screenHistoryAtom } from "@/store/session";
+import { socketAtom } from "@/store/socket";
 import heroVideoUrl from "../../../assets/hero_website.mp4";
 import { StartContent } from "../../components/kiosk/StartContent";
 import { ScreenRenderer } from "../../screens/ScreenRenderer";
@@ -12,17 +14,26 @@ export const Route = createFileRoute("/_kiosk/")({
 
 function RouteComponent() {
   const currentScreen = useAtomValue(currentScreenAtom);
+  const [screenHistory, setScreenHistory] = useAtom(screenHistoryAtom);
+  const setCurrentScreen = useSetAtom(currentScreenAtom);
+  const socket = useAtomValue(socketAtom);
+
+  const handleBackClick = useCallback(() => {
+    if (screenHistory.length > 0) {
+      const previous = screenHistory[screenHistory.length - 1];
+      setScreenHistory((prev) => prev.slice(0, -1));
+      setCurrentScreen(previous ?? null);
+    } else {
+      socket?.send({ name: "step:goBack" });
+    }
+  }, [screenHistory, setScreenHistory, setCurrentScreen, socket]);
 
   return (
     <HeroLayout
       heroContent={<StartContent />}
       progressed={currentScreen != null}
       showBackButton={true}
-      onBackClick={() => {
-        // TODO: Don't clear the session always, just on "total reset". Also,
-        // clear the authentication state.
-        // setSessionInfo(null);
-      }}
+      onBackClick={handleBackClick}
       backgroundVideoUrl={heroVideoUrl}
     >
       <ScreenRenderer />
