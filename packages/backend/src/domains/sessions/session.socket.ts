@@ -1,6 +1,5 @@
 import { type } from "arktype";
 import { stepMethodCallSeconds } from "../../app/metrics.ts";
-import { prisma } from "../../app/prisma.ts";
 import type { MessageTypes } from "../../core/websocket/messageTypes.ts";
 import {
   createSocketRouter,
@@ -30,16 +29,12 @@ const routes = router
     }),
     requireAuth,
     async (c, evt, ws) => {
-      // TODO: Making roundtrips to the database for this is insanity. Current step should be stored in the session context.
       const sessionId = c.get("wsSessionId");
-      const session = await prisma.checkinSession.findUnique({
-        where: { id: sessionId },
-      });
-      if (!session) {
-        throw new Error("Session not found");
+      if (!sessionId) {
+        throw new Error("No session ID found in context");
       }
-      // TODO: There is a lot going on here, refactor.
-      const currentStep = await getCurrentStep(session);
+
+      const currentStep = await getCurrentStep(sessionId);
       const step = stepRegistry.get(currentStep.uses);
       if (!step) {
         throw new Error(`Step implementation ${currentStep.uses} not found`);

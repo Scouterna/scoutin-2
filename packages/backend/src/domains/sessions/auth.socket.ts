@@ -102,7 +102,7 @@ export const authRouter = createSocketRouter<MessageTypes>()
       });
       console.log("WebSocket authenticated successfully");
 
-      const currentStep = await getCurrentStep(session);
+      const currentStep = await getCurrentStep(session.id);
       await startStep(c, ws, currentStep);
     },
   )

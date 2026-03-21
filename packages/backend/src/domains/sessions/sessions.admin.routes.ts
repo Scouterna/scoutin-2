@@ -36,7 +36,7 @@ export const sessionsAdminRouter = new Hono()
       return c.json({ error: "Session not found" }, 404);
     }
 
-    const stepStatuses = await getStepStatuses(session);
+    const stepStatuses = await getStepStatuses(session.id);
 
     return c.json({
       id: session.id,

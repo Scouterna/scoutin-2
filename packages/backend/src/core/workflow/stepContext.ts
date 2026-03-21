@@ -62,7 +62,7 @@ export function createStepContext(
 
       stepCompletions.inc({ step_id: stepImplementation.id });
 
-      const { session } = await completeStep(
+      await completeStep(
         sessionId,
         stepImplementation.id,
         stepMeta.idInFlow,
@@ -70,7 +70,7 @@ export function createStepContext(
         validatedOutputs,
       );
 
-      const currentStep = await getCurrentStep(session);
+      const currentStep = await getCurrentStep(sessionId);
       await startStep(c, ws, currentStep);
     },
     setState(key, value) {

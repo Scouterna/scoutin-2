@@ -1,4 +1,3 @@
-import { prisma } from "../../app/prisma.ts";
 import type { StepDefinition } from "../../config/stepConfig.ts";
 import {
   deleteStepData,
@@ -44,14 +43,7 @@ export async function restartStep(
     throw new Error("No session ID found in context");
   }
 
-  const session = await prisma.checkinSession.findUnique({
-    where: { id: sessionId },
-  });
-  if (!session) {
-    throw new Error("Session not found");
-  }
-
-  const currentStep = await getCurrentStep(session);
+  const currentStep = await getCurrentStep(sessionId);
   const step = stepRegistry.get(currentStep.uses);
   if (!step) {
     throw new Error(`Step implementation ${currentStep.uses} not found`);
@@ -71,14 +63,7 @@ export async function goBack(
     throw new Error("No session ID found in context");
   }
 
-  const session = await prisma.checkinSession.findUnique({
-    where: { id: sessionId },
-  });
-  if (!session) {
-    throw new Error("Session not found");
-  }
-
-  const lastCompleted = await findLastCompletedStep(session);
+  const lastCompleted = await findLastCompletedStep(sessionId);
   if (!lastCompleted) {
     await ws.send({ name: "session:terminated" });
     return;
@@ -93,13 +78,6 @@ export async function goBack(
   await step.hooks?.onStepRollback?.(ctx);
   await deleteStepData(lastCompleted.data.id);
 
-  const updatedSession = await prisma.checkinSession.findUnique({
-    where: { id: sessionId },
-  });
-  if (!updatedSession) {
-    throw new Error("Session not found after rollback");
-  }
-
-  const currentStep = await getCurrentStep(updatedSession);
+  const currentStep = await getCurrentStep(sessionId);
   await startStep(c, ws, currentStep);
 }

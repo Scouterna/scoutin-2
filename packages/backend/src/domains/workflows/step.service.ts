@@ -7,10 +7,7 @@ import {
   evaluateExpressionsInString,
   recursivelyEvaluateExpressionsInObject,
 } from "../../core/expressions/expressions.ts";
-import type {
-  CheckinSessionModel,
-  CheckinSessionStepDataModel,
-} from "../../generated/prisma/models.ts";
+import type { CheckinSessionStepDataModel } from "../../generated/prisma/models.ts";
 
 // TODO: Move this somewhere else
 const stepConfig = loadStepConfig(await readFile("./stepConfig.yml", "utf-8"));
@@ -24,27 +21,25 @@ export const ContextStepData = type({
 export type ContextStepData = typeof ContextStepData.infer;
 
 export const Context = type({
-  session: type({
-    id: type.string,
-  }),
+  sessionId: type.string,
   steps: type.Record(type.string, ContextStepData),
 });
 export type Context = typeof Context.infer;
 
 export async function getCurrentStep(
-  session: CheckinSessionModel,
+  sessionId: string,
 ): Promise<StepDefinition> {
   const sessionStepData = await prisma.checkinSessionStepData.findMany({
-    where: { sessionId: session.id },
+    where: { sessionId },
   });
 
-  const context = createContext(session, sessionStepData);
+  const context = createContext(sessionId, sessionStepData);
 
   const nextStepDefinition = findNextStepDefinition(context, sessionStepData);
 
   if (!nextStepDefinition) {
     throw new Error(
-      `No next step found for session ${session.id}. Something might be misconfigured.`,
+      `No next step found for session ${sessionId}. Something might be misconfigured.`,
     );
   }
 
@@ -106,13 +101,13 @@ export type SessionStepStatus = {
  * session details page in the admin interface.
  */
 export async function getStepStatuses(
-  session: CheckinSessionModel,
+  sessionId: string,
 ): Promise<SessionStepStatus[]> {
   const sessionStepData = await prisma.checkinSessionStepData.findMany({
-    where: { sessionId: session.id },
+    where: { sessionId },
   });
 
-  const context = createContext(session, sessionStepData);
+  const context = createContext(sessionId, sessionStepData);
   const statuses: SessionStepStatus[] = [];
   let foundActive = false;
 
@@ -177,14 +172,16 @@ export async function getStepStatuses(
  * Returns null if no steps have been completed.
  */
 export async function findLastCompletedStep(
-  session: CheckinSessionModel,
+  sessionId: string,
 ): Promise<{ def: StepDefinition; data: CheckinSessionStepDataModel } | null> {
   const sessionStepData = await prisma.checkinSessionStepData.findMany({
-    where: { sessionId: session.id },
+    where: { sessionId },
   });
 
-  let result: { def: StepDefinition; data: CheckinSessionStepDataModel } | null =
-    null;
+  let result: {
+    def: StepDefinition;
+    data: CheckinSessionStepDataModel;
+  } | null = null;
 
   for (const stepDefinition of stepConfig.steps) {
     const data = sessionStepData.find(
@@ -213,7 +210,7 @@ export async function completeStep(
   const jsonifiedInputs = JSON.parse(JSON.stringify(inputs));
   const jsonifiedOutputs = JSON.parse(JSON.stringify(outputs));
 
-  const { session } = await prisma.checkinSessionStepData.create({
+  await prisma.checkinSessionStepData.create({
     data: {
       sessionId,
       stepId,
@@ -222,12 +219,7 @@ export async function completeStep(
       outputs: jsonifiedOutputs,
       completedAt: new Date(),
     },
-    include: {
-      session: true,
-    },
   });
-
-  return { session };
 }
 
 /**
@@ -236,7 +228,7 @@ export async function completeStep(
  * the context without any side effects.
  */
 function createContext(
-  session: CheckinSessionModel,
+  sessionId: string,
   stepData: CheckinSessionStepDataModel[],
 ): Context {
   const steps: Record<string, ContextStepData> = {};
@@ -262,7 +254,7 @@ function createContext(
   }
 
   return {
-    session,
+    sessionId,
     steps,
   };
 }
