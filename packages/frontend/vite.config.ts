@@ -5,6 +5,8 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import { resolve } from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import svgr from "vite-plugin-svgr";
+import jotaiDebugLabel from "jotai-babel/plugin-debug-label";
+import jotaiReactRefresh from "jotai-babel/plugin-react-refresh";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -13,7 +15,11 @@ export default defineConfig({
     tanstackRouter({ autoCodeSplitting: true }),
     viteReact({
       babel: {
-        plugins: [["babel-plugin-react-compiler"]],
+        plugins: [
+          ["babel-plugin-react-compiler"],
+          jotaiDebugLabel,
+          jotaiReactRefresh,
+        ],
       },
     }),
     tailwindcss(),

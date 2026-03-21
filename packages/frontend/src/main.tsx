@@ -3,6 +3,7 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { Provider as StoreProvider } from "jotai";
 import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
+import { JotaiDevTools } from "./jotai-devtools.tsx";
 import { queryClient } from "./lib/queryClient.ts";
 import { loadPlugins } from "./plugins/loadPlugins.ts";
 import reportWebVitals from "./reportWebVitals.ts";
@@ -35,6 +36,8 @@ if (rootElement && !rootElement.innerHTML) {
   root.render(
     <StrictMode>
       <StoreProvider store={store}>
+        <JotaiDevTools />
+
         <QueryClientProvider client={queryClient}>
           <RouterProvider router={router} />
         </QueryClientProvider>
