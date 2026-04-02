@@ -11,7 +11,7 @@ import { restartStep, startStep } from "./step.ts";
 import type {
   StepImplementation,
   StepMethodContext,
-} from "./stepImplementation.ts";
+} from "@scouterna/scoutin-plugin-api";
 
 export function createStepContext(
   c: TypedContext,

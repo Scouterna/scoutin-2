@@ -1,0 +1,21 @@
+{
+  "name": "@scouterna/scoutin-plugin-base",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./backend": "./src/backend/index.ts",
+    "./frontend": "./src/frontend/index.tsx"
+  },
+  "dependencies": {
+    "@scouterna/scoutin-plugin-api": "workspace:^",
+    "arktype": "^2.1.29"
+  },
+  "devDependencies": {
+    "@scouterna/scoutin-backend": "workspace:^",
+    "@scouterna/ui-react": "3.2.0",
+    "jotai": "^2.18.1",
+    "@types/react": "^19.2.9",
+    "react": "^19.2.3",
+    "typescript": "^5.9.3"
+  }
+}

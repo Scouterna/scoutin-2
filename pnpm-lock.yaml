@@ -47,6 +47,15 @@ importers:
       '@prisma/client':
         specifier: ^7.3.0
         version: 7.3.0(prisma@7.3.0(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3))(typescript@5.9.3)
+      '@scouterna/scoutin-plugin-api':
+        specifier: workspace:^
+        version: link:../plugin-api
+      '@scouterna/scoutin-plugin-base':
+        specifier: workspace:^
+        version: link:../../plugins/base
+      '@scouterna/scoutin-plugin-malcolm-test':
+        specifier: workspace:^
+        version: link:../../plugins/malcolm-test
       '@scouterna/scoutnet':
         specifier: ^0.3.24
         version: 0.3.24
@@ -108,6 +117,15 @@ importers:
       '@scouterna/design-tokens':
         specifier: link:../../../../../.local/share/pnpm/global/5/node_modules/@scouterna/design-tokens
         version: link:../../../../../.local/share/pnpm/global/5/node_modules/@scouterna/design-tokens
+      '@scouterna/scoutin-plugin-api':
+        specifier: workspace:^
+        version: link:../plugin-api
+      '@scouterna/scoutin-plugin-base':
+        specifier: workspace:^
+        version: link:../../plugins/base
+      '@scouterna/scoutin-plugin-malcolm-test':
+        specifier: workspace:^
+        version: link:../../plugins/malcolm-test
       '@scouterna/ui-react':
         specifier: link:../../../../../.local/share/pnpm/global/5/node_modules/@scouterna/ui-react
         version: link:../../../../../.local/share/pnpm/global/5/node_modules/@scouterna/ui-react
@@ -220,6 +238,75 @@ importers:
       web-vitals:
         specifier: ^5.1.0
         version: 5.1.0
+
+  packages/plugin-api:
+    dependencies:
+      '@standard-schema/spec':
+        specifier: ^1.1.0
+        version: 1.1.0
+      arktype:
+        specifier: ^2.1.29
+        version: 2.1.29
+      react:
+        specifier: '*'
+        version: 19.2.3
+    devDependencies:
+      '@types/react':
+        specifier: ^19.2.9
+        version: 19.2.9
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  plugins/base:
+    dependencies:
+      '@scouterna/scoutin-plugin-api':
+        specifier: workspace:^
+        version: link:../../packages/plugin-api
+      arktype:
+        specifier: ^2.1.29
+        version: 2.1.29
+    devDependencies:
+      '@scouterna/scoutin-backend':
+        specifier: workspace:^
+        version: link:../../packages/backend
+      '@scouterna/ui-react':
+        specifier: link:../../../../../.local/share/pnpm/global/5/node_modules/@scouterna/ui-react
+        version: link:../../../../../.local/share/pnpm/global/5/node_modules/@scouterna/ui-react
+      '@types/react':
+        specifier: ^19.2.9
+        version: 19.2.9
+      jotai:
+        specifier: ^2.18.1
+        version: 2.18.1(@babel/core@7.28.5)(@babel/template@7.27.2)(@types/react@19.2.9)(react@19.2.3)
+      react:
+        specifier: ^19.2.3
+        version: 19.2.3
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  plugins/malcolm-test:
+    dependencies:
+      '@scouterna/scoutin-plugin-api':
+        specifier: workspace:^
+        version: link:../../packages/plugin-api
+    devDependencies:
+      '@scouterna/scoutin-backend':
+        specifier: workspace:^
+        version: link:../../packages/backend
+      '@scouterna/ui-react':
+        specifier: link:../../../../../.local/share/pnpm/global/5/node_modules/@scouterna/ui-react
+        version: link:../../../../../.local/share/pnpm/global/5/node_modules/@scouterna/ui-react
+      '@types/react':
+        specifier: ^19.2.9
+        version: 19.2.9
+      react:
+        specifier: ^19.2.3
+        version: 19.2.3
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
 packages:
 
@@ -2240,6 +2327,7 @@ packages:
     resolution: {integrity: sha512-Quz3MvAwHxVYNXsOByL7xI5EB2WYOeFswqaHIA3qOK3isRWTxiplBEocmmru6XmxDB2L7jDNYtYA4FyimoAFEw==}
     engines: {node: '>=8.17.0'}
     hasBin: true
+    bundledDependencies: []
 
   lightningcss-android-arm64@1.30.2:
     resolution: {integrity: sha512-BH9sEdOCahSgmkVhBLeU7Hc9DWeZ1Eb6wNS6Da8igvUwAe0sqROHddIlvU06q3WyXVEOYDZ6ykBZQnjTbmo4+A==}

@@ -40,7 +40,12 @@ function timeAgo(date: string): string {
   for (const [limit, unit] of cutoffs) {
     if (Math.abs(seconds) < limit) {
       const divisors: Record<string, number> = {
-        second: 1, minute: 60, hour: 3600, day: 86400, week: 604800, month: 2592000,
+        second: 1,
+        minute: 60,
+        hour: 3600,
+        day: 86400,
+        week: 604800,
+        month: 2592000,
       };
       return rtf.format(Math.round(seconds / divisors[unit]), unit);
     }
@@ -48,9 +53,20 @@ function timeAgo(date: string): string {
   return rtf.format(Math.round(seconds / 2592000), "month");
 }
 
-type Kiosk = { id: string; name: string; lastSeenAt: string | null; createdAt: string };
+type Kiosk = {
+  id: string;
+  name: string;
+  lastSeenAt: string | null;
+  createdAt: string;
+};
 
-function RenameDialog({ kiosk, onClose }: { kiosk: Kiosk; onClose: () => void }) {
+function RenameDialog({
+  kiosk,
+  onClose,
+}: {
+  kiosk: Kiosk;
+  onClose: () => void;
+}) {
   const queryClient = useQueryClient();
   const [name, setName] = useState(kiosk.name);
 
@@ -77,7 +93,9 @@ function RenameDialog({ kiosk, onClose }: { kiosk: Kiosk; onClose: () => void })
           fullWidth
           value={name}
           onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && name.trim()) mutation.mutate(); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && name.trim()) mutation.mutate();
+          }}
           sx={{ mt: 1 }}
         />
         {mutation.isError && (
@@ -100,7 +118,13 @@ function RenameDialog({ kiosk, onClose }: { kiosk: Kiosk; onClose: () => void })
   );
 }
 
-function DeleteDialog({ kiosk, onClose }: { kiosk: Kiosk; onClose: () => void }) {
+function DeleteDialog({
+  kiosk,
+  onClose,
+}: {
+  kiosk: Kiosk;
+  onClose: () => void;
+}) {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -160,9 +184,20 @@ function KiosksPage() {
 
   return (
     <Box>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 3,
+        }}
+      >
         <Typography variant="h5">Kiosks</Typography>
-        <Button variant="contained" startIcon={<Add />} onClick={() => setAddOpen(true)}>
+        <Button
+          variant="contained"
+          startIcon={<Add />}
+          onClick={() => setAddOpen(true)}
+        >
           Add kiosk
         </Button>
       </Box>
@@ -186,12 +221,21 @@ function KiosksPage() {
                 <TableCell>
                   {kiosk.lastSeenAt ? timeAgo(kiosk.lastSeenAt) : "Never"}
                 </TableCell>
-                <TableCell>{new Date(kiosk.createdAt).toLocaleString()}</TableCell>
+                <TableCell>
+                  {new Date(kiosk.createdAt).toLocaleString()}
+                </TableCell>
                 <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
-                  <IconButton size="small" onClick={() => setRenaming(kiosk as Kiosk)}>
+                  <IconButton
+                    size="small"
+                    onClick={() => setRenaming(kiosk as Kiosk)}
+                  >
                     <EditOutlined fontSize="small" />
                   </IconButton>
-                  <IconButton size="small" color="error" onClick={() => setDeleting(kiosk as Kiosk)}>
+                  <IconButton
+                    size="small"
+                    color="error"
+                    onClick={() => setDeleting(kiosk as Kiosk)}
+                  >
                     <DeleteOutline fontSize="small" />
                   </IconButton>
                 </TableCell>
@@ -202,8 +246,12 @@ function KiosksPage() {
       )}
 
       <AddKioskDialog open={addOpen} onClose={() => setAddOpen(false)} />
-      {renaming && <RenameDialog kiosk={renaming} onClose={() => setRenaming(null)} />}
-      {deleting && <DeleteDialog kiosk={deleting} onClose={() => setDeleting(null)} />}
+      {renaming && (
+        <RenameDialog kiosk={renaming} onClose={() => setRenaming(null)} />
+      )}
+      {deleting && (
+        <DeleteDialog kiosk={deleting} onClose={() => setDeleting(null)} />
+      )}
     </Box>
   );
 }

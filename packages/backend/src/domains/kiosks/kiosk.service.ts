@@ -37,8 +37,10 @@ export async function activateKiosk(rawCode: string, name: string) {
   const token = await prisma.kioskSetupToken.findUnique({ where: { code } });
 
   if (!token) return { success: false, error: "Invalid code" } as const;
-  if (token.usedAt) return { success: false, error: "Code already used" } as const;
-  if (token.expiresAt < new Date()) return { success: false, error: "Code expired" } as const;
+  if (token.usedAt)
+    return { success: false, error: "Code already used" } as const;
+  if (token.expiresAt < new Date())
+    return { success: false, error: "Code expired" } as const;
 
   const key = randomBytes(32).toString("hex");
   const keyHash = hashKey(key);
@@ -67,7 +69,8 @@ export async function validateKioskKey(key: string): Promise<boolean> {
     });
     return true;
   } catch (e) {
-    if (!isNotFound(e)) console.error("Unexpected error in validateKioskKey:", e);
+    if (!isNotFound(e))
+      console.error("Unexpected error in validateKioskKey:", e);
     return false;
   }
 }

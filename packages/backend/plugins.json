@@ -1,0 +1,6 @@
+{
+  "plugins": [
+    "@scouterna/scoutin-plugin-base",
+    "@scouterna/scoutin-plugin-malcolm-test"
+  ]
+}

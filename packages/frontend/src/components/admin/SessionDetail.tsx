@@ -135,7 +135,9 @@ export function SessionDetail({ sessionId }: { sessionId: string }) {
                   <Typography
                     variant="body2"
                     fontWeight="medium"
-                    color={status === "skipped" ? "text.disabled" : "text.primary"}
+                    color={
+                      status === "skipped" ? "text.disabled" : "text.primary"
+                    }
                   >
                     {step.uses}
                   </Typography>

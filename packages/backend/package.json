@@ -11,7 +11,8 @@
     ".": {
       "import": "./src/client.ts",
       "types": "./src/client.ts"
-    }
+    },
+    "./plugin-services": "./src/plugin-services.ts"
   },
   "dependencies": {
     "@hono/arktype-validator": "^2.0.1",
@@ -20,6 +21,9 @@
     "@hono/prometheus": "^1.0.2",
     "@prisma/adapter-pg": "^7.3.0",
     "@prisma/client": "^7.3.0",
+    "@scouterna/scoutin-plugin-api": "workspace:^",
+    "@scouterna/scoutin-plugin-base": "workspace:^",
+    "@scouterna/scoutin-plugin-malcolm-test": "workspace:^",
     "@scouterna/scoutnet": "^0.3.24",
     "argon2": "^0.44.0",
     "arktype": "^2.1.29",

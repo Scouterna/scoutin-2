@@ -85,17 +85,24 @@ export function SessionTable() {
   const virtualRows = virtualizer.getVirtualItems();
   const totalHeight = virtualizer.getTotalSize();
   const paddingTop = virtualRows[0]?.start ?? 0;
-  const paddingBottom = totalHeight - (virtualRows[virtualRows.length - 1]?.end ?? 0);
+  const paddingBottom =
+    totalHeight - (virtualRows[virtualRows.length - 1]?.end ?? 0);
 
   return (
-    <TableContainer ref={scrollRef} sx={{ maxHeight: "calc(100vh - 128px)", overflow: "auto" }}>
+    <TableContainer
+      ref={scrollRef}
+      sx={{ maxHeight: "calc(100vh - 128px)", overflow: "auto" }}
+    >
       <Table stickyHeader>
         <TableHead>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
                 <TableCell key={header.id}>
-                  {flexRender(header.column.columnDef.header, header.getContext())}
+                  {flexRender(
+                    header.column.columnDef.header,
+                    header.getContext(),
+                  )}
                 </TableCell>
               ))}
             </TableRow>
@@ -104,7 +111,10 @@ export function SessionTable() {
         <TableBody>
           {paddingTop > 0 && (
             <TableRow>
-              <TableCell colSpan={columns.length} sx={{ height: paddingTop, p: 0, border: 0 }} />
+              <TableCell
+                colSpan={columns.length}
+                sx={{ height: paddingTop, p: 0, border: 0 }}
+              />
             </TableRow>
           )}
           {virtualRows.map((virtualRow) => {
@@ -126,7 +136,10 @@ export function SessionTable() {
           })}
           {paddingBottom > 0 && (
             <TableRow>
-              <TableCell colSpan={columns.length} sx={{ height: paddingBottom, p: 0, border: 0 }} />
+              <TableCell
+                colSpan={columns.length}
+                sx={{ height: paddingBottom, p: 0, border: 0 }}
+              />
             </TableRow>
           )}
         </TableBody>

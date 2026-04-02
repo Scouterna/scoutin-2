@@ -12,7 +12,8 @@
     "erasableSyntaxOnly": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
-    "noUncheckedIndexedAccess": true
+    "noUncheckedIndexedAccess": true,
+    "resolveJsonModule": true
   },
   "exclude": ["node_modules"]
 }

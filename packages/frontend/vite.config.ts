@@ -7,10 +7,12 @@ import tailwindcss from "@tailwindcss/vite";
 import svgr from "vite-plugin-svgr";
 import jotaiDebugLabel from "jotai-babel/plugin-debug-label";
 import jotaiReactRefresh from "jotai-babel/plugin-react-refresh";
+import { pluginExternals, scoutinPlugins } from "./vite-plugins/scoutinPlugins.ts";
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
+    scoutinPlugins(),
     svgr(),
     tanstackRouter({ autoCodeSplitting: true }),
     viteReact({
@@ -27,6 +29,11 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname, "./src"),
+    },
+  },
+  build: {
+    rollupOptions: {
+      external: pluginExternals,
     },
   },
 });

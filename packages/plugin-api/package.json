@@ -1,0 +1,26 @@
+{
+  "name": "@scouterna/scoutin-plugin-api",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./frontend": {
+      "types": "./src/frontend.tsx",
+      "default": "./src/frontend.tsx"
+    }
+  },
+  "dependencies": {
+    "@standard-schema/spec": "^1.1.0",
+    "arktype": "^2.1.29"
+  },
+  "peerDependencies": {
+    "react": "*"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.9",
+    "typescript": "^5.9.3"
+  }
+}

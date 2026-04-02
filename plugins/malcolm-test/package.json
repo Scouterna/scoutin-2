@@ -1,0 +1,19 @@
+{
+  "name": "@scouterna/scoutin-plugin-malcolm-test",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./backend": "./src/backend/index.ts",
+    "./frontend": "./src/frontend/index.tsx"
+  },
+  "dependencies": {
+    "@scouterna/scoutin-plugin-api": "workspace:^"
+  },
+  "devDependencies": {
+    "@scouterna/scoutin-backend": "workspace:^",
+    "@scouterna/ui-react": "3.2.0",
+    "@types/react": "^19.2.9",
+    "react": "^19.2.3",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,6 +1,11 @@
 import { type } from "arktype";
 import { Hono } from "hono";
-import { createKioskSetupToken, deleteKiosk, listKiosks, renameKiosk } from "./kiosk.service.ts";
+import {
+  createKioskSetupToken,
+  deleteKiosk,
+  listKiosks,
+  renameKiosk,
+} from "./kiosk.service.ts";
 
 const RenameBody = type({ name: "string > 0" });
 
