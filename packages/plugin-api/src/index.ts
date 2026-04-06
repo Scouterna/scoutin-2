@@ -1,6 +1,6 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import type { ReactNode } from "react";
-import { createContext, useContext } from "react";
+import { createContext, useContext, useEffect, useRef } from "react";
 
 // Step implementation types
 export type SetActorOptions =
@@ -89,12 +89,28 @@ export type BackendPlugin = {
 // Plugin socket
 export interface PluginSocket {
   send(message: { name: string; data?: unknown }): void;
+  /** Subscribe to a named step message. Returns an unsubscribe function. */
+  onMessage(name: string, handler: (payload: object) => void): () => void;
 }
 
 export const PluginSocketContext = createContext<PluginSocket | null>(null);
 
 export function usePluginSocket(): PluginSocket | null {
   return useContext(PluginSocketContext);
+}
+
+export function usePluginMessage(
+  name: string,
+  handler: (payload: object) => void,
+) {
+  const socket = usePluginSocket();
+  const handlerRef = useRef(handler);
+  handlerRef.current = handler;
+
+  useEffect(() => {
+    if (!socket) return;
+    return socket.onMessage(name, (payload) => handlerRef.current(payload));
+  }, [socket, name]);
 }
 
 // Frontend plugin types
