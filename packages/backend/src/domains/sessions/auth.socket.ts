@@ -5,7 +5,15 @@ import type { MessageTypes } from "../../core/websocket/messageTypes.ts";
 import {
   createSocketRouter,
   type RouteMiddleware,
+  type TypedWSContext,
 } from "../../core/websocket/socketRouter.ts";
+import {
+  createBroadcastWs,
+  getConnectionCount,
+  getLastScreen,
+  registerConnection,
+  terminateExistingConnections,
+} from "../../core/websocket/sessionRegistry.ts";
 import { startStep } from "../../core/workflow/step.ts";
 import { getCurrentStep } from "../workflows/step.service.ts";
 import { verifyJWT } from "./tokens.ts";
@@ -93,6 +101,20 @@ export const authRouter = createSocketRouter<MessageTypes>()
 
       c.set("wsSessionId", sessionId);
 
+      const isFirstConnection = getConnectionCount(sessionId) === 0;
+
+      if (!isFirstConnection) {
+        // Admin takeover: terminate the kiosk (and any other existing connections)
+        // so the device is freed up for someone else.
+        terminateExistingConnections(sessionId, { name: "session:terminated" });
+      }
+
+      // Register this connection. Dead connections are cleaned up lazily when
+      // broadcastToSession catches a failed send, but we also unregister eagerly
+      // via wsUnregister when the WebSocket closes (see app.ts onClose).
+      const unregister = registerConnection(sessionId, (msg) => ws.send(msg));
+      c.set("wsUnregister", unregister);
+
       authAttempts.inc({ outcome: "success" });
       ws.send({
         name: "auth:status",
@@ -102,8 +124,26 @@ export const authRouter = createSocketRouter<MessageTypes>()
       });
       console.log("WebSocket authenticated successfully");
 
-      const currentStep = await getCurrentStep(session.id);
-      await startStep(c, ws, currentStep);
+      const broadcastWs = createBroadcastWs(
+        sessionId,
+      ) as unknown as TypedWSContext<MessageTypes>;
+
+      if (isFirstConnection) {
+        // Start the step normally, broadcasting to all connections.
+        const currentStep = await getCurrentStep(session.id);
+        await startStep(c, broadcastWs, currentStep);
+      } else {
+        // Admin took over. Replay the last screen so the admin sees current state.
+        // If no screen has been shown yet (e.g. the previous connection died before
+        // onStepStart could call showScreen), fall back to starting the step fresh.
+        const lastScreen = getLastScreen(sessionId);
+        if (lastScreen) {
+          ws.send({ name: "step:showScreen", data: lastScreen });
+        } else {
+          const currentStep = await getCurrentStep(session.id);
+          await startStep(c, broadcastWs, currentStep);
+        }
+      }
     },
   )
   .bind("auth:clear", null, (c, _evt, ws) => {

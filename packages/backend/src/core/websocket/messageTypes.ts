@@ -36,6 +36,13 @@ export const messageTypes = createMessageRegistry()
     }),
   )
   .register("step:started")
-  .register("session:terminated");
+  .register("session:terminated")
+  .register(
+    "error",
+    type({
+      code: "string",
+      message: "string",
+    }),
+  );
 
 export type MessageTypes = InferMessageTypes<typeof messageTypes>;

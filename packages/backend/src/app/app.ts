@@ -55,6 +55,7 @@ const routes = app
         onClose() {
           activeWebSocketConnections.dec();
           console.log("WebSocket connection closed");
+          c.get("wsUnregister")?.();
         },
       };
     }),

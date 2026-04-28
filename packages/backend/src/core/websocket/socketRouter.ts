@@ -166,6 +166,19 @@ export function createSocketRouter<TServerMessage extends { name: string }>() {
 
       next().catch((err) => {
         console.error("Error processing WebSocket message:", err);
+        try {
+          ws.send(
+            JSON.stringify({
+              name: "error",
+              data: {
+                code: "handler_error",
+                message: "Internal server error",
+              },
+            }),
+          );
+        } catch {
+          // WebSocket may already be closed; nothing more we can do.
+        }
       });
     };
 

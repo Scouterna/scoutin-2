@@ -1,5 +1,6 @@
-import { toast } from "sonner";
+import type { Listeners, MessageTypes } from "@scouterna/scoutin-backend";
 import { createAppError } from "../lib/errors";
+import { createTypedSocket, type TypedSocket } from "./typedSocket";
 import { api, ws } from "./api";
 
 export { ws } from "./api";
@@ -32,6 +33,42 @@ export async function create() {
   }
 }
 
+/**
+ * Opens a WebSocket connection authenticated for the given session using an
+ * admin-generated token. Intended for use in the admin panel.
+ *
+ * The optional `setup` callback is called with the socket after it's created
+ * but before authentication is sent, so handlers registered there will receive
+ * messages that the server sends immediately after auth (e.g. step:showScreen).
+ */
+export async function openAdminSessionSocket(
+  sessionId: string,
+  setup?: (socket: TypedSocket<Listeners, MessageTypes>) => void,
+): Promise<TypedSocket<Listeners, MessageTypes>> {
+  const res = await api.admin.sessions[":id"].token.$post({
+    param: { id: sessionId },
+  });
+  if (!res.ok) throw new Error("Failed to obtain admin session token");
+  const { token } = await res.json();
+
+  const rawWs = await openSessionSocket();
+  const socket = createTypedSocket<Listeners, MessageTypes>(rawWs);
+
+  setup?.(socket);
+
+  return new Promise((resolve, reject) => {
+    socket.once("auth:status", (data) => {
+      if (data.status === "success") {
+        resolve(socket);
+      } else {
+        rawWs.close();
+        reject(new Error(`Admin auth failed: ${"reason" in data ? data.reason : "unknown"}`));
+      }
+    });
+    socket.send({ name: "auth:authenticate", data: { token } });
+  });
+}
+
 export function openSessionSocket(): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
     try {
@@ -53,9 +90,6 @@ export function openSessionSocket(): Promise<WebSocket> {
 
       socket.addEventListener("close", () => {
         console.log("WebSocket connection closed");
-        toast.error("WebSocket connection closed", {
-          duration: Infinity,
-        });
       });
     } catch (e) {
       reject(e);

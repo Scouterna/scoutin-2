@@ -4,6 +4,7 @@ import type { Context } from "hono";
 export type TypedContext = Context<{
   Variables: {
     wsSessionId?: string;
+    wsUnregister?: () => void;
     stepMeta?: {
       idInFlow?: string;
       evaluatedInputs?: Record<string, unknown>;

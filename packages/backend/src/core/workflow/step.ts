@@ -5,6 +5,7 @@ import {
   getCurrentStep,
 } from "../../domains/workflows/step.service.ts";
 import { stepRegistry } from "../../domains/workflows/steps.ts";
+import { setStepMeta } from "../websocket/sessionRegistry.ts";
 import type { TypedWSContext } from "../websocket/socketRouter.ts";
 import type { TypedContext } from "../websocket/types.ts";
 import { createStepContext } from "./stepContext.ts";
@@ -25,7 +26,11 @@ export async function startStep(
   ctx.clearState();
 
   // Store metadata that will later be written to the database if the step completes.
-  c.set("stepMeta", {
+  const sessionId = c.get("wsSessionId");
+  if (!sessionId) {
+    throw new Error("No session ID found in context");
+  }
+  setStepMeta(sessionId, {
     idInFlow: stepDef.id,
     evaluatedInputs: stepDef.with,
   });

@@ -4,7 +4,9 @@ import type { MessageTypes } from "../../core/websocket/messageTypes.ts";
 import {
   createSocketRouter,
   type InferListeners,
+  type TypedWSContext,
 } from "../../core/websocket/socketRouter.ts";
+import { createBroadcastWs } from "../../core/websocket/sessionRegistry.ts";
 import { goBack } from "../../core/workflow/step.ts";
 import { createStepContext } from "../../core/workflow/stepContext.ts";
 import { getCurrentStep } from "../workflows/step.service.ts";
@@ -28,7 +30,7 @@ const routes = router
       "inputs?": "object",
     }),
     requireAuth,
-    async (c, evt, ws) => {
+    async (c, evt, _ws) => {
       const sessionId = c.get("wsSessionId");
       if (!sessionId) {
         throw new Error("No session ID found in context");
@@ -40,7 +42,10 @@ const routes = router
         throw new Error(`Step implementation ${currentStep.uses} not found`);
       }
 
-      const ctx = createStepContext(c, ws, step);
+      const broadcastWs = createBroadcastWs(
+        sessionId,
+      ) as unknown as TypedWSContext<MessageTypes>;
+      const ctx = createStepContext(c, broadcastWs, step);
 
       const method = step.publicMethods?.[evt.data.name];
       if (!method) {
@@ -76,8 +81,15 @@ const routes = router
       }
     },
   )
-  .bind("step:goBack", null, requireAuth, async (c, _evt, ws) => {
-    await goBack(c, ws);
+  .bind("step:goBack", null, requireAuth, async (c, _evt, _ws) => {
+    const sessionId = c.get("wsSessionId");
+    if (!sessionId) {
+      throw new Error("No session ID found in context");
+    }
+    const broadcastWs = createBroadcastWs(
+      sessionId,
+    ) as unknown as TypedWSContext<MessageTypes>;
+    await goBack(c, broadcastWs);
   });
 
 export type Listeners = InferListeners<typeof routes>;

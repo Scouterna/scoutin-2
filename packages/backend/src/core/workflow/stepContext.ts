@@ -7,6 +7,12 @@ import {
 import type { MessageTypes } from "../websocket/messageTypes.ts";
 import type { TypedWSContext } from "../websocket/socketRouter.ts";
 import type { TypedContext } from "../websocket/types.ts";
+import {
+  clearStepState,
+  getStepMeta,
+  getStepState,
+  setStepStateKey,
+} from "../websocket/sessionRegistry.ts";
 import { restartStep, startStep } from "./step.ts";
 import type {
   StepImplementation,
@@ -50,12 +56,11 @@ export function createStepContext(
         validatedOutputs = validationResult.value;
       }
 
-      const sessionId = c.get("wsSessionId");
-      if (!sessionId) {
-        throw new Error("No session ID found in context");
-      }
+      // Re-read session ID from context to respect any overrideSession() call.
+      const effectiveSessionId = c.get("wsSessionId") ?? sessionId;
 
-      const stepMeta = c.get("stepMeta");
+      // stepMeta was stored for the original session; fall back if overridden.
+      const stepMeta = getStepMeta(effectiveSessionId) ?? getStepMeta(sessionId);
       if (!stepMeta) {
         throw new Error("No step metadata found in context");
       }
@@ -63,28 +68,24 @@ export function createStepContext(
       stepCompletions.inc({ step_id: stepImplementation.id });
 
       await completeStep(
-        sessionId,
+        effectiveSessionId,
         stepImplementation.id,
         stepMeta.idInFlow,
         stepMeta.evaluatedInputs,
         validatedOutputs,
       );
 
-      const currentStep = await getCurrentStep(sessionId);
+      const currentStep = await getCurrentStep(effectiveSessionId);
       await startStep(c, ws, currentStep);
     },
     setState(key, value) {
-      c.set("stepState", {
-        ...c.get("stepState"),
-        [key]: value,
-      });
+      setStepStateKey(sessionId, key, value);
     },
     getState(key) {
-      const state = c.get("stepState") || {};
-      return state[key];
+      return getStepState(sessionId)[key];
     },
     clearState() {
-      c.set("stepState", {});
+      clearStepState(sessionId);
     },
     async showScreen(screenId, payload = {}) {
       await ws.send({

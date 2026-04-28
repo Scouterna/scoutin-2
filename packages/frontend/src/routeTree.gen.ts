@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SetupRouteImport } from './routes/setup'
+import { Route as KioskFrameRouteImport } from './routes/kiosk-frame'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as KioskRouteImport } from './routes/_kiosk'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
@@ -24,6 +25,11 @@ import { Route as KioskScreenScreenNameRouteImport } from './routes/_kiosk/scree
 const SetupRoute = SetupRouteImport.update({
   id: '/setup',
   path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KioskFrameRoute = KioskFrameRouteImport.update({
+  id: '/kiosk-frame',
+  path: '/kiosk-frame',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -79,6 +85,7 @@ const KioskScreenScreenNameRoute = KioskScreenScreenNameRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof KioskIndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/kiosk-frame': typeof KioskFrameRoute
   '/setup': typeof SetupRoute
   '/test': typeof KioskTestRoute
   '/admin/kiosks': typeof AdminKiosksRoute
@@ -89,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/admin/sessions/': typeof AdminSessionsIndexRoute
 }
 export interface FileRoutesByTo {
+  '/kiosk-frame': typeof KioskFrameRoute
   '/setup': typeof SetupRoute
   '/test': typeof KioskTestRoute
   '/admin/kiosks': typeof AdminKiosksRoute
@@ -102,6 +110,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_kiosk': typeof KioskRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
+  '/kiosk-frame': typeof KioskFrameRoute
   '/setup': typeof SetupRoute
   '/_kiosk/test': typeof KioskTestRoute
   '/admin/kiosks': typeof AdminKiosksRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/kiosk-frame'
     | '/setup'
     | '/test'
     | '/admin/kiosks'
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/admin/sessions/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/kiosk-frame'
     | '/setup'
     | '/test'
     | '/admin/kiosks'
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_kiosk'
     | '/admin'
+    | '/kiosk-frame'
     | '/setup'
     | '/_kiosk/test'
     | '/admin/kiosks'
@@ -153,6 +165,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   KioskRoute: typeof KioskRouteWithChildren
   AdminRoute: typeof AdminRouteWithChildren
+  KioskFrameRoute: typeof KioskFrameRoute
   SetupRoute: typeof SetupRoute
 }
 
@@ -163,6 +176,13 @@ declare module '@tanstack/react-router' {
       path: '/setup'
       fullPath: '/setup'
       preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kiosk-frame': {
+      id: '/kiosk-frame'
+      path: '/kiosk-frame'
+      fullPath: '/kiosk-frame'
+      preLoaderRoute: typeof KioskFrameRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -283,6 +303,7 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   KioskRoute: KioskRouteWithChildren,
   AdminRoute: AdminRouteWithChildren,
+  KioskFrameRoute: KioskFrameRoute,
   SetupRoute: SetupRoute,
 }
 export const routeTree = rootRouteImport

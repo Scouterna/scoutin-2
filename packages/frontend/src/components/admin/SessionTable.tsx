@@ -5,8 +5,10 @@ import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   createColumnHelper,
   flexRender,
@@ -15,6 +17,7 @@ import {
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useRef } from "react";
+import { toast } from "sonner";
 import { api } from "@/api/api";
 
 type SessionRow = {
@@ -54,11 +57,29 @@ const columns = [
 ];
 
 export function SessionTable() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ["admin", "sessions"],
     queryFn: async () => {
       const res = await api.admin.sessions.$get();
       return res.json();
+    },
+  });
+
+  const createSession = useMutation({
+    mutationFn: async () => {
+      const res = await api.admin.sessions.$post({});
+      if (!res.ok) throw new Error("Failed to create session");
+      return res.json();
+    },
+    onSuccess: async (data) => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "sessions"] });
+      navigate({ to: "/admin/sessions/$sessionId", params: { sessionId: data.id } });
+    },
+    onError: () => {
+      toast.error("Failed to create session");
     },
   });
 
@@ -83,16 +104,28 @@ export function SessionTable() {
   if (isError) return <div>Failed to load sessions.</div>;
 
   const virtualRows = virtualizer.getVirtualItems();
+
   const totalHeight = virtualizer.getTotalSize();
   const paddingTop = virtualRows[0]?.start ?? 0;
   const paddingBottom =
     totalHeight - (virtualRows[virtualRows.length - 1]?.end ?? 0);
 
   return (
-    <TableContainer
-      ref={scrollRef}
-      sx={{ maxHeight: "calc(100vh - 128px)", overflow: "auto" }}
-    >
+    <Box>
+      <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+        <Typography variant="h6" sx={{ flex: 1 }}>Sessions</Typography>
+        <Button
+          variant="contained"
+          onClick={() => createSession.mutate()}
+          disabled={createSession.isPending}
+        >
+          New session
+        </Button>
+      </Box>
+      <TableContainer
+        ref={scrollRef}
+        sx={{ maxHeight: "calc(100vh - 180px)", overflow: "auto" }}
+      >
       <Table stickyHeader>
         <TableHead>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -144,6 +177,7 @@ export function SessionTable() {
           )}
         </TableBody>
       </Table>
-    </TableContainer>
+      </TableContainer>
+    </Box>
   );
 }

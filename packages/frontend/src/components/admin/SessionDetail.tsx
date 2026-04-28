@@ -44,19 +44,20 @@ const statusColor: Record<StepStatus, "success" | "primary" | "default"> = {
 };
 
 export function SessionDetail({ sessionId }: { sessionId: string }) {
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["admin", "sessions", sessionId],
     queryFn: async () => {
       const res = await api.admin.sessions[":id"].$get({
         param: { id: sessionId },
       });
-      if (!res.ok) throw new Error("Session not found");
+      if (res.status === 404) throw new Error("Session not found");
+      if (!res.ok) throw new Error(`Failed to load session (${res.status})`);
       return res.json();
     },
   });
 
   if (isLoading) return <div>Loading…</div>;
-  if (isError || !data) return <div>Session not found.</div>;
+  if (!data) return <div>{isError && error instanceof Error ? error.message : "Session not found."}</div>;
 
   const actorName =
     data.actor?.firstName && data.actor?.lastName
