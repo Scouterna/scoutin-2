@@ -224,7 +224,14 @@ function KiosksPage() {
                 <TableCell>
                   {new Date(kiosk.createdAt).toLocaleString()}
                 </TableCell>
-                <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+                <TableCell
+                  sx={{
+                    whiteSpace: "nowrap",
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    gap: 0.5,
+                  }}
+                >
                   <IconButton
                     size="small"
                     onClick={() => setRenaming(kiosk as Kiosk)}

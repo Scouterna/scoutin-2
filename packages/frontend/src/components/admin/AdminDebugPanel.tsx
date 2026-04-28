@@ -1,41 +1,26 @@
-import type { Listeners, MessageTypes } from "@scouterna/scoutin-backend";
+import {
+  Adjust,
+  CheckCircle,
+  RadioButtonUnchecked,
+  RemoveCircleOutline,
+} from "@mui/icons-material";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
-import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import type { Listeners, MessageTypes } from "@scouterna/scoutin-backend";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
 import { api } from "@/api/api";
 import type { TypedSocket } from "@/api/typedSocket";
 
-type LogEntry = {
-  ts: Date;
-  direction: "in" | "out";
-  name: string;
-  data?: unknown;
-};
-
 type Props = {
   sessionId: string;
-  socket: TypedSocket<Listeners, MessageTypes>;
-  messageLog: LogEntry[];
+  socket: TypedSocket<Listeners, MessageTypes> | null;
   currentScreenId: string | null;
 };
 
-export { type LogEntry };
-
-export function AdminDebugPanel({
-  sessionId,
-  socket,
-  messageLog,
-  currentScreenId,
-}: Props) {
-  const [methodName, setMethodName] = useState("");
-  const [methodInputs, setMethodInputs] = useState("{}");
-  const [inputsError, setInputsError] = useState<string | null>(null);
-
+export function AdminDebugPanel({ sessionId, socket, currentScreenId }: Props) {
   const { data: sessionData, refetch } = useQuery({
     queryKey: ["admin", "sessions", sessionId],
     queryFn: async () => {
@@ -49,46 +34,12 @@ export function AdminDebugPanel({
   });
 
   const sendGoBack = () => {
-    socket.send({ name: "step:goBack" });
-    refetch();
-  };
-
-  const sendMethod = () => {
-    let inputs: Record<string, unknown> | undefined;
-    try {
-      const parsed = JSON.parse(methodInputs);
-      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
-        inputs = parsed as Record<string, unknown>;
-      } else {
-        setInputsError("Must be a JSON object");
-        return;
-      }
-    } catch {
-      setInputsError("Invalid JSON");
-      return;
-    }
-
-    setInputsError(null);
-    socket.send({
-      name: "step:callMethod",
-      data: {
-        name: methodName,
-        inputs,
-      },
-    });
+    socket?.send({ name: "step:goBack" });
     refetch();
   };
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 2,
-        height: "100%",
-        overflow: "hidden",
-      }}
-    >
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {/* Session info */}
       <Box>
         <Typography variant="subtitle2" gutterBottom>
@@ -119,37 +70,69 @@ export function AdminDebugPanel({
 
       <Divider />
 
-      {/* Step status */}
+      {/* Step timeline */}
       {sessionData && (
         <Box>
           <Typography variant="subtitle2" gutterBottom>
             Steps
           </Typography>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-            {sessionData.stepStatuses.map((step) => (
-              <Box
-                key={step.uses}
-                sx={{ display: "flex", alignItems: "center", gap: 1 }}
-              >
-                <Chip
-                  label={step.status}
-                  size="small"
-                  color={
-                    step.status === "active"
-                      ? "primary"
-                      : step.status === "completed"
-                        ? "success"
-                        : "default"
-                  }
-                  variant="outlined"
-                  sx={{ minWidth: 80 }}
-                />
-                <Typography variant="caption" sx={{ fontFamily: "monospace" }}>
-                  {step.uses}
-                </Typography>
+          {sessionData.stepStatuses.map((step, index) => {
+            const status = step.status as "completed" | "active" | "skipped" | "pending";
+            const isLast = index === sessionData.stepStatuses.length - 1;
+            const statusColor: Record<typeof status, "success" | "primary" | "default"> = {
+              completed: "success",
+              active: "primary",
+              skipped: "default",
+              pending: "default",
+            };
+            const StatusIcon = () => {
+              switch (status) {
+                case "completed": return <CheckCircle sx={{ color: "success.main", fontSize: 18 }} />;
+                case "active": return <Adjust sx={{ color: "primary.main", fontSize: 18 }} />;
+                case "skipped": return <RemoveCircleOutline sx={{ color: "text.disabled", fontSize: 18 }} />;
+                case "pending": return <RadioButtonUnchecked sx={{ color: "text.disabled", fontSize: 18 }} />;
+              }
+            };
+            return (
+              <Box key={step.uses} sx={{ display: "flex", gap: 1 }}>
+                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 18 }}>
+                  <StatusIcon />
+                  {!isLast && (
+                    <Box sx={{ width: "2px", flexGrow: 1, bgcolor: "divider", my: "3px" }} />
+                  )}
+                </Box>
+                <Box sx={{ pb: isLast ? 0 : 2, flexGrow: 1, minWidth: 0 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.25, flexWrap: "wrap" }}>
+                    <Typography
+                      variant="caption"
+                      sx={{ fontFamily: "monospace", color: status === "skipped" ? "text.disabled" : "text.primary" }}
+                    >
+                      {step.uses}
+                    </Typography>
+                    <Chip label={status} color={statusColor[status]} size="small" variant="outlined" />
+                  </Box>
+                  {step.if && (
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ fontFamily: "monospace" }}>
+                      if: {step.if}
+                    </Typography>
+                  )}
+                  {step.completedAt && (
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      {new Date(step.completedAt).toLocaleString()}
+                    </Typography>
+                  )}
+                  {step.outputs && Object.keys(step.outputs).length > 0 && (
+                    <details style={{ marginTop: 2 }}>
+                      <summary style={{ cursor: "pointer", fontSize: 11, color: "gray" }}>Outputs</summary>
+                      <pre style={{ fontSize: 10, background: "#f5f5f5", padding: "6px", borderRadius: 4, overflow: "auto", marginTop: 2 }}>
+                        {JSON.stringify(step.outputs, null, 2)}
+                      </pre>
+                    </details>
+                  )}
+                </Box>
               </Box>
-            ))}
-          </Box>
+            );
+          })}
         </Box>
       )}
 
@@ -160,106 +143,9 @@ export function AdminDebugPanel({
         <Typography variant="subtitle2" gutterBottom>
           Controls
         </Typography>
-        <Button size="small" variant="outlined" onClick={sendGoBack}>
+        <Button size="small" variant="outlined" onClick={sendGoBack} disabled={!socket}>
           Go back
         </Button>
-      </Box>
-
-      <Divider />
-
-      {/* Method invocation */}
-      <Box>
-        <Typography variant="subtitle2" gutterBottom>
-          Call method
-        </Typography>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-          <TextField
-            size="small"
-            label="Method name"
-            value={methodName}
-            onChange={(e) => setMethodName(e.target.value)}
-            placeholder="e.g. searchByString"
-          />
-          <TextField
-            size="small"
-            label="Inputs (JSON)"
-            value={methodInputs}
-            onChange={(e) => {
-              setMethodInputs(e.target.value);
-              setInputsError(null);
-            }}
-            multiline
-            rows={3}
-            error={Boolean(inputsError)}
-            helperText={inputsError}
-            InputProps={{ sx: { fontFamily: "monospace", fontSize: 12 } }}
-          />
-          <Button
-            size="small"
-            variant="contained"
-            disabled={!methodName.trim()}
-            onClick={sendMethod}
-          >
-            Send
-          </Button>
-        </Box>
-      </Box>
-
-      <Divider />
-
-      {/* Message log */}
-      <Box sx={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-        <Typography variant="subtitle2" gutterBottom>
-          Message log
-        </Typography>
-        <Box
-          sx={{
-            flex: 1,
-            overflowY: "auto",
-            display: "flex",
-            flexDirection: "column",
-            gap: 0.5,
-          }}
-        >
-          {messageLog.length === 0 && (
-            <Typography variant="caption" color="text.secondary">
-              No messages yet
-            </Typography>
-          )}
-          {messageLog.map((entry, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: log entries have no stable id
-            <Box key={i} sx={{ fontFamily: "monospace", fontSize: 11 }}>
-              <Typography
-                component="span"
-                sx={{
-                  fontSize: 11,
-                  color: entry.direction === "in" ? "primary.main" : "text.secondary",
-                  mr: 0.5,
-                }}
-              >
-                {entry.direction === "in" ? "←" : "→"}
-              </Typography>
-              <Typography component="span" sx={{ fontSize: 11, fontWeight: "bold" }}>
-                {entry.name}
-              </Typography>
-              {entry.data !== undefined && (
-                <Typography
-                  component="pre"
-                  sx={{
-                    fontSize: 10,
-                    m: 0,
-                    pl: 1.5,
-                    color: "text.secondary",
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-all",
-                  }}
-                >
-                  {JSON.stringify(entry.data, null, 2)}
-                </Typography>
-              )}
-            </Box>
-          ))}
-        </Box>
       </Box>
     </Box>
   );
