@@ -183,18 +183,9 @@ export function HeroLayout({
           )}
         >
           {showBackButton && (
-            // <button
-            //   type="button"
-            //   className="w-full flex justify-left items-center gap-2 text-white font-bold text-3xl py-8 px-10"
-            //   onClick={onBackClick}
-            //   onFocus={(e) => e.target.blur()}
-            // >
-            //   <ArrowLeft size={"1.5em"} />
-            //   Gå tillbaka
-            // </button>
-
             <ScoutButton
               variant="text"
+              size="large"
               // TODO: Remove this CSS variable hack and move it to the component library somehow
               className="not-hover:[--color-text-brand-base:var(--color-white)]"
               onScoutClick={onBackClick}
