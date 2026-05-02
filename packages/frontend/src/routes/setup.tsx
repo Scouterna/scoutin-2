@@ -72,7 +72,7 @@ function SetupPage() {
       <ScoutCard>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-4">
           <div>
-            <h1 className="text-heading-base font-semibold">
+            <h1 className="text-heading-base font-semibold font-semibold">
               Konfigurera kiosk
             </h1>
             <p className="text-body-base text-gray-600">

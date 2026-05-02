@@ -8,14 +8,14 @@
   },
   "dependencies": {
     "@scouterna/scoutin-plugin-api": "workspace:^",
-    "arktype": "^2.1.29"
+    "arktype": "^2.2.0"
   },
   "devDependencies": {
     "@scouterna/scoutin-backend": "workspace:^",
-    "@scouterna/ui-react": "3.2.0",
-    "jotai": "^2.18.1",
-    "@types/react": "^19.2.9",
-    "react": "^19.2.3",
-    "typescript": "^5.9.3"
+    "@scouterna/ui-react": "catalog:",
+    "jotai": "^2.19.1",
+    "@types/react": "^19.2.14",
+    "react": "^19.2.5",
+    "typescript": "^6.0.3"
   }
 }

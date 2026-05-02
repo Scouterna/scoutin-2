@@ -1,5 +1,5 @@
 import Add from "@mui/icons-material/Add";
-import DeleteOutline from "@mui/icons-material/DeleteOutline";
+import DeleteOutlined from "@mui/icons-material/DeleteOutlined";
 import EditOutlined from "@mui/icons-material/EditOutlined";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -243,7 +243,7 @@ function KiosksPage() {
                     color="error"
                     onClick={() => setDeleting(kiosk as Kiosk)}
                   >
-                    <DeleteOutline fontSize="small" />
+                    <DeleteOutlined fontSize="small" />
                   </IconButton>
                 </TableCell>
               </TableRow>

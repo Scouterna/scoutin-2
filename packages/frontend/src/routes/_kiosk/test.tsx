@@ -66,7 +66,9 @@ function App() {
 
   return (
     <div className="flex flex-col justify-center items-center gap-8 mt-48">
-      <h1 className="text-heading-base">Välkommen till Jamboree26!</h1>
+      <h1 className="text-heading-base font-semibold">
+        Välkommen till Jamboree26!
+      </h1>
       {/* <pre className="overflow-x-auto max-w-screen">{sessionToken}</pre> */}
       <ScoutButton
         onScoutClick={() => {

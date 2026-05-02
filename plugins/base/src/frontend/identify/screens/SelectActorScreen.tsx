@@ -46,7 +46,9 @@ export function SelectActorScreen({ payload }: { payload: object }) {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-heading-base">Du är anmäld på flera sätt</h1>
+        <h1 className="text-heading-base font-semibold">
+          Du är anmäld på flera sätt
+        </h1>
         <p className="text-body-base">Välj hur du vill fortsätta</p>
       </div>
 
@@ -58,7 +60,7 @@ export function SelectActorScreen({ payload }: { payload: object }) {
               action="chevron"
               onClick={() => handleSelect(actor)}
             />
-            {index < validPayload.actors.length - 1 && <ScoutDivider />}
+            {/* {index < validPayload.actors.length - 1 && <ScoutDivider />} */}
           </Fragment>
         ))}
       </ScoutListView>

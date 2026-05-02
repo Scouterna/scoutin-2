@@ -25,7 +25,7 @@ export function StartOverPromptScreen() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-heading-base">Hej igen!</h1>
+        <h1 className="text-heading-base font-semibold">Hej igen!</h1>
         <p className="text-body-base">
           Det verkar som att du påbörjat en incheckning tidigare. Vill du börja
           om från början eller fortsätta där du var?

@@ -36,7 +36,7 @@ if (rootElement && !rootElement.innerHTML) {
   root.render(
     <StrictMode>
       <StoreProvider store={store}>
-        <JotaiDevTools />
+        {/* <JotaiDevTools /> */}
 
         <QueryClientProvider client={queryClient}>
           <RouterProvider router={router} />

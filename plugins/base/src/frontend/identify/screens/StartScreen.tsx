@@ -2,7 +2,13 @@ import {
   usePluginMessage,
   usePluginSocket,
 } from "@scouterna/scoutin-plugin-api";
-import { ScoutButton, ScoutField, ScoutInput } from "@scouterna/ui-react";
+import {
+  ScoutButton,
+  ScoutCallout,
+  ScoutCard,
+  ScoutField,
+  ScoutInput,
+} from "@scouterna/ui-react";
 import { useState } from "react";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 
@@ -43,7 +49,7 @@ export function StartScreen() {
     return (
       <div className="flex flex-col gap-6">
         <div>
-          <h1 className="text-heading-base">Skanna ditt kort</h1>
+          <h1 className="text-heading-base font-semibold">Skanna ditt kort</h1>
           <p className="text-body-base">
             Håll ditt körkort eller medlemskort från Scoutnet mot läsaren.
           </p>
@@ -75,7 +81,7 @@ export function StartScreen() {
       className="flex flex-col gap-4"
     >
       <div>
-        <h1 className="text-heading-base">Ange manuellt</h1>
+        <h1 className="text-heading-base font-semibold">Ange manuellt</h1>
         <p className="text-body-base">
           Ange ditt personnummer eller medlemsnummer.
         </p>

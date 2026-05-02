@@ -34,7 +34,7 @@ export function PreviewActorScreen({ payload }: { payload: object }) {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-heading-base">
+        <h1 className="text-heading-base font-semibold">
           Hej {validPayload.actor.firstName}!
         </h1>
         <p className="text-body-base">Ser den här infon ut att stämma?</p>

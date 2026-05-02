@@ -1,6 +1,9 @@
 import type { Plugin } from "vite";
 import pluginsJson from "../../backend/plugins.json" with { type: "json" };
 
+/** The plugin package names (e.g. `@scouterna/scoutin-plugin-base`). */
+export const pluginPackages = pluginsJson.plugins;
+
 /**
  * Rollup externals for all plugin subpaths. Pass this to
  * `build.rollupOptions.external` so that plugin packages are not bundled into
