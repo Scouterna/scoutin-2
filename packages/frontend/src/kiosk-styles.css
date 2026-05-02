@@ -1,13 +1,40 @@
 @import "tailwindcss";
 @import "@scouterna/tailwind-theme";
 
-@source "../../../plugins/**/*.{ts,tsx}";
-
 @import "@fontsource-variable/source-sans-3";
+
+@source "../../../plugins/**/*.{ts,tsx}";
 
 body {
   font-family: "Source Sans 3 Variable", sans-serif;
   font-size: var(--text-body-base);
   line-height: 1.5;
   color: var(--color-text-base);
+}
+
+@theme {
+  --animate-oscillate-vertical: oscillate-vertical 1.5s ease-in-out infinite;
+  --animate-oscillate-horizontal: oscillate-horizontal 1.5s ease-in-out infinite;
+
+  @keyframes oscillate-vertical {
+    0%,
+    100% {
+      transform: translateY(-0.2rem);
+    }
+
+    50% {
+      transform: translateY(0.2rem);
+    }
+  }
+
+  @keyframes oscillate-horizontal {
+    0%,
+    100% {
+      transform: translateX(-0.2rem);
+    }
+
+    50% {
+      transform: translateX(0.2rem);
+    }
+  }
 }

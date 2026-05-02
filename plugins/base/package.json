@@ -8,13 +8,17 @@
   },
   "dependencies": {
     "@scouterna/scoutin-plugin-api": "workspace:^",
-    "arktype": "^2.2.0"
+    "@tabler/icons": "^3.41.1",
+    "@tabler/icons-react": "^3.41.1",
+    "arktype": "^2.2.0",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
     "@scouterna/scoutin-backend": "workspace:^",
     "@scouterna/ui-react": "catalog:",
-    "jotai": "^2.19.1",
     "@types/react": "^19.2.14",
+    "jotai": "^2.19.1",
     "react": "^19.2.5",
     "typescript": "^6.0.3"
   }

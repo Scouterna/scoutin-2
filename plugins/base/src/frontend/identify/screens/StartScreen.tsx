@@ -2,15 +2,22 @@ import {
   usePluginMessage,
   usePluginSocket,
 } from "@scouterna/scoutin-plugin-api";
-import {
-  ScoutButton,
-  ScoutCallout,
-  ScoutCard,
-  ScoutField,
-  ScoutInput,
-} from "@scouterna/ui-react";
+import { ScoutButton, ScoutField, ScoutInput } from "@scouterna/ui-react";
+import KeyboardIcon from "@tabler/icons/outline/keyboard.svg?raw";
+import { IconArrowDown, IconQrcode } from "@tabler/icons-react";
 import { useState } from "react";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
+import { cn } from "../utils";
+
+const scannerSide = import.meta.env.VITE_SCANNER_SIDE || "down";
+const arrowRotations = {
+  bottom: "0deg",
+  top: "180deg",
+  left: "90deg",
+  right: "270deg",
+} as const;
+const arrowRotation =
+  arrowRotations[scannerSide as keyof typeof arrowRotations] || "0deg";
 
 export function StartScreen() {
   const socket = usePluginSocket();
@@ -51,12 +58,42 @@ export function StartScreen() {
         <div>
           <h1 className="text-heading-base font-semibold">Skanna ditt kort</h1>
           <p className="text-body-base">
-            Håll ditt körkort eller medlemskort från Scoutnet mot läsaren.
+            Visa ditt körkort eller medlemskort från Scoutnet för läsaren.
           </p>
         </div>
 
-        <div className="flex items-center justify-center h-40 rounded-xl border-2 border-dashed border-gray-300">
-          <p className="text-body-base text-gray-400">Redo att skanna...</p>
+        <div className="rounded-xl p-4 gap-4 bg-gray-50 border border-gray-100 flex">
+          <IconQrcode className="size-12" stroke={1.5} />
+
+          <div className="flex-1">
+            <p className="font-bold">Skanna ditt kort</p>
+            <p>
+              Körkort eller medlemskort från Scoutnet på din telefon fungerar.
+            </p>
+          </div>
+        </div>
+
+        <div
+          className={cn(
+            "flex gap-2 items-center",
+            scannerSide === "right" && "flex-row-reverse justify-end",
+          )}
+        >
+          <div
+            className="size-12"
+            style={{
+              transform: `rotate(${arrowRotation})`,
+            }}
+          >
+            <IconArrowDown
+              className="w-full h-full animate-oscillate-vertical text-blue-400"
+              stroke={1.5}
+            />
+          </div>
+
+          <span className="text-body-sm italic text-blue-400">
+            Redo att skanna...
+          </span>
         </div>
 
         {noResultsQuery && (
@@ -66,7 +103,11 @@ export function StartScreen() {
         )}
 
         <div>
-          <ScoutButton onScoutClick={() => setMode("manual")}>
+          <ScoutButton
+            icon={KeyboardIcon}
+            iconPosition="before"
+            onScoutClick={() => setMode("manual")}
+          >
             Ange manuellt
           </ScoutButton>
         </div>
