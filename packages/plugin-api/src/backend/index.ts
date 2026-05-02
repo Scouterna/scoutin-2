@@ -1,6 +1,4 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
-import type { ReactNode } from "react";
-import { createContext, useContext, useEffect, useRef } from "react";
 
 // Step implementation types
 export type SetActorOptions =
@@ -23,6 +21,7 @@ export type StepMethodContext<TState = Record<string, unknown>> = {
     screenId: string,
     payload?: Record<string, unknown>,
   ): Promise<void>;
+  getInputs(): Record<string, unknown>;
   setState(key: keyof TState, value: TState[keyof TState]): void;
   getState(key: keyof TState): TState[keyof TState];
   clearState(): void;
@@ -84,45 +83,4 @@ export type BackendPluginContext = {
 
 export type BackendPlugin = {
   setup(ctx: BackendPluginContext): void;
-};
-
-// Plugin socket
-export interface PluginSocket {
-  send(message: { name: string; data?: unknown }): void;
-  /** Subscribe to a named step message. Returns an unsubscribe function. */
-  onMessage(name: string, handler: (payload: object) => void): () => void;
-}
-
-export const PluginSocketContext = createContext<PluginSocket | null>(null);
-
-export function usePluginSocket(): PluginSocket | null {
-  return useContext(PluginSocketContext);
-}
-
-export function usePluginMessage(
-  name: string,
-  handler: (payload: object) => void,
-) {
-  const socket = usePluginSocket();
-  const handlerRef = useRef(handler);
-  handlerRef.current = handler;
-
-  useEffect(() => {
-    if (!socket) return;
-    return socket.onMessage(name, (payload) => handlerRef.current(payload));
-  }, [socket, name]);
-}
-
-// Frontend plugin types
-export type ScreenConfig = {
-  name: string;
-  component: ({ payload }: { payload: object }) => ReactNode;
-};
-
-export type FrontendPluginContext = {
-  registerScreen(screen: ScreenConfig): void;
-};
-
-export type FrontendPlugin = {
-  setup(ctx: FrontendPluginContext): void;
 };

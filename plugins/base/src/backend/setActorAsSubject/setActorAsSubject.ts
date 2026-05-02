@@ -1,5 +1,5 @@
 import { prisma } from "@scouterna/scoutin-backend/plugin-services";
-import type { StepImplementation } from "@scouterna/scoutin-plugin-api";
+import type { StepImplementation } from "@scouterna/scoutin-plugin-api/backend";
 
 export const setActorAsSubject: StepImplementation = {
   id: "base:setActorAsSubject",

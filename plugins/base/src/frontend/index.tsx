@@ -1,4 +1,4 @@
-import type { FrontendPlugin } from "@scouterna/scoutin-plugin-api";
+import type { FrontendPlugin } from "@scouterna/scoutin-plugin-api/frontend";
 import { setup as deduplicateSetup } from "./deduplicateSession/index.tsx";
 import { setup as identifySetup } from "./identify/index.tsx";
 

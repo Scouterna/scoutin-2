@@ -1,4 +1,4 @@
-import type { BackendPluginContext } from "@scouterna/scoutin-plugin-api";
+import type { BackendPluginContext } from "@scouterna/scoutin-plugin-api/backend";
 import pluginsJson from "../../../plugins.json" with { type: "json" };
 import { StepRegistry } from "../../core/workflow/stepRegistry.ts";
 

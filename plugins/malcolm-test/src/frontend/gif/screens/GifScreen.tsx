@@ -1,4 +1,4 @@
-import { usePluginSocket } from "@scouterna/scoutin-plugin-api";
+import { usePluginSocket } from "@scouterna/scoutin-plugin-api/frontend";
 import { ScoutButton } from "@scouterna/ui-react";
 
 export function GifScreen() {

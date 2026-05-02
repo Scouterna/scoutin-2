@@ -1,14 +1,14 @@
-import { type } from "arktype";
-import type {
-  StepImplementation,
-  StepMethodContext,
-} from "@scouterna/scoutin-plugin-api";
-import { typedMethod } from "@scouterna/scoutin-plugin-api";
 import {
   dataSourceConfig,
   findParticipantsByLookupValue,
   type Participant,
 } from "@scouterna/scoutin-backend/plugin-services";
+import type {
+  StepImplementation,
+  StepMethodContext,
+} from "@scouterna/scoutin-plugin-api/backend";
+import { typedMethod } from "@scouterna/scoutin-plugin-api/backend";
+import { type } from "arktype";
 import { normalizeQuery } from "./utils.ts";
 
 type Actor = {
@@ -43,13 +43,18 @@ type State = {
 
 export const identify: StepImplementation<State> = {
   id: "base:identify",
+  inputs: type({
+    "scannerSide?": "'top' | 'bottom' | 'left' | 'right'",
+  }),
   outputs: type({
     dataSource: type("string"),
     actorId: type("string"),
   }),
   hooks: {
     async onStepStart(ctx) {
-      await ctx.showScreen("base:identify:start");
+      await ctx.showScreen("base:identify:start", {
+        scannerSide: ctx.getInputs().scannerSide,
+      });
     },
     async onStepRollback(ctx) {
       await ctx.clearActor();

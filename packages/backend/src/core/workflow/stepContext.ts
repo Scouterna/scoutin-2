@@ -1,3 +1,7 @@
+import type {
+  StepImplementation,
+  StepMethodContext,
+} from "@scouterna/scoutin-plugin-api/backend";
 import { stepCompletions } from "../../app/metrics.ts";
 import { prisma } from "../../app/prisma.ts";
 import {
@@ -5,19 +9,15 @@ import {
   getCurrentStep,
 } from "../../domains/workflows/step.service.ts";
 import type { MessageTypes } from "../websocket/messageTypes.ts";
-import type { TypedWSContext } from "../websocket/socketRouter.ts";
-import type { TypedContext } from "../websocket/types.ts";
 import {
   clearStepState,
   getStepMeta,
   getStepState,
   setStepStateKey,
 } from "../websocket/sessionRegistry.ts";
+import type { TypedWSContext } from "../websocket/socketRouter.ts";
+import type { TypedContext } from "../websocket/types.ts";
 import { restartStep, startStep } from "./step.ts";
-import type {
-  StepImplementation,
-  StepMethodContext,
-} from "@scouterna/scoutin-plugin-api";
 
 export function createStepContext(
   c: TypedContext,
@@ -60,7 +60,8 @@ export function createStepContext(
       const effectiveSessionId = c.get("wsSessionId") ?? sessionId;
 
       // stepMeta was stored for the original session; fall back if overridden.
-      const stepMeta = getStepMeta(effectiveSessionId) ?? getStepMeta(sessionId);
+      const stepMeta =
+        getStepMeta(effectiveSessionId) ?? getStepMeta(sessionId);
       if (!stepMeta) {
         throw new Error("No step metadata found in context");
       }
@@ -77,6 +78,10 @@ export function createStepContext(
 
       const currentStep = await getCurrentStep(effectiveSessionId);
       await startStep(c, ws, currentStep);
+    },
+    getInputs() {
+      const stepMeta = getStepMeta(sessionId);
+      return stepMeta?.evaluatedInputs ?? {};
     },
     setState(key, value) {
       setStepStateKey(sessionId, key, value);

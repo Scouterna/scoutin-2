@@ -1,4 +1,4 @@
-import type { BackendPlugin } from "@scouterna/scoutin-plugin-api";
+import type { BackendPlugin } from "@scouterna/scoutin-plugin-api/backend";
 import { gif } from "./gif/gif.ts";
 
 export const plugin: BackendPlugin = {

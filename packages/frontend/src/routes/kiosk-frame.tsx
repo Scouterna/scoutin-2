@@ -1,5 +1,7 @@
-import { PluginSocketContext } from "@scouterna/scoutin-plugin-api";
-import type { PluginSocket } from "@scouterna/scoutin-plugin-api";
+import {
+  type PluginSocket,
+  PluginSocketContext,
+} from "@scouterna/scoutin-plugin-api/frontend";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { findScreen } from "@/plugins/plugins";
@@ -13,9 +15,7 @@ type ScreenData = { screenId: string; payload: object };
 function KioskFrame() {
   const [stylesLoaded, setStylesLoaded] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<ScreenData | null>(null);
-  const handlersRef = useRef(
-    new Map<string, Set<(payload: object) => void>>(),
-  );
+  const handlersRef = useRef(new Map<string, Set<(payload: object) => void>>());
 
   useEffect(() => {
     import("../kiosk-styles.css").finally(() => {
@@ -51,7 +51,9 @@ function KioskFrame() {
           name: string;
           payload: object;
         };
-        handlersRef.current.get(name)?.forEach((h) => h(payload));
+        handlersRef.current.get(name)?.forEach((h) => {
+          h(payload);
+        });
       } else if (
         msg.name === "step:started" ||
         msg.name === "session:terminated"

@@ -9,6 +9,8 @@ steps:
   # one to use.
   - uses: base:identify
     id: identify
+    with:
+      scannerSide: right
 
   # deduplicateSession will ensure that there is only one session active for the
   # actor. If there are any other sessions the user is prompted to "Pick up

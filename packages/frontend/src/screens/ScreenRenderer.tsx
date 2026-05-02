@@ -1,7 +1,7 @@
 import {
   type PluginSocket,
   PluginSocketContext,
-} from "@scouterna/scoutin-plugin-api";
+} from "@scouterna/scoutin-plugin-api/frontend";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { findScreen } from "@/plugins/plugins";
@@ -15,9 +15,16 @@ export function ScreenRenderer() {
   const pluginSocket = useMemo<PluginSocket | null>(() => {
     if (!socket) return null;
     return {
-      send: (message) => socket.send(message as Parameters<typeof socket.send>[0]),
+      send: (message) =>
+        socket.send(message as Parameters<typeof socket.send>[0]),
       onMessage: (name: string, handler: (payload: object) => void) => {
-        const listener = ({ name: msgName, payload }: { name: string; payload: object }) => {
+        const listener = ({
+          name: msgName,
+          payload,
+        }: {
+          name: string;
+          payload: object;
+        }) => {
           if (msgName === name) handler(payload);
         };
         socket.on("step:message", listener);

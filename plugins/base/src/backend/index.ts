@@ -1,4 +1,4 @@
-import type { BackendPlugin } from "@scouterna/scoutin-plugin-api";
+import type { BackendPlugin } from "@scouterna/scoutin-plugin-api/backend";
 import { deduplicateSession } from "./deduplicateSession/deduplicateSession.ts";
 import { identify } from "./identify/identify.ts";
 import { setActorAsSubject } from "./setActorAsSubject/setActorAsSubject.ts";

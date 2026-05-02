@@ -4,6 +4,13 @@
 @import "@fontsource-variable/source-sans-3";
 
 @source "../../../plugins/**/*.{ts,tsx}";
+@source "../../plugin-api/src/**/*.{ts,tsx}";
+
+html,
+body {
+  overscroll-behavior: none;
+  touch-action: pan-x pan-y;
+}
 
 body {
   font-family: "Source Sans 3 Variable", sans-serif;

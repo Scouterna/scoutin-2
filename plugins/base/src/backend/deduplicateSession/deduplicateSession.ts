@@ -1,6 +1,6 @@
 import { prisma } from "@scouterna/scoutin-backend/plugin-services";
-import type { StepImplementation } from "@scouterna/scoutin-plugin-api";
-import { typedMethod } from "@scouterna/scoutin-plugin-api";
+import type { StepImplementation } from "@scouterna/scoutin-plugin-api/backend";
+import { typedMethod } from "@scouterna/scoutin-plugin-api/backend";
 
 export const deduplicateSession: StepImplementation = {
   id: "base:deduplicateSession",
