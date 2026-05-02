@@ -7,4 +7,10 @@ export type Client = ReturnType<typeof hc<AppType>>;
 export const hcWithType = (...args: Parameters<typeof hc>): Client =>
   hc<AppType>(...args);
 
-export const { api, ws } = hcWithType("http://localhost:3000");
+const apiUrl = import.meta.env.VITE_API_URL;
+
+if (!apiUrl) {
+  throw new Error("VITE_API_URL is not defined");
+}
+
+export const { api, ws } = hcWithType(apiUrl);
