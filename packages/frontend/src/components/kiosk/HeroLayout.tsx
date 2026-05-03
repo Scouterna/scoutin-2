@@ -151,7 +151,7 @@ export function HeroLayout({
           alt="An illustration of the topography lines of a map, partially cut off by the corner of the screen."
           className={cn(
             "pointer-events-none",
-            "absolute h-2/5 max-w-none top-0 left-full -translate-x-[60%] -translate-y-[20%]",
+            "absolute h-2/5 max-w-none top-0 left-full translate-x-[-60%] translate-y-[-20%]",
             "transition-all duration-1000",
             !progressed ? "duration-700 delay-700" : "opacity-0 duration-300",
           )}
@@ -161,7 +161,7 @@ export function HeroLayout({
           alt="An illustration of the topography lines of a map, partially cut off by the corner of the screen."
           className={cn(
             "pointer-events-none",
-            "absolute h-[2/5] max-w-none top-full left-0 -translate-x-[40%] -translate-y-[68%]",
+            "absolute h-[2/5] max-w-none top-full left-0 translate-x-[-40%] translate-y-[-68%]",
             "transition-all duration-1000",
             !progressed ? "opacity-0 duration-300" : "duration-700 delay-500",
           )}
