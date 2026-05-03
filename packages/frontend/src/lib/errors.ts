@@ -39,6 +39,10 @@ export function showErrorToast(
   toast.error(message, {
     description,
     duration: 5000,
+    action: {
+      label: "Ladda om",
+      onClick: () => window.location.reload(),
+    },
   });
 }
 

@@ -1,5 +1,6 @@
 import type { Listeners, MessageTypes } from "@scouterna/scoutin-backend";
 import type { TypedSocket } from "@/api/typedSocket";
+import { showErrorToast } from "@/lib/errors";
 import { currentScreenAtom, screenHistoryAtom } from "@/store/session";
 import { store } from "@/store/store";
 
@@ -11,6 +12,10 @@ export function setupSocket(socket: TypedSocket<Listeners, MessageTypes>) {
   socket.on("session:terminated", () => {
     store.set(currentScreenAtom, null);
     store.set(screenHistoryAtom, []);
+  });
+
+  socket.on("error", ({ code, message }) => {
+    showErrorToast({ message, details: code });
   });
 
   socket.on("step:showScreen", ({ screenId, payload }) => {
