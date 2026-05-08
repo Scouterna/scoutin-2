@@ -24,7 +24,7 @@
     "@scouterna/scoutin-plugin-api": "workspace:^",
     "@scouterna/scoutin-plugin-base": "workspace:^",
     "@scouterna/scoutin-plugin-malcolm-test": "workspace:^",
-    "@scouterna/scoutnet": "^0.3.24",
+    "@scouterna/scoutnet": "^0.3.25",
     "argon2": "^0.44.0",
     "arktype": "^2.2.0",
     "hono": "^4.12.16",

@@ -11,7 +11,7 @@ import { IconArrowDown, IconQrcode } from "@tabler/icons-react";
 import { type } from "arktype";
 import { useRef, useState } from "react";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
-import { cn } from "../utils";
+import { cn } from "../../utils";
 
 function BackspaceButton({ onDelete }: { onDelete: () => void }) {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);

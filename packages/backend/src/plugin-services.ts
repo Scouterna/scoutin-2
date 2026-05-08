@@ -12,5 +12,6 @@ export { prisma } from "./app/prisma.ts";
 export {
   dataSourceConfig,
   findParticipantsByLookupValue,
+  getSubjectCandidates,
 } from "./domains/participants/data.service.ts";
 export type { Participant } from "./generated/prisma/client.ts";

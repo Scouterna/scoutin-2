@@ -37,6 +37,7 @@ export function useBarcodeScanner(onScan: (data: string) => void) {
           }
           scanning = false;
           if (buffer.length > 0) {
+            console.log("SCANNED!", buffer);
             onScanRef.current(buffer);
           }
           buffer = "";
@@ -46,7 +47,8 @@ export function useBarcodeScanner(onScan: (data: string) => void) {
       }
 
       if (scanning) {
-        if (e.key.length === 1) {
+        // Skip ALT+key combos (e.g. scanner encoding special chars like LF as ALT+0010)
+        if (!e.altKey && e.key.length === 1) {
           buffer += e.key;
         }
         e.preventDefault();

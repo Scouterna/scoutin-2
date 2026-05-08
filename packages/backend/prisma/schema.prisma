@@ -36,7 +36,7 @@ model CheckinSession {
   id       String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   stepData CheckinSessionStepData[]
 
-  actor    CheckinActor?
+  actor CheckinActor?
 
   subjects CheckinSubject[]
 
@@ -85,8 +85,8 @@ model CheckinActor {
   participant   Participant? @relation(fields: [participantId], references: [id])
   participantId String?      @db.Uuid
 
-  checkinSession   CheckinSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  sessionId        String         @unique @db.Uuid
+  checkinSession CheckinSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId      String         @unique @db.Uuid
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -107,8 +107,10 @@ model Participant {
 
   firstName String
   lastName  String
+  subGroup  String?
 
-  participantsOnParticipantGroups ParticipantsOnParticipantGroups[]
+  participantGroup   ParticipantGroup? @relation(fields: [participantGroupId], references: [id])
+  participantGroupId String?           @db.Uuid
 
   checkinActors   CheckinActor[]
   checkinSubjects CheckinSubject[]
@@ -128,17 +130,7 @@ model ParticipantGroup {
 
   name String
 
-  participantsOnParticipantGroups ParticipantsOnParticipantGroups[]
-}
+  participants Participant[]
 
-model ParticipantsOnParticipantGroups {
-  participant   Participant @relation(fields: [participantId], references: [id])
-  participantId String      @db.Uuid
-
-  participantGroup   ParticipantGroup @relation(fields: [participantGroupId], references: [id])
-  participantGroupId String           @db.Uuid
-
-  role String
-
-  @@id([participantId, participantGroupId])
+  @@unique([dataSource, idInDataSource])
 }

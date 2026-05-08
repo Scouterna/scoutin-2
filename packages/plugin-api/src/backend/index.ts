@@ -27,6 +27,11 @@ export type StepMethodContext<TState = Record<string, unknown>> = {
   clearState(): void;
   setActor(options: SetActorOptions): Promise<void>;
   clearActor(): Promise<void>;
+  getActor(): Promise<
+    | { participantId: string }
+    // | { administrator: true }
+    | null
+  >;
   setSubjects(options: SetSubjectsOptions): Promise<void>;
   clearSubjects(): Promise<void>;
   overrideSession(newSessionId: string): void;

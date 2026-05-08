@@ -126,6 +126,26 @@ export function createStepContext(
       // https://github.com/prisma/prisma/discussions/21682#discussioncomment-7425337
       await prisma.checkinActor.deleteMany({ where: { sessionId } });
     },
+    async getActor() {
+      const sessionId = c.get("wsSessionId");
+      if (!sessionId) {
+        throw new Error("No session ID found in context");
+      }
+
+      const actor = await prisma.checkinActor.findUnique({
+        where: { sessionId },
+      });
+
+      if (!actor) return null;
+
+      const participantId = actor.participantId;
+
+      if (!participantId) {
+        throw new Error(`Actor for session ${sessionId} has no participant ID`);
+      }
+
+      return { participantId };
+    },
     async setSubjects({ participantIds }) {
       const sessionId = c.get("wsSessionId");
       if (!sessionId) {
