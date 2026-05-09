@@ -134,17 +134,26 @@ export function createStepContext(
 
       const actor = await prisma.checkinActor.findUnique({
         where: { sessionId },
+        include: { participant: true },
       });
 
       if (!actor) return null;
 
-      const participantId = actor.participantId;
-
-      if (!participantId) {
+      if (!actor.participantId || !actor.participant) {
         throw new Error(`Actor for session ${sessionId} has no participant ID`);
       }
 
-      return { participantId };
+      return {
+        actor: {
+          id: actor.id,
+        },
+        participant: {
+          id: actor.participantId,
+          firstName: actor.participant.firstName,
+          lastName: actor.participant.lastName,
+          dataSource: actor.participant.dataSource,
+        },
+      };
     },
     async setSubjects({ participantIds }) {
       const sessionId = c.get("wsSessionId");

@@ -5,6 +5,7 @@ import {
 } from "@scouterna/scoutnet";
 import { type } from "arktype";
 import { prisma } from "../../app/prisma.ts";
+import { evaluateExpressionsInString } from "../../core/expressions/expressions.ts";
 import { hashLookupValue } from "./data.service.ts";
 
 export const ScoutnetDataSource = type({
@@ -19,12 +20,19 @@ export const ScoutnetDataSource = type({
   ),
   includeIndividuals: "boolean",
   includeGroups: "boolean",
-  keys: type({
+  /**
+   * Sub groups are evaluated in order for each participant. The first matching sub group is chosen.
+   */
+  "subGroups?": type.Record("string", {
+    name: "Record<string, string>",
+    condition: "string",
+  }),
+  keys: {
     groups: "string",
     participants: "string",
     checkin: "string",
     questions: "string",
-  }),
+  },
 });
 export type ScoutnetDataSource = typeof ScoutnetDataSource.infer;
 
@@ -152,6 +160,8 @@ export async function importScoutnetData(
           }
         : undefined;
 
+      const subGroup = resolveSubGroup(dataSource, p);
+
       return [
         prisma.participant.upsert({
           where: {
@@ -167,12 +177,14 @@ export async function importScoutnetData(
             lastName: p.last_name,
             lookupValues,
             participantGroup,
+            subGroup,
           },
           update: {
             firstName: p.first_name,
             lastName: p.last_name,
             lookupValues,
             participantGroup,
+            subGroup,
           },
         }),
       ];
@@ -293,4 +305,28 @@ async function getParticipants(
         return dataSource.feeIds.includes(p.fee_id);
       })
   );
+}
+
+type ScoutnetParticipantOut = typeof ScoutnetParticipant.infer;
+
+function resolveSubGroup(
+  dataSource: ScoutnetDataSource,
+  participant: ScoutnetParticipantOut,
+): string | null {
+  if (!dataSource.subGroups) return null;
+
+  const context = { participant };
+
+  for (const [key, subGroup] of Object.entries(dataSource.subGroups)) {
+    const result = evaluateExpressionsInString(subGroup.condition, context);
+    if (typeof result === "string") {
+      console.warn(
+        `Subgroup condition for "${key}" did not evaluate to a boolean, skipping.`,
+      );
+      continue;
+    }
+    if (result.number()) return key;
+  }
+
+  return null;
 }

@@ -10,8 +10,8 @@ import KeyboardIcon from "@tabler/icons/outline/keyboard.svg?raw";
 import { IconArrowDown, IconQrcode } from "@tabler/icons-react";
 import { type } from "arktype";
 import { useRef, useState } from "react";
-import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 import { cn } from "../../utils";
+import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 
 function BackspaceButton({ onDelete }: { onDelete: () => void }) {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -104,7 +104,6 @@ export function StartScreen({ payload }: { payload: object }) {
           Visa ditt körkort eller medlemskort från Scoutnet för läsaren.
         </p>
       </div>
-
       <div className="rounded-xl p-4 gap-4 bg-gray-50 border border-gray-100 flex">
         <IconQrcode className="size-12" stroke={1.5} />
 
@@ -115,7 +114,6 @@ export function StartScreen({ payload }: { payload: object }) {
           </p>
         </div>
       </div>
-
       <div
         className={cn(
           "flex gap-2 items-center",
@@ -139,11 +137,9 @@ export function StartScreen({ payload }: { payload: object }) {
           Redo att skanna...
         </span>
       </div>
-
       {noResultsQuery && (
         <p className="text-body-base text-red-600">Ingen träff. Försök igen.</p>
       )}
-
       <div>
         <ScoutButton
           icon={KeyboardIcon}
@@ -152,6 +148,24 @@ export function StartScreen({ payload }: { payload: object }) {
         >
           Ange manuellt
         </ScoutButton>
+      </div>
+
+      <div className="opacity-20 hover:opacity-100 p-4 -m-4">
+        Debug
+        <div className="flex gap-2">
+          <ScoutButton
+            onScoutClick={() => submitQuery("3236298")}
+            variant="outlined"
+          >
+            Ledare (3236298)
+          </ScoutButton>
+          <ScoutButton
+            onScoutClick={() => submitQuery("3307495")}
+            variant="outlined"
+          >
+            Deltagare (3307495)
+          </ScoutButton>
+        </div>
       </div>
 
       <BottomSheet open={manualEntryOpen} onClose={closeManualEntry}>

@@ -28,7 +28,15 @@ export type StepMethodContext<TState = Record<string, unknown>> = {
   setActor(options: SetActorOptions): Promise<void>;
   clearActor(): Promise<void>;
   getActor(): Promise<
-    | { participantId: string }
+    | {
+        actor: { id: string };
+        participant: {
+          id: string;
+          firstName: string;
+          lastName: string;
+          dataSource: string;
+        };
+      }
     // | { administrator: true }
     | null
   >;
