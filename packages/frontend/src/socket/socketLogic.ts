@@ -5,8 +5,13 @@ import { currentScreenAtom, screenHistoryAtom, sessionInfoAtom } from "@/store/s
 import { store } from "@/store/store";
 
 export function setupSocket(socket: TypedSocket<Listeners, MessageTypes>) {
+  // Set when step:started arrives; cleared on the first step:showScreen.
+  // Prevents the entry screen of a new step from being pushed onto history.
+  let stepJustStarted = false;
+
   socket.on("step:started", () => {
     store.set(screenHistoryAtom, []);
+    stepJustStarted = true;
   });
 
   socket.on("session:terminated", () => {
@@ -25,9 +30,10 @@ export function setupSocket(socket: TypedSocket<Listeners, MessageTypes>) {
 
   socket.on("step:showScreen", ({ screenId, payload }) => {
     const current = store.get(currentScreenAtom);
-    if (current) {
+    if (current && !stepJustStarted) {
       store.set(screenHistoryAtom, (prev) => [...prev, current]);
     }
+    stepJustStarted = false;
 
     store.set(currentScreenAtom, { screenId, payload });
   });

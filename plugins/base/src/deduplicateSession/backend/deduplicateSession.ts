@@ -64,6 +64,7 @@ async function doResume(ctx: StepMethodContext) {
 
 export const deduplicateSession: StepImplementation = {
   id: "base:deduplicateSession",
+  skipOnGoBack: true,
   inputs: type({
     "force?": "'new' | 'resume'",
   }),

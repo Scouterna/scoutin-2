@@ -1,4 +1,4 @@
-import type { StepImplementation } from "./stepImplementation.ts";
+import type { StepImplementation } from "@scouterna/scoutin-plugin-api/backend";
 
 export class StepRegistry {
   private steps: Map<string, StepImplementation>;

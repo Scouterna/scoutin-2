@@ -58,6 +58,7 @@ export type StepImplementation<
   TState extends Record<string, unknown> = Record<string, unknown>,
 > = {
   id: string;
+  skipOnGoBack?: boolean;
   inputs?: StandardSchemaV1<Record<string, unknown>, Record<string, unknown>>;
   outputs?: StandardSchemaV1<Record<string, unknown>, Record<string, unknown>>;
   hooks?: {

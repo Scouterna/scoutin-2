@@ -32,7 +32,7 @@ function RouteComponent() {
     <HeroLayout
       heroContent={<StartContent />}
       progressed={currentScreen != null}
-      showBackButton={true}
+      showBackButton={currentScreen != null}
       onBackClick={handleBackClick}
       backgroundVideoUrl={heroVideoUrl}
     >

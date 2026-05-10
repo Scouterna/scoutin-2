@@ -68,21 +68,32 @@ export async function goBack(
     throw new Error("No session ID found in context");
   }
 
-  const lastCompleted = await findLastCompletedStep(sessionId);
-  if (!lastCompleted) {
-    ws.send({ name: "session:terminated" });
+  // Walk backwards, skipping steps marked skipOnGoBack.
+  const maxSteps = 100;
+  for (let i = 0; i < maxSteps; i++) {
+    const lastCompleted = await findLastCompletedStep(sessionId);
+    if (!lastCompleted) {
+      ws.send({ name: "session:terminated" });
+      return;
+    }
+
+    const step = stepRegistry.get(lastCompleted.def.uses);
+    if (!step) {
+      throw new Error(`Step implementation ${lastCompleted.def.uses} not found`);
+    }
+
+    if (step.skipOnGoBack) {
+      await deleteStepData(lastCompleted.data.id);
+      continue;
+    }
+
+    const ctx = createStepContext(c, ws, step);
+    await step.hooks?.onStepRollback?.(ctx);
+    await deleteStepData(lastCompleted.data.id);
+
+    const currentStep = await getCurrentStep(sessionId);
+    await startStep(c, ws, currentStep);
     return;
   }
-
-  const step = stepRegistry.get(lastCompleted.def.uses);
-  if (!step) {
-    throw new Error(`Step implementation ${lastCompleted.def.uses} not found`);
-  }
-
-  const ctx = createStepContext(c, ws, step);
-  await step.hooks?.onStepRollback?.(ctx);
-  await deleteStepData(lastCompleted.data.id);
-
-  const currentStep = await getCurrentStep(sessionId);
-  await startStep(c, ws, currentStep);
+  throw new Error(`goBack exceeded ${maxSteps} steps — possible infinite loop`);
 }
