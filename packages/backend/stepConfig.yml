@@ -12,6 +12,16 @@ steps:
     with:
       scannerSide: right
 
+  - if: |
+      ${{
+        steps.identify.outputs.dataSource == 'groups' &&
+        steps.identify.outputs.participant.subGroup != 'leader'
+      }}
+    uses: base:block
+    with:
+      title: "Du kan inte checka in"
+      message: "Endast ledare kan checka in deltagare."
+
   # deduplicateSession will ensure that there is only one session active for the
   # actor. If there are any other sessions the user is prompted to "Pick up
   # where you left off" or "Start over". If the user chooses to start over, the
