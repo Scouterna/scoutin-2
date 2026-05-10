@@ -5,7 +5,7 @@ import {
   Parser,
 } from "./github-actions-expressions/index.ts";
 
-const WHOLE_EXPR_REGEX = /^\$\{\{(?<expr>.*?)\}\}$/;
+const WHOLE_EXPR_REGEX = /^\$\{\{(?<expr>.*?)\}\}$/s;
 const PARTIAL_EXPR_REGEX = /\$\{\{(.*?)\}\}/g;
 
 export function recursivelyEvaluateExpressionsInObject(
@@ -58,6 +58,8 @@ export function evaluateExpression(
   expression: string,
   context: Record<string, unknown>,
 ) {
+  // Strip line comments before lexing (# through end of line, not inside strings)
+  expression = expression.replace(/\s*#[^\n"]*/g, "");
   const lexer = new Lexer(expression);
   const lr = lexer.lex();
 

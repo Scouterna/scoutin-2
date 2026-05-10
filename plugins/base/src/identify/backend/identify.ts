@@ -11,15 +11,16 @@ import { typedMethod } from "@scouterna/scoutin-plugin-api/backend";
 import { type } from "arktype";
 import { normalizeQuery } from "./utils.ts";
 
-type Actor = {
+type Candidate = {
   id: string;
   firstName: string;
   lastName: string;
+  subGroup?: string | null;
   dataSource: string;
   dataSourceName: Record<string, string>;
 };
 
-const participantToActor = (p: Participant): Actor => {
+const participantToCandidate = (p: Participant): Candidate => {
   const dataSource = dataSourceConfig.dataSources[p.dataSource];
 
   if (!dataSource) {
@@ -32,13 +33,14 @@ const participantToActor = (p: Participant): Actor => {
     id: p.id,
     firstName: p.firstName,
     lastName: p.lastName,
+    subGroup: p.subGroup,
     dataSource: p.dataSource,
     dataSourceName: dataSource.name,
   };
 };
 
 type State = {
-  actors?: Actor[];
+  candidates?: Candidate[];
 };
 
 export const identify: StepImplementation<State> = {
@@ -49,6 +51,13 @@ export const identify: StepImplementation<State> = {
   outputs: type({
     dataSource: type("string"),
     actorId: type("string"),
+    participant: type({
+      id: "string",
+      firstName: "string",
+      lastName: "string",
+      dataSource: "string",
+      dataSourceName: "Record<string, string>",
+    }),
   }),
   hooks: {
     async onStepStart(ctx) {
@@ -78,42 +87,44 @@ export const identify: StepImplementation<State> = {
           return;
         }
 
-        const actors = participants.map(participantToActor);
-        ctx.setState("actors", actors);
+        const candidates = participants.map(participantToCandidate);
+        ctx.setState("candidates", candidates);
 
-        if (actors.length === 1 && actors[0]) {
+        if (candidates.length === 1 && candidates[0]) {
           await ctx.showScreen("base:identify:previewActor", {
-            actor: actors[0],
+            candidate: candidates[0],
           });
         } else {
           await ctx.showScreen("base:identify:selectActor", {
-            actors,
+            candidates,
           });
         }
       },
     }),
     selectActor: typedMethod({
       inputs: type({
-        actorId: type("string"),
+        participantId: type("string"),
       }),
       async handler(ctx: StepMethodContext<State>, inputs: unknown) {
-        const typedInputs = inputs as { actorId: string };
-        const actors = ctx.getState("actors");
-        if (!actors) {
-          throw new Error("Actors not set in state");
+        const typedInputs = inputs as { participantId: string };
+        const candidates = ctx.getState("candidates");
+        if (!candidates) {
+          throw new Error("Candidates not set in state");
         }
 
-        const actor = actors.find((a) => a.id === typedInputs.actorId);
-        if (!actor) {
+        const candidate = candidates.find(
+          (a) => a.id === typedInputs.participantId,
+        );
+        if (!candidate) {
           throw new Error(
-            `Selected actor with id ${typedInputs.actorId} not found in state`,
+            `Selected participant with id ${typedInputs.participantId} not found in state`,
           );
         }
 
-        ctx.setState("actors", [actor]);
+        ctx.setState("candidates", [candidate]);
 
         await ctx.showScreen("base:identify:previewActor", {
-          actor,
+          candidate,
         });
       },
     }),
@@ -124,25 +135,26 @@ export const identify: StepImplementation<State> = {
     }),
     confirmActor: typedMethod({
       async handler(ctx: StepMethodContext<State>) {
-        const actors = ctx.getState("actors");
-        if (!actors) {
-          throw new Error("Actors not set in state");
+        const candidates = ctx.getState("candidates");
+        if (!candidates) {
+          throw new Error("Candidates not set in state");
         }
 
-        if (actors.length !== 1) {
+        if (candidates.length !== 1) {
           throw new Error(
-            `Expected exactly one actor in state, but found ${actors.length}`,
+            `Expected exactly one candidate in state, but found ${candidates.length}`,
           );
         }
 
         // biome-ignore lint/style/noNonNullAssertion: Length is checked above
-        const actor = actors[0]!;
+        const candidate = candidates[0]!;
 
-        await ctx.setActor({ participantId: actor.id });
+        await ctx.setActor({ participantId: candidate.id });
 
         await ctx.setCompleted({
-          dataSource: actor.dataSource,
-          actorId: actor.id,
+          dataSource: candidate.dataSource,
+          actorId: candidate.id,
+          participant: candidate,
         });
       },
     }),

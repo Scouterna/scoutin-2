@@ -34,6 +34,19 @@ export async function findParticipantsByLookupValue(value: string) {
   });
 }
 
+export async function getSubjectCandidates(actorParticipantId: string) {
+  const actorParticipant = await prisma.participant.findUnique({
+    where: { id: actorParticipantId },
+    include: { participantGroup: { include: { participants: true } } },
+  });
+
+  if (!actorParticipant) {
+    return [];
+  }
+
+  return actorParticipant.participantGroup?.participants ?? [];
+}
+
 export async function loadDataSourceIntoDatabase(
   dataSource: DataSource,
   dataSourceName: string,

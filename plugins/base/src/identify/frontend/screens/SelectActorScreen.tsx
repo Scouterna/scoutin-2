@@ -2,24 +2,20 @@ import {
   usePluginSocket,
   ValidationError,
 } from "@scouterna/scoutin-plugin-api/frontend";
-import {
-  ScoutDivider,
-  ScoutListView,
-  ScoutListViewItem,
-} from "@scouterna/ui-react";
+import { ScoutListView, ScoutListViewItem } from "@scouterna/ui-react";
 import { type } from "arktype";
 import { Fragment } from "react";
 
-const Actor = type({
+const Candidate = type({
   id: "string",
   firstName: "string",
   lastName: "string",
   dataSourceName: "Record<string, string>",
 });
-type Actor = typeof Actor.infer;
+type Candidate = typeof Candidate.infer;
 
 const Payload = type({
-  actors: Actor.array(),
+  candidates: Candidate.array(),
 });
 
 export function SelectActorScreen({ payload }: { payload: object }) {
@@ -31,13 +27,13 @@ export function SelectActorScreen({ payload }: { payload: object }) {
     return <ValidationError errors={validPayload} />;
   }
 
-  const handleSelect = (actor: Actor) => {
+  const handleSelect = (candidate: Candidate) => {
     socket?.send({
       name: "step:callMethod",
       data: {
         name: "selectActor",
         inputs: {
-          actorId: actor.id,
+          participantId: candidate.id,
         },
       },
     });
@@ -53,14 +49,14 @@ export function SelectActorScreen({ payload }: { payload: object }) {
       </div>
 
       <ScoutListView className="max-w-md">
-        {validPayload.actors.map((actor, index) => (
-          <Fragment key={actor.id}>
+        {validPayload.candidates.map((candidate) => (
+          <Fragment key={candidate.id}>
             <ScoutListViewItem
-              primary={`Som ${actor.dataSourceName.sv}`}
+              primary={`Som ${candidate.dataSourceName.sv}`}
               action="chevron"
-              onClick={() => handleSelect(actor)}
+              onClick={() => handleSelect(candidate)}
             />
-            {/* {index < validPayload.actors.length - 1 && <ScoutDivider />} */}
+            {/* {index < validPayload.candidates.length - 1 && <ScoutDivider />} */}
           </Fragment>
         ))}
       </ScoutListView>

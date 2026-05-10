@@ -7,7 +7,7 @@ import { ScoutButton } from "@scouterna/ui-react";
 import { type } from "arktype";
 
 const Payload = type({
-  actor: {
+  candidate: {
     id: "string",
     firstName: "string",
     lastName: "string",
@@ -35,16 +35,18 @@ export function PreviewActorScreen({ payload }: { payload: object }) {
     <div className="flex flex-col gap-4">
       <div>
         <h1 className="text-heading-base font-semibold">
-          Hej {validPayload.actor.firstName}!
+          Hej {validPayload.candidate.firstName}!
         </h1>
-        <p className="text-body-base">Ser den här infon ut att stämma?</p>
+        <p className="text-body-base">
+          Ser den här informationen ut att stämma?
+        </p>
       </div>
 
       <table className="w-full text-left">
         <tbody>
           {[
-            ["Förnamn", validPayload.actor.firstName],
-            ["Efternamn", validPayload.actor.lastName],
+            ["Förnamn", validPayload.candidate.firstName],
+            ["Efternamn", validPayload.candidate.lastName],
           ].map(([label, value]) => (
             <tr key={label}>
               <th className="font-medium w-0 pr-4">{label}:</th>

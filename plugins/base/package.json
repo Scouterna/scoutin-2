@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./backend": "./src/backend/index.ts",
-    "./frontend": "./src/frontend/index.tsx"
+    "./backend": "./src/backend.ts",
+    "./frontend": "./src/frontend.tsx"
   },
   "dependencies": {
     "@scouterna/scoutin-plugin-api": "workspace:^",

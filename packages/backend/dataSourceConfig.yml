@@ -7,6 +7,18 @@ dataSources:
     projectId: 56032
     includeIndividuals: false
     includeGroups: true
+    subGroups:
+      leader:
+        name:
+          sv: Ledare
+          en: Leader
+        condition: |
+          ${{
+            participant.fee_id == 32006 || # Ledaravgift
+            participant.fee_id == 32007 || # Ledaravgift kortvecka
+            participant.fee_id == 31997 || # Ledaravgift efteranmälan
+            participant.fee_id == 31988    # Ledaravgift kortvecka efteranmälan
+          }}
     keys:
       groups: ${SCOUTNET_GROUPS_GROUPS_KEY}
       participants: ${SCOUTNET_GROUPS_PARTICIPANTS_KEY}

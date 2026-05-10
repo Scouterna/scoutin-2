@@ -1,6 +1,11 @@
-import { createAuthorizationHeader, createClient } from "@scouterna/scoutnet";
+import {
+  createAuthorizationHeader,
+  createClient,
+  type ScoutnetClient,
+} from "@scouterna/scoutnet";
 import { type } from "arktype";
 import { prisma } from "../../app/prisma.ts";
+import { evaluateExpressionsInString } from "../../core/expressions/expressions.ts";
 import { hashLookupValue } from "./data.service.ts";
 
 export const ScoutnetDataSource = type({
@@ -15,12 +20,19 @@ export const ScoutnetDataSource = type({
   ),
   includeIndividuals: "boolean",
   includeGroups: "boolean",
-  keys: type({
+  /**
+   * Sub groups are evaluated in order for each participant. The first matching sub group is chosen.
+   */
+  "subGroups?": type.Record("string", {
+    name: "Record<string, string>",
+    condition: "string",
+  }),
+  keys: {
     groups: "string",
     participants: "string",
     checkin: "string",
     questions: "string",
-  }),
+  },
 });
 export type ScoutnetDataSource = typeof ScoutnetDataSource.infer;
 
@@ -30,6 +42,15 @@ function getClient() {
   });
 }
 
+const ScoutnetGroup = type({
+  groupId: type("number | string").pipe((v) => String(v)),
+  name: "string",
+  project_stats: type.Record("string", {
+    project_id: type("number | string").pipe((v) => String(v)),
+    group_participants: "number",
+  }),
+});
+
 const ScoutnetParticipant = type({
   member_no: type("number | string").pipe((v) => String(v)),
   first_name: "string",
@@ -38,59 +59,49 @@ const ScoutnetParticipant = type({
   "ssno?": "string",
   "date_of_birth?": "string",
   "cancelled?": "boolean",
+  "group_registration_info?": {
+    "group_id?": type("number | string | null"),
+  },
 });
 
 export async function importScoutnetData(
   dataSource: ScoutnetDataSource,
   dataSourceName: string,
 ) {
+  const start = performance.now();
+  console.log(
+    `Starting import of Scoutnet data for data source "${dataSourceName}"...`,
+  );
+
   const client = getClient();
 
   // TODO: Care about includeIndividuals and includeGroups. Some events could have both groups and individuals.
 
-  const res = await client.GET("/project/get/participants", {
-    headers: {
-      Authorization: createAuthorizationHeader({
-        resourceId: dataSource.projectId,
-        key: dataSource.keys.participants,
-      }),
-    },
-  });
-
-  if ("error" in res) {
-    throw new Error(
-      `Failed to fetch participants from Scoutnet: ${res.response.status}`,
+  if (dataSource.includeGroups) {
+    const groups = await getGroups(client, dataSource);
+    await prisma.$transaction(
+      groups.map((g) =>
+        prisma.participantGroup.upsert({
+          where: {
+            dataSource_idInDataSource: {
+              dataSource: dataSourceName,
+              idInDataSource: g.groupId,
+            },
+          },
+          create: {
+            dataSource: dataSourceName,
+            idInDataSource: g.groupId,
+            name: g.name,
+          },
+          update: {
+            name: g.name,
+          },
+        }),
+      ),
     );
   }
 
-  if (!res.data.participants || Array.isArray(res.data.participants)) {
-    throw new Error("No participants data received from Scoutnet");
-  }
-
-  const participants = Object.values(res.data.participants)
-    // Remap data to validated participant objects
-    .flatMap((p) => {
-      const out = ScoutnetParticipant(p);
-      if (out instanceof type.errors) {
-        console.warn(
-          `Invalid participant data from Scoutnet for participant "${p.member_no}": ${out.summary}`,
-        );
-        return [];
-      }
-      return [out];
-    })
-    // Filter out participants that do not match criteria
-    .filter((p) => {
-      if (p.cancelled) {
-        return false;
-      }
-
-      if (!dataSource.feeIds || dataSource.feeIds.length === 0) {
-        return true;
-      }
-
-      return dataSource.feeIds.includes(p.fee_id);
-    });
+  const participants = await getParticipants(client, dataSource);
 
   // TODO: Make sure we soft delete cancelled participants and participants that
   // are no longer present in Scoutnet. Soft delete should entail keeping them
@@ -120,7 +131,7 @@ export async function importScoutnetData(
   }
 
   await prisma.$transaction(
-    participants.map((p) => {
+    participants.flatMap((p) => {
       const lookupValues = lookupValuesByParticipantId.get(p.member_no);
 
       if (!lookupValues) {
@@ -129,26 +140,193 @@ export async function importScoutnetData(
         );
       }
 
-      return prisma.participant.upsert({
-        where: {
-          dataSource_idInDataSource: {
+      const groupId = p.group_registration_info?.group_id;
+
+      if (dataSource.includeGroups && !groupId) {
+        console.warn(
+          `Participant ${p.member_no} is missing group information, but groups are included in the data source. This participant will be skipped.`,
+        );
+        return [];
+      }
+
+      const participantGroup = groupId
+        ? {
+            connect: {
+              dataSource_idInDataSource: {
+                dataSource: dataSourceName,
+                idInDataSource: String(groupId),
+              },
+            },
+          }
+        : undefined;
+
+      const subGroup = resolveSubGroup(dataSource, p);
+
+      return [
+        prisma.participant.upsert({
+          where: {
+            dataSource_idInDataSource: {
+              dataSource: dataSourceName,
+              idInDataSource: p.member_no,
+            },
+          },
+          create: {
             dataSource: dataSourceName,
             idInDataSource: p.member_no,
+            firstName: p.first_name,
+            lastName: p.last_name,
+            lookupValues,
+            participantGroup,
+            subGroup,
           },
-        },
-        create: {
-          dataSource: dataSourceName,
-          idInDataSource: p.member_no,
-          firstName: p.first_name,
-          lastName: p.last_name,
-          lookupValues,
-        },
-        update: {
-          firstName: p.first_name,
-          lastName: p.last_name,
-          lookupValues,
-        },
-      });
+          update: {
+            firstName: p.first_name,
+            lastName: p.last_name,
+            lookupValues,
+            participantGroup,
+            subGroup,
+          },
+        }),
+      ];
     }),
   );
+
+  const end = performance.now();
+  console.log(
+    `Finished import of Scoutnet data for data source "${dataSourceName}" in ${(
+      (end - start) / 1000
+    ).toFixed(2)} seconds.`,
+  );
+}
+
+async function getGroups(
+  client: ScoutnetClient,
+  dataSource: ScoutnetDataSource,
+) {
+  const res = await client.GET("/project/get/groups", {
+    headers: {
+      Authorization: createAuthorizationHeader({
+        resourceId: dataSource.projectId,
+        key: dataSource.keys.groups,
+      }),
+    },
+  });
+
+  if ("error" in res) {
+    throw new Error(
+      `Failed to fetch groups from Scoutnet: ${res.response.status}`,
+    );
+  }
+
+  const allGroups = Object.values(res.data).flatMap((org) =>
+    Object.values(org.regions ?? {}).flatMap((region) =>
+      Object.values(region.districts ?? {}).flatMap((district) =>
+        Object.entries(district.groups),
+      ),
+    ),
+  );
+
+  return (
+    allGroups
+      // Remap data to validated group objects
+      .flatMap(([groupId, g]) => {
+        const out = ScoutnetGroup({ groupId, ...g });
+        if (out instanceof type.errors) {
+          console.warn(
+            `Invalid group data from Scoutnet for group "${groupId}": ${out.summary}`,
+          );
+          return [];
+        }
+        return [out];
+      })
+      // Filter out groups that do not match criteria
+      .filter((g) => {
+        const groupParticipants =
+          g.project_stats?.[dataSource.projectId]?.group_participants ?? 0;
+
+        if (groupParticipants <= 0) {
+          console.warn(
+            `Group "${g.groupId}" has no participants registered for project ${dataSource.projectId}, skipping...`,
+          );
+          return false;
+        }
+
+        return true;
+      })
+  );
+}
+
+async function getParticipants(
+  client: ScoutnetClient,
+  dataSource: ScoutnetDataSource,
+) {
+  const res = await client.GET("/project/get/participants", {
+    headers: {
+      Authorization: createAuthorizationHeader({
+        resourceId: dataSource.projectId,
+        key: dataSource.keys.participants,
+      }),
+    },
+  });
+
+  if ("error" in res) {
+    throw new Error(
+      `Failed to fetch participants from Scoutnet: ${res.response.status}`,
+    );
+  }
+
+  if (!res.data.participants || Array.isArray(res.data.participants)) {
+    throw new Error("No participants data received from Scoutnet");
+  }
+
+  return (
+    Object.values(res.data.participants)
+      // Remap data to validated participant objects
+      .flatMap((p) => {
+        const out = ScoutnetParticipant(p);
+        if (out instanceof type.errors) {
+          console.warn(
+            `Invalid participant data from Scoutnet for participant "${p.member_no}": ${out.summary}`,
+          );
+          return [];
+        }
+        return [out];
+      })
+      // Filter out participants that do not match criteria
+      .filter((p) => {
+        if (p.cancelled) {
+          return false;
+        }
+
+        if (!dataSource.feeIds || dataSource.feeIds.length === 0) {
+          return true;
+        }
+
+        return dataSource.feeIds.includes(p.fee_id);
+      })
+  );
+}
+
+type ScoutnetParticipantOut = typeof ScoutnetParticipant.infer;
+
+function resolveSubGroup(
+  dataSource: ScoutnetDataSource,
+  participant: ScoutnetParticipantOut,
+): string | null {
+  if (!dataSource.subGroups) return null;
+
+  const context = { participant };
+
+  for (const [key, subGroup] of Object.entries(dataSource.subGroups)) {
+    const result = evaluateExpressionsInString(subGroup.condition, context);
+    if (typeof result === "string") {
+      console.warn(
+        `Subgroup condition for "${key}" did not evaluate to a boolean, skipping.`,
+      );
+      continue;
+    }
+    if (result.number()) return key;
+  }
+
+  return null;
 }
