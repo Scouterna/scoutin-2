@@ -1,15 +1,17 @@
-import { ScoutButton } from "@scouterna/ui-react";
+import { ScoutButton, ScoutLoader } from "@scouterna/ui-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { authenticateSocket, prepareLinkSocket } from "../api/session";
+import { LinkLandingContent } from "../components/link/LinkLandingContent";
 import { ScreenRenderer } from "../screens/ScreenRenderer";
-import { LinkSocketLoader } from "../socket/LinkSocketLoader";
 import {
   currentScreenAtom,
   screenHistoryAtom,
   sessionInfoAtom,
 } from "../store/session";
 import { socketAtom } from "../store/socket";
+import { setupSocket } from "../socket/socketLogic";
 
 export const Route = createFileRoute("/link/$linkId")({
   component: RouteComponent,
@@ -22,14 +24,46 @@ async function loadStyles() {
 function RouteComponent() {
   const { linkId } = Route.useParams();
   const [stylesLoaded, setStylesLoaded] = useState(false);
-  const socket = useAtomValue(socketAtom);
-  const [screenHistory, setScreenHistory] = useAtom(screenHistoryAtom);
-  const setCurrentScreen = useSetAtom(currentScreenAtom);
+  const [socket, setSocket] = useAtom(socketAtom);
+  const [currentScreen, setCurrentScreen] = useAtom(currentScreenAtom);
+  const setScreenHistory = useSetAtom(screenHistoryAtom);
   const sessionInfo = useAtomValue(sessionInfoAtom);
+  const [error, setError] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
+  const tokenRef = useRef<string | null>(null);
+  const loaded = useRef(false);
 
   useEffect(() => {
     loadStyles().finally(() => setStylesLoaded(true));
   }, []);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: setSocket should not be a dependency
+  useEffect(() => {
+    if (socket || loaded.current) return;
+    loaded.current = true;
+
+    prepareLinkSocket(linkId)
+      .then(({ socket: s, token }) => {
+        tokenRef.current = token;
+        setupSocket(s);
+        setSocket(s);
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : String(err));
+      });
+  }, [linkId, socket]);
+
+  const handleStart = useCallback(async () => {
+    if (!socket || !tokenRef.current) return;
+    setStarting(true);
+    try {
+      await authenticateSocket(socket, tokenRef.current);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setStarting(false);
+    }
+  }, [socket]);
 
   const handleBack = useCallback(() => {
     setScreenHistory((prev) => {
@@ -44,11 +78,35 @@ function RouteComponent() {
 
   if (!stylesLoaded) return null;
 
+  const renderContent = () => {
+    if (error) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full gap-4">
+          <p className="text-red-600 text-center">{error}</p>
+          <ScoutButton variant="primary" onClick={() => window.location.reload()}>
+            Försök igen
+          </ScoutButton>
+        </div>
+      );
+    }
+    if (!socket) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <ScoutLoader size="xl" />
+        </div>
+      );
+    }
+    if (currentScreen == null) {
+      return <LinkLandingContent onStart={handleStart} starting={starting} />;
+    }
+    return <ScreenRenderer />;
+  };
+
   return (
     <div className="flex flex-col h-full min-h-screen">
       <div className="flex items-center justify-between p-4 border-b border-gray-100">
         <div>
-          {screenHistory.length > 0 && (
+          {currentScreen != null && (
             <ScoutButton variant="text" onClick={handleBack}>
               Tillbaka
             </ScoutButton>
@@ -61,9 +119,7 @@ function RouteComponent() {
         )}
       </div>
       <div className="flex-1 p-6">
-        <LinkSocketLoader linkId={linkId}>
-          <ScreenRenderer />
-        </LinkSocketLoader>
+        {renderContent()}
       </div>
     </div>
   );

@@ -14,7 +14,9 @@ import {
   clearStepState,
   getStepMeta,
   getStepState,
+  markScreenShown,
   setStepStateKey,
+  wasScreenShown,
 } from "../websocket/sessionRegistry.ts";
 import type { TypedWSContext } from "../websocket/socketRouter.ts";
 import type { TypedContext } from "../websocket/types.ts";
@@ -75,6 +77,7 @@ export function createStepContext(
         stepMeta.idInFlow,
         stepMeta.evaluatedInputs,
         validatedOutputs,
+        !wasScreenShown(sessionId),
       );
 
       const currentStep = await getCurrentStep(effectiveSessionId);
@@ -94,6 +97,7 @@ export function createStepContext(
       clearStepState(sessionId);
     },
     async showScreen(screenId, payload = {}) {
+      markScreenShown(sessionId);
       ws.send({
         name: "step:showScreen",
         data: { screenId, payload },

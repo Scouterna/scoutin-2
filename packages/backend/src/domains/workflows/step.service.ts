@@ -227,6 +227,7 @@ export async function completeStep(
   idInFlow: string | null | undefined,
   inputs: Record<string, unknown> | null | undefined,
   outputs: Record<string, unknown>,
+  autoCompleted = false,
 ) {
   // Making sure that what we try to store in the database is actually serializable.
   const jsonifiedInputs = JSON.parse(JSON.stringify(inputs));
@@ -240,6 +241,7 @@ export async function completeStep(
       evaluatedInputs: jsonifiedInputs,
       outputs: jsonifiedOutputs,
       completedAt: new Date(),
+      autoCompleted,
     },
   });
 }

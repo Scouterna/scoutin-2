@@ -5,7 +5,7 @@ import {
   getCurrentStep,
 } from "../../domains/workflows/step.service.ts";
 import { stepRegistry } from "../../domains/workflows/steps.ts";
-import { setStepMeta } from "../websocket/sessionRegistry.ts";
+import { clearScreenTracking, setStepMeta } from "../websocket/sessionRegistry.ts";
 import type { TypedWSContext } from "../websocket/socketRouter.ts";
 import type { TypedContext } from "../websocket/types.ts";
 import { createStepContext } from "./stepContext.ts";
@@ -34,6 +34,7 @@ export async function startStep(
     idInFlow: stepDef.id,
     evaluatedInputs: stepDef.with,
   });
+  clearScreenTracking(sessionId);
 
   ws.send({ name: "step:started" });
   await step.hooks?.onStepStart?.(ctx);
@@ -82,14 +83,13 @@ export async function goBack(
       throw new Error(`Step implementation ${lastCompleted.def.uses} not found`);
     }
 
-    if (step.skipOnGoBack) {
-      await deleteStepData(lastCompleted.data.id);
-      continue;
-    }
-
     const ctx = createStepContext(c, ws, step);
     await step.hooks?.onStepRollback?.(ctx);
     await deleteStepData(lastCompleted.data.id);
+
+    if (step.skipOnGoBack || lastCompleted.data.autoCompleted) {
+      continue;
+    }
 
     const currentStep = await getCurrentStep(sessionId);
     await startStep(c, ws, currentStep);

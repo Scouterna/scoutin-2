@@ -66,8 +66,9 @@ model CheckinSessionStepData {
   // The inputs provided in the `with` field in the step config after evaluation.
   evaluatedInputs Json
 
-  outputs     Json?
-  completedAt DateTime?
+  outputs       Json?
+  completedAt   DateTime?
+  autoCompleted Boolean   @default(false)
 
   sessionId String         @db.Uuid
   session   CheckinSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)

@@ -34,12 +34,14 @@ export async function create() {
 }
 
 /**
- * Opens an authenticated WebSocket connection for a new session created from
- * a pre-checkin link. Intended for use in the link flow.
+ * Creates a session from a pre-checkin link and opens an unauthenticated
+ * WebSocket connection. Call `authenticateSocket` with the returned token to
+ * start the flow. Intended for use in the link flow.
  */
-export async function openLinkSocket(
-  linkId: string,
-): Promise<TypedSocket<Listeners, MessageTypes>> {
+export async function prepareLinkSocket(linkId: string): Promise<{
+  socket: TypedSocket<Listeners, MessageTypes>;
+  token: string;
+}> {
   const res = await api.session["from-link"].$post({ json: { linkId } });
   if (!res.ok) throw new Error("Failed to create session from link");
   const { token } = await res.json();
@@ -47,12 +49,21 @@ export async function openLinkSocket(
   const rawWs = await openSessionSocket();
   const socket = createTypedSocket<Listeners, MessageTypes>(rawWs);
 
+  return { socket, token };
+}
+
+/**
+ * Authenticates an existing WebSocket connection using a session token.
+ */
+export async function authenticateSocket(
+  socket: TypedSocket<Listeners, MessageTypes>,
+  token: string,
+): Promise<void> {
   return new Promise((resolve, reject) => {
     socket.once("auth:status", (data) => {
       if (data.status === "success") {
-        resolve(socket);
+        resolve();
       } else {
-        rawWs.close();
         reject(
           new Error(
             `Auth failed: ${"reason" in data ? data.reason : "unknown"}`,

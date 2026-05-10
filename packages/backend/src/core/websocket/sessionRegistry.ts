@@ -3,13 +3,17 @@ import type { MessageTypes } from "./messageTypes.ts";
 type ConnectionSend = (message: MessageTypes) => void;
 type ScreenData = { screenId: string; payload: object };
 
-type StepMeta = { idInFlow?: string; evaluatedInputs?: Record<string, unknown> };
+type StepMeta = {
+  idInFlow?: string;
+  evaluatedInputs?: Record<string, unknown>;
+};
 
 type SessionEntry = {
   connections: Set<ConnectionSend>;
   lastScreen: ScreenData | null;
   stepState: Record<string, unknown>;
   stepMeta: StepMeta | null;
+  hasShownScreen: boolean;
 };
 
 const registry = new Map<string, SessionEntry>();
@@ -17,7 +21,13 @@ const registry = new Map<string, SessionEntry>();
 function getOrCreate(sessionId: string): SessionEntry {
   let entry = registry.get(sessionId);
   if (!entry) {
-    entry = { connections: new Set(), lastScreen: null, stepState: {}, stepMeta: null };
+    entry = {
+      connections: new Set(),
+      lastScreen: null,
+      stepState: {},
+      stepMeta: null,
+      hasShownScreen: false,
+    };
     registry.set(sessionId, entry);
   }
   return entry;
@@ -47,6 +57,18 @@ export function getStepMeta(sessionId: string): StepMeta | null {
 
 export function setStepMeta(sessionId: string, meta: StepMeta): void {
   getOrCreate(sessionId).stepMeta = meta;
+}
+
+export function clearScreenTracking(sessionId: string): void {
+  getOrCreate(sessionId).hasShownScreen = false;
+}
+
+export function markScreenShown(sessionId: string): void {
+  getOrCreate(sessionId).hasShownScreen = true;
+}
+
+export function wasScreenShown(sessionId: string): boolean {
+  return registry.get(sessionId)?.hasShownScreen ?? false;
 }
 
 /**
