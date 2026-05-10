@@ -1,7 +1,11 @@
 import type { Listeners, MessageTypes } from "@scouterna/scoutin-backend";
 import type { TypedSocket } from "@/api/typedSocket";
 import { showErrorToast } from "@/lib/errors";
-import { currentScreenAtom, screenHistoryAtom, sessionInfoAtom } from "@/store/session";
+import {
+  currentScreenAtom,
+  screenHistoryAtom,
+  sessionInfoAtom,
+} from "@/store/session";
 import { store } from "@/store/store";
 
 export function setupSocket(socket: TypedSocket<Listeners, MessageTypes>) {

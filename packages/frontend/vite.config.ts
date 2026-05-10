@@ -8,7 +8,11 @@ import svgr from "vite-plugin-svgr";
 import babel from "@rolldown/plugin-babel";
 import jotaiDebugLabel from "jotai-babel/plugin-debug-label";
 import jotaiReactRefresh from "jotai-babel/plugin-react-refresh";
-import { pluginExternals, scoutinPlugins, pluginPackages } from "./vite-plugins/scoutinPlugins.ts";
+import {
+  pluginExternals,
+  scoutinPlugins,
+  pluginPackages,
+} from "./vite-plugins/scoutinPlugins.ts";
 
 // https://vitejs.dev/config/
 export default defineConfig({

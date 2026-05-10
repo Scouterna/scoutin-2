@@ -12,7 +12,9 @@ export const Route = createFileRoute("/_kiosk/test")({
 });
 
 function App() {
-  const [sessionCredentials, setSessionCredentials] = useAtom(sessionCredentialsAtom);
+  const [sessionCredentials, setSessionCredentials] = useAtom(
+    sessionCredentialsAtom,
+  );
   const [socket, _setSocket] = useAtom(socketAtom);
 
   const createSession = useMutation({

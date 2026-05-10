@@ -17,7 +17,14 @@ export function SessionDetail({ sessionId }: { sessionId: string }) {
   });
 
   if (isLoading) return <div>Loading…</div>;
-  if (!data) return <div>{isError && error instanceof Error ? error.message : "Session not found."}</div>;
+  if (!data)
+    return (
+      <div>
+        {isError && error instanceof Error
+          ? error.message
+          : "Session not found."}
+      </div>
+    );
 
   const actorName =
     data.actor?.firstName && data.actor?.lastName
@@ -49,7 +56,6 @@ export function SessionDetail({ sessionId }: { sessionId: string }) {
           </Typography>
         )}
       </Box>
-
     </Box>
   );
 }

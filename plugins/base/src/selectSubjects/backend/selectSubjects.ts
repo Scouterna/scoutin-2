@@ -5,14 +5,12 @@ import {
 import type { StepImplementation } from "@scouterna/scoutin-plugin-api/backend";
 import { type } from "arktype";
 
-type State = {};
-
 const ConfirmSubjectsInputs = type({
   participantIds: "string[]",
 });
 type ConfirmSubjectsInputs = typeof ConfirmSubjectsInputs.infer;
 
-export const selectSubjects: StepImplementation<State> = {
+export const selectSubjects: StepImplementation = {
   id: "base:selectSubjects",
   // inputs: type({
   //   "scannerSide?": "'top' | 'bottom' | 'left' | 'right'",
@@ -54,7 +52,7 @@ export const selectSubjects: StepImplementation<State> = {
         subGroups,
       });
     },
-    async onStepRollback(ctx) {
+    async onStepRollback(_ctx) {
       // await ctx.clearActor();
     },
   },

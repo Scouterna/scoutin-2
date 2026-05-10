@@ -214,143 +214,143 @@ export function AdminSessionOverview({ sessionId }: { sessionId: string }) {
       )}
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          {/* Top row: kiosk iframe + debug sidebar */}
-          <Box
+        {/* Top row: kiosk iframe + debug sidebar */}
+        <Box
+          sx={{
+            display: "flex",
+            gap: 2,
+            height: "calc(100vh - 280px)",
+            minHeight: 400,
+          }}
+        >
+          {/* Left: kiosk screen or placeholder */}
+          <Paper
+            variant="outlined"
             sx={{
+              flex: 1,
+              overflow: "hidden",
               display: "flex",
-              gap: 2,
-              height: "calc(100vh - 280px)",
-              minHeight: 400,
+              flexDirection: "column",
             }}
           >
-            {/* Left: kiosk screen or placeholder */}
-            <Paper
-              variant="outlined"
+            <Typography
+              variant="caption"
+              color="text.secondary"
               sx={{
-                flex: 1,
-                overflow: "hidden",
-                display: "flex",
-                flexDirection: "column",
+                px: 2,
+                pt: 1.5,
+                pb: 1,
+                display: "block",
+                borderBottom: 1,
+                borderColor: "divider",
               }}
             >
-              <Typography
-                variant="caption"
-                color="text.secondary"
+              Kiosk screen — {currentScreen?.screenId ?? "no screen"}
+            </Typography>
+            {socket ? (
+              <iframe
+                ref={iframeRef}
+                src="/kiosk-frame"
+                title="Kiosk preview"
+                style={{
+                  flex: 1,
+                  border: "none",
+                  width: "100%",
+                  padding: "1rem",
+                }}
+              />
+            ) : (
+              <Box
                 sx={{
-                  px: 2,
-                  pt: 1.5,
-                  pb: 1,
-                  display: "block",
-                  borderBottom: 1,
-                  borderColor: "divider",
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
-                Kiosk screen — {currentScreen?.screenId ?? "no screen"}
+                <Typography variant="body2" color="text.secondary">
+                  Connect to view the live session
+                </Typography>
+              </Box>
+            )}
+          </Paper>
+
+          <Divider orientation="vertical" flexItem />
+
+          {/* Right: debug panel */}
+          <Box sx={{ width: 360, overflowY: "auto" }}>
+            <AdminDebugPanel
+              sessionId={sessionId}
+              socket={socket}
+              currentScreenId={currentScreen?.screenId ?? null}
+            />
+          </Box>
+        </Box>
+
+        {/* Message log — below the screen */}
+        <Box>
+          <Typography variant="subtitle2" gutterBottom>
+            Message log
+          </Typography>
+          <Box
+            sx={{
+              height: 220,
+              overflowY: "auto",
+              display: "flex",
+              flexDirection: "column",
+              gap: 0.5,
+              border: 1,
+              borderColor: "divider",
+              borderRadius: 1,
+              p: 1,
+            }}
+          >
+            {messageLog.length === 0 && (
+              <Typography variant="caption" color="text.secondary">
+                No messages yet
               </Typography>
-              {socket ? (
-                <iframe
-                  ref={iframeRef}
-                  src="/kiosk-frame"
-                  title="Kiosk preview"
-                  style={{
-                    flex: 1,
-                    border: "none",
-                    width: "100%",
-                    padding: "1rem",
-                  }}
-                />
-              ) : (
-                <Box
+            )}
+            {messageLog.map((entry, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: log entries have no stable id
+              <Box key={i} sx={{ fontFamily: "monospace", fontSize: 11 }}>
+                <Typography
+                  component="span"
                   sx={{
-                    flex: 1,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
+                    fontSize: 11,
+                    color:
+                      entry.direction === "in"
+                        ? "primary.main"
+                        : "text.secondary",
+                    mr: 0.5,
                   }}
                 >
-                  <Typography variant="body2" color="text.secondary">
-                    Connect to view the live session
-                  </Typography>
-                </Box>
-              )}
-            </Paper>
-
-            <Divider orientation="vertical" flexItem />
-
-            {/* Right: debug panel */}
-            <Box sx={{ width: 360, overflowY: "auto" }}>
-              <AdminDebugPanel
-                sessionId={sessionId}
-                socket={socket}
-                currentScreenId={currentScreen?.screenId ?? null}
-              />
-            </Box>
-          </Box>
-
-          {/* Message log — below the screen */}
-          <Box>
-            <Typography variant="subtitle2" gutterBottom>
-              Message log
-            </Typography>
-            <Box
-              sx={{
-                height: 220,
-                overflowY: "auto",
-                display: "flex",
-                flexDirection: "column",
-                gap: 0.5,
-                border: 1,
-                borderColor: "divider",
-                borderRadius: 1,
-                p: 1,
-              }}
-            >
-              {messageLog.length === 0 && (
-                <Typography variant="caption" color="text.secondary">
-                  No messages yet
+                  {entry.direction === "in" ? "←" : "→"}
                 </Typography>
-              )}
-              {messageLog.map((entry, i) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: log entries have no stable id
-                <Box key={i} sx={{ fontFamily: "monospace", fontSize: 11 }}>
+                <Typography
+                  component="span"
+                  sx={{ fontSize: 11, fontWeight: "bold" }}
+                >
+                  {entry.name}
+                </Typography>
+                {entry.data !== undefined && (
                   <Typography
-                    component="span"
+                    component="pre"
                     sx={{
-                      fontSize: 11,
-                      color:
-                        entry.direction === "in"
-                          ? "primary.main"
-                          : "text.secondary",
-                      mr: 0.5,
+                      fontSize: 10,
+                      m: 0,
+                      pl: 1.5,
+                      color: "text.secondary",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-all",
                     }}
                   >
-                    {entry.direction === "in" ? "←" : "→"}
+                    {JSON.stringify(entry.data, null, 2)}
                   </Typography>
-                  <Typography
-                    component="span"
-                    sx={{ fontSize: 11, fontWeight: "bold" }}
-                  >
-                    {entry.name}
-                  </Typography>
-                  {entry.data !== undefined && (
-                    <Typography
-                      component="pre"
-                      sx={{
-                        fontSize: 10,
-                        m: 0,
-                        pl: 1.5,
-                        color: "text.secondary",
-                        whiteSpace: "pre-wrap",
-                        wordBreak: "break-all",
-                      }}
-                    >
-                      {JSON.stringify(entry.data, null, 2)}
-                    </Typography>
-                  )}
-                </Box>
-              ))}
-            </Box>
+                )}
+              </Box>
+            ))}
           </Box>
+        </Box>
       </Box>
     </Box>
   );

@@ -1,7 +1,7 @@
 import type { Listeners, MessageTypes } from "@scouterna/scoutin-backend";
 import { createAppError } from "../lib/errors";
-import { createTypedSocket, type TypedSocket } from "./typedSocket";
 import { api, ws } from "./api";
+import { createTypedSocket, type TypedSocket } from "./typedSocket";
 
 export { ws } from "./api";
 
@@ -104,7 +104,11 @@ export async function openAdminSessionSocket(
         resolve(socket);
       } else {
         rawWs.close();
-        reject(new Error(`Admin auth failed: ${"reason" in data ? data.reason : "unknown"}`));
+        reject(
+          new Error(
+            `Admin auth failed: ${"reason" in data ? data.reason : "unknown"}`,
+          ),
+        );
       }
     });
     socket.send({ name: "auth:authenticate", data: { token } });

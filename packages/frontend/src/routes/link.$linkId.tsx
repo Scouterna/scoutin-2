@@ -5,13 +5,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { authenticateSocket, prepareLinkSocket } from "../api/session";
 import { LinkLandingContent } from "../components/link/LinkLandingContent";
 import { ScreenRenderer } from "../screens/ScreenRenderer";
+import { setupSocket } from "../socket/socketLogic";
 import {
   currentScreenAtom,
   screenHistoryAtom,
   sessionInfoAtom,
 } from "../store/session";
 import { socketAtom } from "../store/socket";
-import { setupSocket } from "../socket/socketLogic";
 
 export const Route = createFileRoute("/link/$linkId")({
   component: RouteComponent,
@@ -83,7 +83,10 @@ function RouteComponent() {
       return (
         <div className="flex flex-col items-center justify-center h-full gap-4">
           <p className="text-red-600 text-center">{error}</p>
-          <ScoutButton variant="primary" onClick={() => window.location.reload()}>
+          <ScoutButton
+            variant="primary"
+            onClick={() => window.location.reload()}
+          >
             Försök igen
           </ScoutButton>
         </div>
@@ -118,9 +121,7 @@ function RouteComponent() {
           </span>
         )}
       </div>
-      <div className="flex-1 p-6">
-        {renderContent()}
-      </div>
+      <div className="flex-1 p-6">{renderContent()}</div>
     </div>
   );
 }

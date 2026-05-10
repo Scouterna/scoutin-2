@@ -51,11 +51,19 @@ type Link = {
   createdAt: string;
 };
 
-function DeleteLinkDialog({ link, onClose }: { link: Link; onClose: () => void }) {
+function DeleteLinkDialog({
+  link,
+  onClose,
+}: {
+  link: Link;
+  onClose: () => void;
+}) {
   const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: async () => {
-      const res = await api.admin.links[":id"].$delete({ param: { id: link.id } });
+      const res = await api.admin.links[":id"].$delete({
+        param: { id: link.id },
+      });
       if (!res.ok) throw new Error("Failed to delete link");
     },
     onSuccess: () => {
@@ -69,12 +77,17 @@ function DeleteLinkDialog({ link, onClose }: { link: Link; onClose: () => void }
       <DialogTitle>Delete link?</DialogTitle>
       <DialogContent>
         <DialogContentText>
-          This will permanently delete the link. Anyone with the URL will no longer be able to use it.
+          This will permanently delete the link. Anyone with the URL will no
+          longer be able to use it.
         </DialogContentText>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button color="error" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+        <Button
+          color="error"
+          onClick={() => mutation.mutate()}
+          disabled={mutation.isPending}
+        >
           Delete
         </Button>
       </DialogActions>
@@ -166,27 +179,28 @@ function LinksPage() {
           <Alert severity="error">{(mutation.error as Error).message}</Alert>
         )}
 
-        {mutation.data && (() => {
-          const url = `${window.location.origin}/link/${mutation.data.id}`;
-          return (
-            <TextField
-              label="Link URL"
-              value={url}
-              fullWidth
-              slotProps={{
-                input: {
-                  readOnly: true,
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <CopyButton text={url} />
-                    </InputAdornment>
-                  ),
-                },
-                htmlInput: { style: { fontFamily: "monospace" } },
-              }}
-            />
-          );
-        })()}
+        {mutation.data &&
+          (() => {
+            const url = `${window.location.origin}/link/${mutation.data.id}`;
+            return (
+              <TextField
+                label="Link URL"
+                value={url}
+                fullWidth
+                slotProps={{
+                  input: {
+                    readOnly: true,
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <CopyButton text={url} />
+                      </InputAdornment>
+                    ),
+                  },
+                  htmlInput: { style: { fontFamily: "monospace" } },
+                }}
+              />
+            );
+          })()}
       </Box>
 
       <Divider sx={{ my: 4 }} />
@@ -211,7 +225,12 @@ function LinksPage() {
               <TableRow key={link.id}>
                 <TableCell>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                    <a href={url} target="_blank" rel="noreferrer" style={{ fontFamily: "monospace", fontSize: 12 }}>
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ fontFamily: "monospace", fontSize: 12 }}
+                    >
                       {url}
                     </a>
                     <CopyButton text={url} />
@@ -221,9 +240,14 @@ function LinksPage() {
                 <TableCell sx={{ fontFamily: "monospace", fontSize: 12 }}>
                   {JSON.stringify(link.params)}
                 </TableCell>
-                <TableCell>{new Date(link.createdAt).toLocaleString()}</TableCell>
+                <TableCell>
+                  {new Date(link.createdAt).toLocaleString()}
+                </TableCell>
                 <TableCell padding="checkbox">
-                  <IconButton size="small" onClick={() => setDeletingLink(link)}>
+                  <IconButton
+                    size="small"
+                    onClick={() => setDeletingLink(link)}
+                  >
                     <DeleteOutlinedIcon fontSize="small" />
                   </IconButton>
                 </TableCell>
@@ -234,7 +258,10 @@ function LinksPage() {
       </Table>
 
       {deletingLink && (
-        <DeleteLinkDialog link={deletingLink} onClose={() => setDeletingLink(null)} />
+        <DeleteLinkDialog
+          link={deletingLink}
+          onClose={() => setDeletingLink(null)}
+        />
       )}
     </Box>
   );

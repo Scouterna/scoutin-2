@@ -24,7 +24,10 @@ export const linksAdminRouter = new Hono()
       },
     });
 
-    return c.json({ id: link.id, configFile: link.configFile, createdAt: link.createdAt }, 201);
+    return c.json(
+      { id: link.id, configFile: link.configFile, createdAt: link.createdAt },
+      201,
+    );
   })
   .get("/", async (c) => {
     const links = await prisma.checkinLink.findMany({

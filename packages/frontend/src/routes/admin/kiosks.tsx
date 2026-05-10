@@ -47,6 +47,7 @@ function timeAgo(date: string): string {
         week: 604800,
         month: 2592000,
       };
+      // biome-ignore lint/style/noNonNullAssertion: It's safe
       return rtf.format(Math.round(seconds / divisors[unit]!), unit);
     }
   }

@@ -12,7 +12,7 @@ const normalizePersonalIdentityNumber = (ssno: string) => {
   const pinRegex =
     /^(?<year>(?:\d{2})?\d{2})(?<month>\d{2})(?<day>\d{2})-?(?<lastfour>\d{4})$/;
   const match = ssno.match(pinRegex);
-  if (!match || !match.groups) {
+  if (!match?.groups) {
     return null;
   }
 

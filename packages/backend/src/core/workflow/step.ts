@@ -5,7 +5,10 @@ import {
   getCurrentStep,
 } from "../../domains/workflows/step.service.ts";
 import { stepRegistry } from "../../domains/workflows/steps.ts";
-import { clearScreenTracking, setStepMeta } from "../websocket/sessionRegistry.ts";
+import {
+  clearScreenTracking,
+  setStepMeta,
+} from "../websocket/sessionRegistry.ts";
 import type { TypedWSContext } from "../websocket/socketRouter.ts";
 import type { TypedContext } from "../websocket/types.ts";
 import { createStepContext } from "./stepContext.ts";
@@ -80,7 +83,9 @@ export async function goBack(
 
     const step = stepRegistry.get(lastCompleted.def.uses);
     if (!step) {
-      throw new Error(`Step implementation ${lastCompleted.def.uses} not found`);
+      throw new Error(
+        `Step implementation ${lastCompleted.def.uses} not found`,
+      );
     }
 
     const ctx = createStepContext(c, ws, step);

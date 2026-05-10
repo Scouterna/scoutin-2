@@ -39,7 +39,15 @@ export function AddKioskDialog({ open, onClose }: Props) {
             </Typography>
             <Typography
               variant="h3"
-              sx={{ py: 2, px: 1, bgcolor: "grey.100", borderRadius: 1, fontFamily: "monospace", textAlign: "center", letterSpacing: "0.2em" }}
+              sx={{
+                py: 2,
+                px: 1,
+                bgcolor: "grey.100",
+                borderRadius: 1,
+                fontFamily: "monospace",
+                textAlign: "center",
+                letterSpacing: "0.2em",
+              }}
             >
               {mutation.data.code}
             </Typography>

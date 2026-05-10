@@ -1,3 +1,4 @@
+import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -5,7 +6,6 @@ import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
-import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -76,7 +76,10 @@ export function SessionTable() {
     },
     onSuccess: async (data) => {
       await queryClient.invalidateQueries({ queryKey: ["admin", "sessions"] });
-      navigate({ to: "/admin/sessions/$sessionId", params: { sessionId: data.id } });
+      navigate({
+        to: "/admin/sessions/$sessionId",
+        params: { sessionId: data.id },
+      });
     },
     onError: () => {
       toast.error("Failed to create session");
@@ -113,7 +116,9 @@ export function SessionTable() {
   return (
     <Box>
       <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-        <Typography variant="h6" sx={{ flex: 1 }}>Sessions</Typography>
+        <Typography variant="h6" sx={{ flex: 1 }}>
+          Sessions
+        </Typography>
         <Button
           variant="contained"
           onClick={() => createSession.mutate()}
@@ -126,57 +131,60 @@ export function SessionTable() {
         ref={scrollRef}
         sx={{ maxHeight: "calc(100vh - 180px)", overflow: "auto" }}
       >
-      <Table stickyHeader>
-        <TableHead>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <TableCell key={header.id}>
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext(),
-                  )}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableHead>
-        <TableBody>
-          {paddingTop > 0 && (
-            <TableRow>
-              <TableCell
-                colSpan={columns.length}
-                sx={{ height: paddingTop, p: 0, border: 0 }}
-              />
-            </TableRow>
-          )}
-          {virtualRows.map((virtualRow) => {
-            const row = rows[virtualRow.index];
-            if (!row) return null;
-            return (
-              <TableRow
-                key={row.id}
-                data-index={virtualRow.index}
-                ref={virtualizer.measureElement}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+        <Table stickyHeader>
+          <TableHead>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableCell key={header.id}>
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext(),
+                    )}
                   </TableCell>
                 ))}
               </TableRow>
-            );
-          })}
-          {paddingBottom > 0 && (
-            <TableRow>
-              <TableCell
-                colSpan={columns.length}
-                sx={{ height: paddingBottom, p: 0, border: 0 }}
-              />
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+            ))}
+          </TableHead>
+          <TableBody>
+            {paddingTop > 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  sx={{ height: paddingTop, p: 0, border: 0 }}
+                />
+              </TableRow>
+            )}
+            {virtualRows.map((virtualRow) => {
+              const row = rows[virtualRow.index];
+              if (!row) return null;
+              return (
+                <TableRow
+                  key={row.id}
+                  data-index={virtualRow.index}
+                  ref={virtualizer.measureElement}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              );
+            })}
+            {paddingBottom > 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  sx={{ height: paddingBottom, p: 0, border: 0 }}
+                />
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </TableContainer>
     </Box>
   );

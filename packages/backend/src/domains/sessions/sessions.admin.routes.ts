@@ -45,7 +45,11 @@ export const sessionsAdminRouter = new Hono()
     try {
       stepStatuses = await getStepStatuses(session.id);
     } catch (err) {
-      console.error("Failed to compute step statuses for session", session.id, err);
+      console.error(
+        "Failed to compute step statuses for session",
+        session.id,
+        err,
+      );
       return c.json({ error: "Failed to load session details" }, 500);
     }
 

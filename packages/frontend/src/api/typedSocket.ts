@@ -105,21 +105,51 @@ export function createTypedSocket<
     addEventListener: socket.addEventListener.bind(socket),
     removeEventListener: socket.removeEventListener.bind(socket),
     close: socket.close.bind(socket),
-    get readyState() { return socket.readyState; },
-    get url() { return socket.url; },
-    get protocol() { return socket.protocol; },
-    get extensions() { return socket.extensions; },
-    get bufferedAmount() { return socket.bufferedAmount; },
-    get binaryType() { return socket.binaryType; },
-    set binaryType(v) { socket.binaryType = v; },
-    get onopen() { return socket.onopen; },
-    set onopen(v) { socket.onopen = v; },
-    get onclose() { return socket.onclose; },
-    set onclose(v) { socket.onclose = v; },
-    get onmessage() { return socket.onmessage; },
-    set onmessage(v) { socket.onmessage = v; },
-    get onerror() { return socket.onerror; },
-    set onerror(v) { socket.onerror = v; },
+    get readyState() {
+      return socket.readyState;
+    },
+    get url() {
+      return socket.url;
+    },
+    get protocol() {
+      return socket.protocol;
+    },
+    get extensions() {
+      return socket.extensions;
+    },
+    get bufferedAmount() {
+      return socket.bufferedAmount;
+    },
+    get binaryType() {
+      return socket.binaryType;
+    },
+    set binaryType(v) {
+      socket.binaryType = v;
+    },
+    get onopen() {
+      return socket.onopen;
+    },
+    set onopen(v) {
+      socket.onopen = v;
+    },
+    get onclose() {
+      return socket.onclose;
+    },
+    set onclose(v) {
+      socket.onclose = v;
+    },
+    get onmessage() {
+      return socket.onmessage;
+    },
+    set onmessage(v) {
+      socket.onmessage = v;
+    },
+    get onerror() {
+      return socket.onerror;
+    },
+    set onerror(v) {
+      socket.onerror = v;
+    },
     dispatchEvent: socket.dispatchEvent.bind(socket),
     send,
     on,
