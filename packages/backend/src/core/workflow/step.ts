@@ -35,7 +35,7 @@ export async function startStep(
     evaluatedInputs: stepDef.with,
   });
 
-  await ws.send({ name: "step:started" });
+  ws.send({ name: "step:started" });
   await step.hooks?.onStepStart?.(ctx);
 }
 
@@ -70,7 +70,7 @@ export async function goBack(
 
   const lastCompleted = await findLastCompletedStep(sessionId);
   if (!lastCompleted) {
-    await ws.send({ name: "session:terminated" });
+    ws.send({ name: "session:terminated" });
     return;
   }
 

@@ -39,15 +39,66 @@ const participantToCandidate = (p: Participant): Candidate => {
   };
 };
 
+async function searchCandidates(
+  query: string,
+  dataSources?: string[],
+): Promise<Candidate[]> {
+  const participants = await findParticipantsByLookupValue(query);
+  const filtered = dataSources
+    ? participants.filter((p) => dataSources.includes(p.dataSource))
+    : participants;
+  return filtered.map(participantToCandidate);
+}
+
+async function autoConfirm(
+  ctx: StepMethodContext<State>,
+  candidate: Candidate,
+) {
+  ctx.setState("candidates", [candidate]);
+  await ctx.setActor({ participantId: candidate.id });
+  await ctx.setCompleted({
+    dataSource: candidate.dataSource,
+    actorId: candidate.id,
+    participant: candidate,
+  });
+}
+
+async function showCandidates(
+  ctx: StepMethodContext<State>,
+  candidates: Candidate[],
+  skipConfirmation?: boolean,
+) {
+  ctx.setState("candidates", candidates);
+
+  if (candidates.length === 1 && candidates[0]) {
+    if (skipConfirmation) {
+      await autoConfirm(ctx, candidates[0]);
+    } else {
+      await ctx.showScreen("base:identify:previewActor", {
+        candidate: candidates[0],
+      });
+    }
+  } else {
+    await ctx.showScreen("base:identify:selectActor", { candidates });
+  }
+}
+
+const Inputs = type({
+  "scannerSide?": "'top' | 'bottom' | 'left' | 'right'",
+  "identifierHint?": "string",
+  "dataSources?": "string[]",
+  "skipConfirmation?": "boolean",
+});
+
+type Inputs = typeof Inputs.infer;
+
 type State = {
   candidates?: Candidate[];
 };
 
 export const identify: StepImplementation<State> = {
   id: "base:identify",
-  inputs: type({
-    "scannerSide?": "'top' | 'bottom' | 'left' | 'right'",
-  }),
+  inputs: Inputs,
   outputs: type({
     dataSource: type("string"),
     actorId: type("string"),
@@ -61,9 +112,21 @@ export const identify: StepImplementation<State> = {
   }),
   hooks: {
     async onStepStart(ctx) {
-      await ctx.showScreen("base:identify:start", {
-        scannerSide: ctx.getInputs().scannerSide,
-      });
+      const { scannerSide, identifierHint, dataSources, skipConfirmation } =
+        ctx.getInputs() as Inputs;
+
+      if (identifierHint != null) {
+        const candidates = await searchCandidates(
+          normalizeQuery(String(identifierHint)),
+          dataSources,
+        );
+        if (candidates.length > 0) {
+          await showCandidates(ctx, candidates, skipConfirmation);
+          return;
+        }
+      }
+
+      await ctx.showScreen("base:identify:start", { scannerSide });
     },
     async onStepRollback(ctx) {
       await ctx.clearActor();
@@ -76,29 +139,20 @@ export const identify: StepImplementation<State> = {
       }),
       async handler(ctx: StepMethodContext<State>, inputs: unknown) {
         const typedInputs = inputs as { query: string };
-        const normalizedQuery = normalizeQuery(typedInputs.query);
-        const participants =
-          await findParticipantsByLookupValue(normalizedQuery);
+        const { dataSources, skipConfirmation } = ctx.getInputs() as Inputs;
+        const candidates = await searchCandidates(
+          normalizeQuery(typedInputs.query),
+          dataSources,
+        );
 
-        if (participants.length === 0) {
+        if (candidates.length === 0) {
           await ctx.sendMessage("base:identify:noResults", {
             query: typedInputs.query,
           });
           return;
         }
 
-        const candidates = participants.map(participantToCandidate);
-        ctx.setState("candidates", candidates);
-
-        if (candidates.length === 1 && candidates[0]) {
-          await ctx.showScreen("base:identify:previewActor", {
-            candidate: candidates[0],
-          });
-        } else {
-          await ctx.showScreen("base:identify:selectActor", {
-            candidates,
-          });
-        }
+        await showCandidates(ctx, candidates, skipConfirmation);
       },
     }),
     selectActor: typedMethod({
@@ -121,11 +175,13 @@ export const identify: StepImplementation<State> = {
           );
         }
 
-        ctx.setState("candidates", [candidate]);
-
-        await ctx.showScreen("base:identify:previewActor", {
-          candidate,
-        });
+        const { skipConfirmation } = ctx.getInputs() as Inputs;
+        if (skipConfirmation) {
+          await autoConfirm(ctx, candidate);
+        } else {
+          ctx.setState("candidates", [candidate]);
+          await ctx.showScreen("base:identify:previewActor", { candidate });
+        }
       },
     }),
     denyActor: typedMethod({

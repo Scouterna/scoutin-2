@@ -5,20 +5,20 @@ import { useAtom } from "jotai";
 import { useCallback } from "react";
 import { socketAtom } from "@/store/socket";
 import * as session from "../../api/session";
-import { sessionInfoAtom } from "../../store/session";
+import { sessionCredentialsAtom } from "../../store/session";
 
 export const Route = createFileRoute("/_kiosk/test")({
   component: App,
 });
 
 function App() {
-  const [sessionInfo, setSessionInfo] = useAtom(sessionInfoAtom);
+  const [sessionCredentials, setSessionCredentials] = useAtom(sessionCredentialsAtom);
   const [socket, _setSocket] = useAtom(socketAtom);
 
   const createSession = useMutation({
     mutationFn: session.create,
     onSuccess: (data) => {
-      setSessionInfo({
+      setSessionCredentials({
         id: data.sessionId,
         token: data.token,
       });
@@ -30,7 +30,7 @@ function App() {
       console.error("No WebSocket connection available");
       return;
     }
-    if (!sessionInfo?.token) {
+    if (!sessionCredentials?.token) {
       console.error("No session token available for WebSocket connection");
       return;
     }
@@ -38,10 +38,10 @@ function App() {
     socket.send({
       name: "auth:authenticate",
       data: {
-        token: sessionInfo.token,
+        token: sessionCredentials.token,
       },
     });
-  }, [socket, sessionInfo]);
+  }, [socket, sessionCredentials]);
 
   const clearAuthTest = useCallback(() => {
     if (!socket) {

@@ -1,9 +1,72 @@
 import { prisma } from "@scouterna/scoutin-backend/plugin-services";
-import type { StepImplementation } from "@scouterna/scoutin-plugin-api/backend";
+import type {
+  StepImplementation,
+  StepMethodContext,
+} from "@scouterna/scoutin-plugin-api/backend";
 import { typedMethod } from "@scouterna/scoutin-plugin-api/backend";
+import { type } from "arktype";
+
+async function doStartOver(ctx: StepMethodContext) {
+  const currentSession = await prisma.checkinSession.findUnique({
+    where: { id: ctx.sessionId },
+    include: { actor: true },
+  });
+
+  if (!currentSession) {
+    throw new Error(`Session with ID ${ctx.sessionId} not found`);
+  }
+
+  await prisma.checkinSession.deleteMany({
+    where: {
+      actor: { participantId: currentSession.actor?.participantId },
+      NOT: { id: ctx.sessionId },
+    },
+  });
+
+  await ctx.setCompleted();
+}
+
+async function doResume(ctx: StepMethodContext) {
+  const currentSession = await prisma.checkinSession.findUnique({
+    where: { id: ctx.sessionId },
+    include: { actor: true },
+  });
+
+  if (!currentSession) {
+    throw new Error(`Session with ID ${ctx.sessionId} not found`);
+  }
+
+  const newestPreviousSession = await prisma.checkinSession.findFirst({
+    where: {
+      actor: { participantId: currentSession.actor?.participantId },
+      NOT: { id: ctx.sessionId },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (!newestPreviousSession) {
+    throw new Error(
+      `No previous session found for participant ${currentSession.actor?.participantId}`,
+    );
+  }
+
+  await prisma.checkinSession.deleteMany({
+    where: {
+      actor: { participantId: currentSession.actor?.participantId },
+      NOT: { id: newestPreviousSession.id },
+    },
+  });
+
+  ctx.overrideSession(newestPreviousSession.id);
+
+  await ctx.setCompleted();
+}
 
 export const deduplicateSession: StepImplementation = {
   id: "base:deduplicateSession",
+  inputs: type({
+    "force?": "'new' | 'resume'",
+  }),
   hooks: {
     async onStepStart(ctx) {
       const currentSession = await prisma.checkinSession.findUnique({
@@ -16,7 +79,6 @@ export const deduplicateSession: StepImplementation = {
       }
 
       if (!currentSession.actor?.participantId) {
-        // No actor associated with the session, so no deduplication needed.
         console.log("No actor associated with session, skipping deduplication");
         await ctx.setCompleted();
         return;
@@ -30,73 +92,31 @@ export const deduplicateSession: StepImplementation = {
         },
       });
 
-      if (sessions.length > 1) {
-        await ctx.showScreen("base:deduplicateSession:startOverPrompt");
+      if (sessions.length <= 1) {
+        await ctx.setCompleted();
         return;
       }
 
-      await ctx.setCompleted();
+      const { force } = ctx.getInputs();
+
+      if (force === "new") {
+        await doStartOver(ctx);
+      } else if (force === "resume") {
+        await doResume(ctx);
+      } else {
+        await ctx.showScreen("base:deduplicateSession:startOverPrompt");
+      }
     },
   },
   publicMethods: {
     startOver: typedMethod({
       async handler(ctx) {
-        const currentSession = await prisma.checkinSession.findUnique({
-          where: { id: ctx.sessionId },
-          include: { actor: true },
-        });
-
-        if (!currentSession) {
-          throw new Error(`Session with ID ${ctx.sessionId} not found`);
-        }
-
-        // Delete all other sessions for the same participant
-        await prisma.checkinSession.deleteMany({
-          where: {
-            actor: { participantId: currentSession.actor?.participantId },
-            NOT: { id: ctx.sessionId },
-          },
-        });
-
-        await ctx.setCompleted();
+        await doStartOver(ctx);
       },
     }),
     continue: typedMethod({
       async handler(ctx) {
-        const currentSession = await prisma.checkinSession.findUnique({
-          where: { id: ctx.sessionId },
-          include: { actor: true },
-        });
-
-        if (!currentSession) {
-          throw new Error(`Session with ID ${ctx.sessionId} not found`);
-        }
-
-        const newestPreviousSession = await prisma.checkinSession.findFirst({
-          where: {
-            actor: { participantId: currentSession.actor?.participantId },
-            NOT: { id: ctx.sessionId },
-          },
-          orderBy: { createdAt: "desc" },
-        });
-
-        if (!newestPreviousSession) {
-          throw new Error(
-            `No previous session found for participant ${currentSession.actor?.participantId}`,
-          );
-        }
-
-        // Delete all other sessions for the same participant
-        await prisma.checkinSession.deleteMany({
-          where: {
-            actor: { participantId: currentSession.actor?.participantId },
-            NOT: { id: newestPreviousSession.id },
-          },
-        });
-
-        ctx.overrideSession(newestPreviousSession.id);
-
-        await ctx.setCompleted();
+        await doResume(ctx);
       },
     }),
   },

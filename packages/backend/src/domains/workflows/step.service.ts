@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { type } from "arktype";
 import { prisma } from "../../app/prisma.ts";
-import type { StepDefinition } from "../../config/stepConfig.ts";
+import type { StepConfig, StepDefinition } from "../../config/stepConfig.ts";
 import { loadStepConfig } from "../../config/stepConfigLoader.ts";
 import {
   evaluateExpressionsInString,
@@ -9,8 +9,16 @@ import {
 } from "../../core/expressions/expressions.ts";
 import type { CheckinSessionStepDataModel } from "../../generated/prisma/models.ts";
 
-// TODO: Move this somewhere else
-const stepConfig = loadStepConfig(await readFile("./stepConfig.yml", "utf-8"));
+const configCache = new Map<string, StepConfig>();
+
+async function getStepConfig(configFile: string): Promise<StepConfig> {
+  if (!configCache.has(configFile)) {
+    const raw = await readFile(configFile, "utf-8");
+    configCache.set(configFile, loadStepConfig(raw));
+  }
+  // biome-ignore lint/style/noNonNullAssertion: We just set it
+  return configCache.get(configFile)!;
+}
 
 export const StepOutputs = type("Record<string, unknown>");
 export type StepOutputs = typeof StepOutputs.infer;
@@ -22,6 +30,9 @@ export type ContextStepData = typeof ContextStepData.infer;
 
 export const Context = type({
   sessionId: type.string,
+  session: type({
+    params: "Record<string, unknown>",
+  }),
   steps: type.Record(type.string, ContextStepData),
 });
 export type Context = typeof Context.infer;
@@ -29,13 +40,19 @@ export type Context = typeof Context.infer;
 export async function getCurrentStep(
   sessionId: string,
 ): Promise<StepDefinition> {
-  const sessionStepData = await prisma.checkinSessionStepData.findMany({
-    where: { sessionId },
+  const session = await prisma.checkinSession.findUniqueOrThrow({
+    where: { id: sessionId },
+    include: { stepData: true },
   });
+  const params = session.params as Record<string, unknown>;
+  const stepConfig = await getStepConfig(session.configFile);
+  const context = createContext(sessionId, session.stepData, params);
 
-  const context = createContext(sessionId, sessionStepData);
-
-  const nextStepDefinition = findNextStepDefinition(context, sessionStepData);
+  const nextStepDefinition = findNextStepDefinition(
+    context,
+    session.stepData,
+    stepConfig,
+  );
 
   if (!nextStepDefinition) {
     throw new Error(
@@ -59,6 +76,7 @@ export async function getCurrentStep(
 function findNextStepDefinition(
   context: Context,
   stepData: CheckinSessionStepDataModel[],
+  stepConfig: StepConfig,
 ): StepDefinition | null {
   for (const stepDefinition of stepConfig.steps) {
     const data = stepData.find((s) => s.stepId === stepDefinition.uses);
@@ -103,16 +121,18 @@ export type SessionStepStatus = {
 export async function getStepStatuses(
   sessionId: string,
 ): Promise<SessionStepStatus[]> {
-  const sessionStepData = await prisma.checkinSessionStepData.findMany({
-    where: { sessionId },
+  const session = await prisma.checkinSession.findUniqueOrThrow({
+    where: { id: sessionId },
+    include: { stepData: true },
   });
-
-  const context = createContext(sessionId, sessionStepData);
+  const params = session.params as Record<string, unknown>;
+  const stepConfig = await getStepConfig(session.configFile);
+  const context = createContext(sessionId, session.stepData, params);
   const statuses: SessionStepStatus[] = [];
   let foundActive = false;
 
   for (const stepDef of stepConfig.steps) {
-    const data = sessionStepData.find((s) => s.stepId === stepDef.uses);
+    const data = session.stepData.find((s) => s.stepId === stepDef.uses);
 
     if (data?.completedAt != null) {
       statuses.push({
@@ -174,9 +194,11 @@ export async function getStepStatuses(
 export async function findLastCompletedStep(
   sessionId: string,
 ): Promise<{ def: StepDefinition; data: CheckinSessionStepDataModel } | null> {
-  const sessionStepData = await prisma.checkinSessionStepData.findMany({
-    where: { sessionId },
+  const session = await prisma.checkinSession.findUniqueOrThrow({
+    where: { id: sessionId },
+    include: { stepData: true },
   });
+  const stepConfig = await getStepConfig(session.configFile);
 
   let result: {
     def: StepDefinition;
@@ -184,7 +206,7 @@ export async function findLastCompletedStep(
   } | null = null;
 
   for (const stepDefinition of stepConfig.steps) {
-    const data = sessionStepData.find(
+    const data = session.stepData.find(
       (s) => s.stepId === stepDefinition.uses && s.completedAt != null,
     );
     if (data) {
@@ -230,6 +252,7 @@ export async function completeStep(
 function createContext(
   sessionId: string,
   stepData: CheckinSessionStepDataModel[],
+  params: Record<string, unknown>,
 ): Context {
   const steps: Record<string, ContextStepData> = {};
 
@@ -255,6 +278,7 @@ function createContext(
 
   return {
     sessionId,
+    session: { params },
     steps,
   };
 }

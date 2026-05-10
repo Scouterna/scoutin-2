@@ -32,9 +32,19 @@ model KioskSetupToken {
   usedAt    DateTime?
 }
 
+model CheckinLink {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  configFile String
+  params     Json     @default("{}")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
 model CheckinSession {
-  id       String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  stepData CheckinSessionStepData[]
+  id         String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  configFile String
+  params     Json                     @default("{}")
+  stepData   CheckinSessionStepData[]
 
   actor CheckinActor?
 

@@ -45,7 +45,12 @@ export const selectSubjects: StepImplementation<State> = {
 
       await ctx.showScreen("base:selectSubjects:selectSubjects", {
         actorParticipantId: actor.participant.id,
-        participants,
+        participants: participants.map((p) => ({
+          id: p.id,
+          firstName: p.firstName,
+          lastName: p.lastName,
+          subGroup: p.subGroup,
+        })),
         subGroups,
       });
     },

@@ -34,7 +34,38 @@ export async function create() {
 }
 
 /**
- * Opens a WebSocket connection authenticated for the given session using an
+ * Opens an authenticated WebSocket connection for a new session created from
+ * a pre-checkin link. Intended for use in the link flow.
+ */
+export async function openLinkSocket(
+  linkId: string,
+): Promise<TypedSocket<Listeners, MessageTypes>> {
+  const res = await api.session["from-link"].$post({ json: { linkId } });
+  if (!res.ok) throw new Error("Failed to create session from link");
+  const { token } = await res.json();
+
+  const rawWs = await openSessionSocket();
+  const socket = createTypedSocket<Listeners, MessageTypes>(rawWs);
+
+  return new Promise((resolve, reject) => {
+    socket.once("auth:status", (data) => {
+      if (data.status === "success") {
+        resolve(socket);
+      } else {
+        rawWs.close();
+        reject(
+          new Error(
+            `Auth failed: ${"reason" in data ? data.reason : "unknown"}`,
+          ),
+        );
+      }
+    });
+    socket.send({ name: "auth:authenticate", data: { token } });
+  });
+}
+
+/**
+ * Opens an authenticated WebSocket connection for an existing session using an
  * admin-generated token. Intended for use in the admin panel.
  *
  * The optional `setup` callback is called with the socket after it's created
@@ -69,11 +100,13 @@ export async function openAdminSessionSocket(
   });
 }
 
+/**
+ * Opens a raw unauthenticated WebSocket connection. Authentication is handled
+ * separately by sending an `auth:authenticate` message after connecting.
+ */
 export function openSessionSocket(): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
     try {
-      // Next up: Don't just create the WebSocket here. Create it when the session is
-      // started and authenticate using token.
       const socket = ws.session.$ws();
 
       socket.addEventListener("message", (event) => {

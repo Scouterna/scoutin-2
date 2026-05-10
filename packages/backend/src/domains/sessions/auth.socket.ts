@@ -3,19 +3,20 @@ import { authAttempts } from "../../app/metrics.ts";
 import { prisma } from "../../app/prisma.ts";
 import type { MessageTypes } from "../../core/websocket/messageTypes.ts";
 import {
-  createSocketRouter,
-  type RouteMiddleware,
-  type TypedWSContext,
-} from "../../core/websocket/socketRouter.ts";
-import {
   createBroadcastWs,
   getConnectionCount,
   getLastScreen,
   registerConnection,
   terminateExistingConnections,
 } from "../../core/websocket/sessionRegistry.ts";
+import {
+  createSocketRouter,
+  type RouteMiddleware,
+  type TypedWSContext,
+} from "../../core/websocket/socketRouter.ts";
 import { startStep } from "../../core/workflow/step.ts";
 import { getCurrentStep } from "../workflows/step.service.ts";
+import { sendSessionInfo } from "./session.service.ts";
 import { verifyJWT } from "./tokens.ts";
 
 export const requireAuth: RouteMiddleware<null, MessageTypes> = async (
@@ -122,6 +123,7 @@ export const authRouter = createSocketRouter<MessageTypes>()
           status: "success",
         },
       });
+      await sendSessionInfo(sessionId, ws);
       console.log("WebSocket authenticated successfully");
 
       const broadcastWs = createBroadcastWs(

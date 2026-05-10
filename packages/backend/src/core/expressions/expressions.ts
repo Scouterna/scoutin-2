@@ -23,7 +23,9 @@ export function recursivelyEvaluateExpressions(
   context: Record<string, unknown>,
 ): unknown {
   if (typeof obj === "string") {
-    return evaluateExpressionsInString(obj, context);
+    const result = evaluateExpressionsInString(obj, context);
+    if (typeof result === "string") return result;
+    return JSON.parse(JSON.stringify(result, data.replacer));
   } else if (Array.isArray(obj)) {
     return obj.map((item) => recursivelyEvaluateExpressions(item, context));
   } else if (obj && typeof obj === "object") {

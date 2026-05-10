@@ -4,6 +4,7 @@ import type {
 } from "@scouterna/scoutin-plugin-api/backend";
 import { stepCompletions } from "../../app/metrics.ts";
 import { prisma } from "../../app/prisma.ts";
+import { sendSessionInfo } from "../../domains/sessions/session.service.ts";
 import {
   completeStep,
   getCurrentStep,
@@ -32,7 +33,7 @@ export function createStepContext(
   return {
     sessionId,
     async sendMessage(name, payload = {}) {
-      await ws.send({
+      ws.send({
         name: "step:message",
         data: { name, payload },
       });
@@ -93,7 +94,7 @@ export function createStepContext(
       clearStepState(sessionId);
     },
     async showScreen(screenId, payload = {}) {
-      await ws.send({
+      ws.send({
         name: "step:showScreen",
         data: { screenId, payload },
       });
@@ -114,6 +115,8 @@ export function createStepContext(
           participantId: options.participantId,
         },
       });
+
+      await sendSessionInfo(sessionId, ws);
     },
     async clearActor() {
       const sessionId = c.get("wsSessionId");

@@ -1,11 +1,11 @@
 import { atom } from "jotai";
 
-export type SessionInfo = {
+export type SessionCredentials = {
   id: string;
   token: string;
 };
 
-export const sessionInfoAtom = atom<SessionInfo | null>(null);
+export const sessionCredentialsAtom = atom<SessionCredentials | null>(null);
 
 export type CurrentScreen = {
   screenId: string;
@@ -14,3 +14,9 @@ export type CurrentScreen = {
 
 export const currentScreenAtom = atom<CurrentScreen | null>(null);
 export const screenHistoryAtom = atom<CurrentScreen[]>([]);
+
+export type SessionInfo = {
+  actor: { firstName: string; lastName: string } | null;
+};
+
+export const sessionInfoAtom = atom<SessionInfo | null>(null);

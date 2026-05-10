@@ -1,5 +1,6 @@
 import {
   CropLandscape as CropLandscapeIcon,
+  Link as LinkIcon,
   Route as RouteIcon,
 } from "@mui/icons-material";
 import AppBar from "@mui/material/AppBar";
@@ -69,6 +70,17 @@ export function AdminLayout({ children }: Props) {
                 <CropLandscapeIcon />
               </ListItemIcon>
               <ListItemText primary="Kiosks" />
+            </ListItemButtonLink>
+          </ListItem>
+          <ListItem disablePadding>
+            <ListItemButtonLink
+              to={"/admin/links"}
+              activeProps={{ selected: true }}
+            >
+              <ListItemIcon>
+                <LinkIcon />
+              </ListItemIcon>
+              <ListItemText primary="Links" />
             </ListItemButtonLink>
           </ListItem>
         </List>

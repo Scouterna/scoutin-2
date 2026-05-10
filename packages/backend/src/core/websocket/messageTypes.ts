@@ -38,6 +38,12 @@ export const messageTypes = createMessageRegistry()
   .register("step:started")
   .register("session:terminated")
   .register(
+    "session:info",
+    type({
+      "actor?": type({ firstName: "string", lastName: "string" }).or("null"),
+    }),
+  )
+  .register(
     "error",
     type({
       code: "string",

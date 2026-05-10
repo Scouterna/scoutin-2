@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SocketLoader } from "../socket/SocketLoader";
 
 export const Route = createFileRoute("/_kiosk")({
@@ -16,9 +16,10 @@ async function loadStyles() {
 }
 
 function RouteComponent() {
-  // Only load kiosk CSS when component is mounted
   const [loaded, setLoaded] = useState(false);
-  loadStyles().finally(() => setLoaded(true));
+  useEffect(() => {
+    loadStyles().finally(() => setLoaded(true));
+  }, []);
   if (!loaded) return null;
 
   return (

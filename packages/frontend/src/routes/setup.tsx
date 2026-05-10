@@ -5,7 +5,7 @@ import {
   ScoutInput,
 } from "@scouterna/ui-react";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { api } from "@/api/api";
 
 export const Route = createFileRoute("/setup")({
@@ -23,7 +23,9 @@ async function loadStyles() {
 
 function SetupPage() {
   const [stylesLoaded, setStylesLoaded] = useState(false);
-  loadStyles().finally(() => setStylesLoaded(true));
+  useEffect(() => {
+    loadStyles().finally(() => setStylesLoaded(true));
+  }, []);
 
   const [code, setCode] = useState("");
   const [name, setName] = useState("");

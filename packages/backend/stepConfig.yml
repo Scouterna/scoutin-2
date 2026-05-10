@@ -38,8 +38,6 @@ steps:
     # determine which members they can select, so we don't need to pass it
     # explicitly here.
     uses: base:selectSubjects
-    # TODO: I think we should pass in the data source here so that only members
-    # from that data source are selectable.
 
   # verifySafeFromHarm will check that all selected subjects for which it
   # applies have a valid Safe From Harm status in Scoutnet.

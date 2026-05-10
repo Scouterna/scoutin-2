@@ -4,18 +4,18 @@ import { useNavigate } from "@tanstack/react-router";
 import { useAtomValue, useSetAtom } from "jotai";
 import { create } from "@/api/session";
 import { showErrorToast } from "@/lib/errors";
-import { sessionInfoAtom } from "@/store/session";
+import { sessionCredentialsAtom } from "@/store/session";
 import { socketAtom } from "@/store/socket";
 
 export function StartContent() {
-  const setSessionInfo = useSetAtom(sessionInfoAtom);
+  const setSessionCredentials = useSetAtom(sessionCredentialsAtom);
   const socket = useAtomValue(socketAtom);
   const navigate = useNavigate();
 
   const createSession = useMutation({
     mutationFn: create,
     onSuccess: (data) => {
-      setSessionInfo({
+      setSessionCredentials({
         id: data.sessionId,
         token: data.token,
       });
