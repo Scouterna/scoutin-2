@@ -1,9 +1,4 @@
-import {
-  data,
-  Evaluator,
-  Lexer,
-  Parser,
-} from "./github-actions-expressions/index.ts";
+import { data, Evaluator, Lexer, Parser } from "@actions/expressions";
 
 const WHOLE_EXPR_REGEX = /^\$\{\{(?<expr>.*?)\}\}$/s;
 const PARTIAL_EXPR_REGEX = /\$\{\{(.*?)\}\}/g;

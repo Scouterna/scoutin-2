@@ -23,6 +23,9 @@ importers:
 
   packages/backend:
     dependencies:
+      '@actions/expressions':
+        specifier: ^0.3.56
+        version: 0.3.56
       '@hono/arktype-validator':
         specifier: ^2.0.1
         version: 2.0.1(arktype@2.2.0)(hono@4.12.16)
@@ -78,6 +81,9 @@ importers:
       '@types/node':
         specifier: ^25.6.0
         version: 25.6.0
+      dotenv:
+        specifier: ^17.4.2
+        version: 17.4.2
       prisma:
         specifier: ^7.8.0
         version: 7.8.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@6.0.3)
@@ -327,6 +333,10 @@ importers:
         version: 6.0.3
 
 packages:
+
+  '@actions/expressions@0.3.56':
+    resolution: {integrity: sha512-5DZVfBOIFaUPl7zp5ggWPnUxGfnnuMzvu3jz1YYkme1dgDAl8Wh91mJYiPtNG6lK8ShYFmefMozzm8h0gf+/hw==}
+    engines: {node: '>= 20'}
 
   '@ark/schema@0.56.0':
     resolution: {integrity: sha512-ECg3hox/6Z/nLajxXqNhgPtNdHWC9zNsDyskwO28WinoFEnWow4IsERNz9AnXRhTZJnYIlAJ4uGn3nlLk65vZA==}
@@ -3499,6 +3509,8 @@ packages:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
 snapshots:
+
+  '@actions/expressions@0.3.56': {}
 
   '@ark/schema@0.56.0':
     dependencies:
