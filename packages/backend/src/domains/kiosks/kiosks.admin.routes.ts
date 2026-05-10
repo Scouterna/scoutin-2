@@ -1,3 +1,4 @@
+import { arktypeValidator } from "@hono/arktype-validator";
 import { type } from "arktype";
 import { Hono } from "hono";
 import {
@@ -18,12 +19,9 @@ export const kiosksAdminRouter = new Hono()
     const { code, expiresAt } = await createKioskSetupToken();
     return c.json({ code, expiresAt }, 201);
   })
-  .patch("/:id", async (c) => {
+  .patch("/:id", arktypeValidator("json", RenameBody), async (c) => {
     const id = c.req.param("id");
-    const body = RenameBody(await c.req.json());
-    if (body instanceof type.errors) {
-      return c.json({ error: body.summary }, 400);
-    }
+    const body = c.req.valid("json");
     const kiosk = await renameKiosk(id, body.name);
     if (!kiosk) return c.json({ error: "Kiosk not found" }, 404);
     return c.json(kiosk);

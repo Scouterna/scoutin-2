@@ -21,7 +21,7 @@ export function setupSocket(socket: TypedSocket<Listeners, MessageTypes>) {
   });
 
   socket.on("session:info", (data) => {
-    store.set(sessionInfoAtom, data);
+    store.set(sessionInfoAtom, { actor: data.actor ?? null });
   });
 
   socket.on("error", ({ code, message }) => {
