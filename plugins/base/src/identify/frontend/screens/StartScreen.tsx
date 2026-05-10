@@ -10,7 +10,7 @@ import KeyboardIcon from "@tabler/icons/outline/keyboard.svg?raw";
 import { IconArrowDown, IconQrcode } from "@tabler/icons-react";
 import { type } from "arktype";
 import { useRef, useState } from "react";
-import { cn } from "../../utils";
+import { cn } from "../../../utils";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 
 function BackspaceButton({ onDelete }: { onDelete: () => void }) {
