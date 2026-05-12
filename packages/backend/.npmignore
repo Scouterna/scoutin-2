@@ -1,0 +1,4 @@
+# pnpm deploy uses this instead of .gitignore, so src/generated/prisma is included.
+.env
+.env.*
+*.log

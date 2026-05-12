@@ -22,6 +22,7 @@
     "@hono/prometheus": "^1.0.3",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "prisma": "^7.8.0",
     "@scouterna/scoutin-plugin-api": "workspace:^",
     "@scouterna/scoutin-plugin-base": "workspace:^",
     "@scouterna/scoutin-plugin-malcolm-test": "workspace:^",
@@ -37,7 +38,6 @@
     "@standard-schema/spec": "^1.1.0",
     "@types/node": "^25.6.0",
     "dotenv": "^17.4.2",
-    "prisma": "^7.8.0",
     "type-fest": "^5.6.0",
     "typescript": "^6.0.3"
   }

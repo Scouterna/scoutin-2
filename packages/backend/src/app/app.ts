@@ -1,3 +1,4 @@
+import { serveStatic } from "@hono/node-server/serve-static";
 import { createNodeWebSocket } from "@hono/node-ws";
 import { prometheus } from "@hono/prometheus";
 import { Hono } from "hono";
@@ -33,6 +34,13 @@ if (config.NODE_ENV === "development") {
 
 const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
 
+if (config.NODE_ENV === "production") {
+  // Serve frontend static assets. Registered before API routes so requests
+  // for existing files (including /) are handled immediately. Non-file paths
+  // fall through (next()) and are caught by API routes or the SPA fallback.
+  app.use(serveStatic({ root: "./public" }));
+}
+
 app.get("/", (c) => {
   return c.text("Hello Hono!");
 });
@@ -60,6 +68,13 @@ const routes = app
       };
     }),
   );
+
+if (config.NODE_ENV === "production") {
+  // SPA fallback: return index.html for any path not matched above (client-side routes).
+  app.use(
+    serveStatic({ root: "./public", rewriteRequestPath: () => "/index.html" }),
+  );
+}
 
 export { app, injectWebSocket };
 export type AppType = typeof routes;
