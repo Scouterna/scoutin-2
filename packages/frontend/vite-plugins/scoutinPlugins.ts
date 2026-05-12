@@ -5,16 +5,6 @@ import pluginsJson from "../../backend/plugins.json" with { type: "json" };
 export const pluginPackages = pluginsJson.plugins;
 
 /**
- * Rollup externals for all plugin subpaths. Pass this to
- * `build.rollupOptions.external` so that plugin packages are not bundled into
- * the host app — they are loaded separately at runtime via importmap.
- */
-export const pluginExternals = pluginsJson.plugins.flatMap((pkg) => [
-  `${pkg}/frontend`,
-  `${pkg}/backend`,
-]);
-
-/**
  * Vite plugin that exposes installed plugins to the frontend via a virtual
  * module (`virtual:scoutin-plugins`).
  *
