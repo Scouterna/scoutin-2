@@ -2,9 +2,13 @@
   "name": "@scouterna/scoutin-plugin-api",
   "private": true,
   "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.backend.json"
+  },
   "exports": {
     "./backend": {
       "types": "./src/backend/index.ts",
+      "production": "./dist/backend/index.js",
       "default": "./src/backend/index.ts"
     },
     "./frontend": {

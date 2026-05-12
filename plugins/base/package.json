@@ -2,8 +2,15 @@
   "name": "@scouterna/scoutin-plugin-base",
   "private": true,
   "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.backend.json"
+  },
   "exports": {
-    "./backend": "./src/backend.ts",
+    "./backend": {
+      "types": "./src/backend.ts",
+      "production": "./dist/backend.js",
+      "default": "./src/backend.ts"
+    },
     "./frontend": "./src/frontend.tsx"
   },
   "dependencies": {

@@ -27,6 +27,12 @@ RUN DATABASE_URL=postgresql://build-placeholder \
 # Build the frontend SPA → packages/frontend/dist/
 RUN pnpm --filter frontend build
 
+# Compile plugin backend TypeScript to JS so pnpm deploy can include them
+# as plain JavaScript in node_modules (Node cannot type-strip files in node_modules).
+RUN pnpm --filter @scouterna/scoutin-plugin-api run build
+RUN pnpm --filter @scouterna/scoutin-plugin-base run build
+RUN pnpm --filter @scouterna/scoutin-plugin-malcolm-test run build
+
 # Create a self-contained backend deployment with production deps only.
 # Workspace packages (@scouterna/scoutin-plugin-*) are bundled in as well.
 RUN pnpm deploy --filter @scouterna/scoutin-backend --prod --legacy /deploy
@@ -39,10 +45,18 @@ ENV NODE_ENV=production
 # Self-contained backend: source files + production node_modules (from pnpm deploy)
 COPY --from=builder /deploy ./
 
+# Plugins import from @scouterna/scoutin-backend/plugin-services, but pnpm deploy
+# places the backend at the root (/app), not in node_modules. Create a minimal shim
+# so Node.js can find and read the package.json exports. The src/ symlink's realpath
+# resolves to /app/src/..., which is outside node_modules, so type-stripping works.
+RUN mkdir -p node_modules/@scouterna/scoutin-backend && \
+    cp package.json node_modules/@scouterna/scoutin-backend/package.json && \
+    ln -s ../../../src node_modules/@scouterna/scoutin-backend/src
+
 # Frontend static files served by Hono's serveStatic middleware
 COPY --from=builder /app/packages/frontend/dist ./public
 
 EXPOSE 3000
-# Node 24 runs TypeScript source directly without any flags.
-# The backend tsconfig uses noEmit + erasableSyntaxOnly for this pattern.
-CMD ["node", "src/index.ts"]
+# --conditions production activates the compiled-JS export condition in plugin packages,
+# bypassing the TypeScript source that cannot be type-stripped from node_modules.
+CMD ["node", "--conditions", "production", "src/index.ts"]
