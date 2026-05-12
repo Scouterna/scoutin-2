@@ -22,22 +22,22 @@
     "@hono/prometheus": "^1.0.3",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
-    "prisma": "^7.8.0",
     "@scouterna/scoutin-plugin-api": "workspace:^",
     "@scouterna/scoutin-plugin-base": "workspace:^",
     "@scouterna/scoutin-plugin-malcolm-test": "workspace:^",
     "@scouterna/scoutnet": "^0.3.25",
     "argon2": "^0.44.0",
     "arktype": "^2.2.0",
+    "dotenv": "^17.4.2",
     "hono": "^4.12.16",
     "jose": "^6.2.3",
+    "prisma": "^7.8.0",
     "prom-client": "^15.1.3",
     "yaml": "^2.8.3"
   },
   "devDependencies": {
     "@standard-schema/spec": "^1.1.0",
     "@types/node": "^25.6.0",
-    "dotenv": "^17.4.2",
     "type-fest": "^5.6.0",
     "typescript": "^6.0.3"
   }
