@@ -9,7 +9,7 @@ import { importScoutnetData } from "./scoutnet.ts";
 
 // TODO: Don't just load it from an arbitrary file, but have it configurable
 export const dataSourceConfig = await loadDataSourceConfig(
-  await readFile("./dataSourceConfig.yml", "utf-8"),
+  await readFile("./config/dataSourceConfig.yml", "utf-8"),
 );
 
 const secret = Buffer.from(config.DATASOURCE_HASHING_SECRET);

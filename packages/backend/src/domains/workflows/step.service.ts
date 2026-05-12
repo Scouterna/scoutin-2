@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { type } from "arktype";
 import { prisma } from "../../app/prisma.ts";
 import type { StepConfig, StepDefinition } from "../../config/stepConfig.ts";
@@ -13,7 +14,7 @@ const configCache = new Map<string, StepConfig>();
 
 async function getStepConfig(configFile: string): Promise<StepConfig> {
   if (!configCache.has(configFile)) {
-    const raw = await readFile(configFile, "utf-8");
+    const raw = await readFile(join("config", configFile), "utf-8");
     configCache.set(configFile, loadStepConfig(raw));
   }
   // biome-ignore lint/style/noNonNullAssertion: We just set it
