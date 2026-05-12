@@ -25,7 +25,8 @@ RUN DATABASE_URL=postgresql://build-placeholder \
     pnpm --filter @scouterna/scoutin-backend exec prisma generate
 
 # Build the frontend SPA → packages/frontend/dist/
-RUN pnpm --filter frontend build
+RUN pnpm --filter frontend exec vite build --base=/_services/scoutin-2/ && \
+    pnpm --filter frontend exec tsc
 
 # Compile plugin backend TypeScript to JS so pnpm deploy can include them
 # as plain JavaScript in node_modules (Node cannot type-strip files in node_modules).

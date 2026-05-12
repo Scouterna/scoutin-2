@@ -14,6 +14,7 @@ loadPlugins();
 // Create a new router instance
 const router = createRouter({
   routeTree,
+  basepath: import.meta.env.BASE_URL,
   context: {},
   defaultPreload: "intent",
   scrollRestoration: true,
