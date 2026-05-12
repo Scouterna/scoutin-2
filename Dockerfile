@@ -42,6 +42,7 @@ RUN pnpm deploy --filter @scouterna/scoutin-backend --prod --legacy /deploy
 FROM node:24-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+ENV BASE_PATH=/_services/scoutin-2
 
 # Self-contained backend: source files + production node_modules (from pnpm deploy)
 COPY --from=builder /deploy ./
