@@ -36,11 +36,17 @@ if (config.NODE_ENV === "development") {
 
 const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
 
+const basePath = config.BASE_PATH;
+
 if (config.NODE_ENV === "production") {
-  // Serve frontend static assets. Registered before API routes so requests
-  // for existing files (including /) are handled immediately. Non-file paths
-  // fall through (next()) and are caught by API routes or the SPA fallback.
-  app.use(serveStatic({ root: "./public" }));
+  // serveStatic uses c.req.path (full URL path), not the basePath-relative path,
+  // so we must strip the prefix manually.
+  app.use(
+    serveStatic({
+      root: "./public",
+      rewriteRequestPath: basePath ? (p) => p.replace(basePath, "") : undefined,
+    }),
+  );
 }
 
 app.get("/", (c) => {
