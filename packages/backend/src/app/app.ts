@@ -19,7 +19,7 @@ await loadAllDataSourcesIntoDatabase();
 // Load plugins before creating the app
 await loadPlugins();
 
-const app = new Hono();
+const app = config.BASE_PATH ? new Hono().basePath(config.BASE_PATH) : new Hono();
 
 const { printMetrics, registerMetrics } = prometheus({
   registry,
@@ -38,16 +38,7 @@ if (config.NODE_ENV === "production") {
   // Serve frontend static assets. Registered before API routes so requests
   // for existing files (including /) are handled immediately. Non-file paths
   // fall through (next()) and are caught by API routes or the SPA fallback.
-  // BASE_PATH is stripped so ./public/assets/… matches /<base>/assets/… requests.
-  const basePath = config.BASE_PATH;
-  app.use(
-    serveStatic({
-      root: "./public",
-      rewriteRequestPath: basePath
-        ? (path) => path.replace(basePath, "")
-        : undefined,
-    }),
-  );
+  app.use(serveStatic({ root: "./public" }));
 }
 
 app.get("/", (c) => {
