@@ -19,7 +19,9 @@ await loadAllDataSourcesIntoDatabase();
 // Load plugins before creating the app
 await loadPlugins();
 
-const app = config.BASE_PATH ? new Hono().basePath(config.BASE_PATH) : new Hono();
+const app = config.BASE_PATH
+  ? (new Hono().basePath(config.BASE_PATH || "/") as Hono)
+  : new Hono();
 
 const { printMetrics, registerMetrics } = prometheus({
   registry,
