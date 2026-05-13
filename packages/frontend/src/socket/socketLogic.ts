@@ -3,6 +3,7 @@ import type { TypedSocket } from "@/api/typedSocket";
 import { showErrorToast } from "@/lib/errors";
 import {
   currentScreenAtom,
+  pendingAutoRestartAtom,
   screenHistoryAtom,
   sessionInfoAtom,
 } from "@/store/session";
@@ -22,6 +23,13 @@ export function setupSocket(socket: TypedSocket<Listeners, MessageTypes>) {
     store.set(currentScreenAtom, null);
     store.set(screenHistoryAtom, []);
     store.set(sessionInfoAtom, null);
+  });
+
+  socket.on("session:completed", () => {
+    store.set(currentScreenAtom, null);
+    store.set(screenHistoryAtom, []);
+    store.set(sessionInfoAtom, null);
+    store.set(pendingAutoRestartAtom, true);
   });
 
   socket.on("session:info", (data) => {

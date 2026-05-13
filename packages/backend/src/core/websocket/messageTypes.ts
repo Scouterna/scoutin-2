@@ -37,6 +37,7 @@ export const messageTypes = createMessageRegistry()
   )
   .register("step:started")
   .register("session:terminated")
+  .register("session:completed")
   .register(
     "session:info",
     type({

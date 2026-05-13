@@ -90,6 +90,8 @@ export const deduplicateSession: StepImplementation = {
           actor: {
             participantId: currentSession.actor.participantId,
           },
+          configFile: currentSession.configFile,
+          completedAt: null,
         },
       });
 

@@ -2,15 +2,21 @@ import { ScoutButton } from "@scouterna/ui-react";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useAtomValue, useSetAtom } from "jotai";
+import { useEffect } from "react";
 import { create } from "@/api/session";
 import { showErrorToast } from "@/lib/errors";
-import { sessionCredentialsAtom } from "@/store/session";
+import {
+  pendingAutoRestartAtom,
+  sessionCredentialsAtom,
+} from "@/store/session";
 import { socketAtom } from "@/store/socket";
 
 export function StartContent() {
   const setSessionCredentials = useSetAtom(sessionCredentialsAtom);
   const socket = useAtomValue(socketAtom);
   const navigate = useNavigate();
+  const pendingAutoRestart = useAtomValue(pendingAutoRestartAtom);
+  const setPendingAutoRestart = useSetAtom(pendingAutoRestartAtom);
 
   const createSession = useMutation({
     mutationFn: create,
@@ -24,6 +30,9 @@ export function StartContent() {
         name: "auth:authenticate",
         data: { token: data.token },
       });
+    },
+    onSettled: () => {
+      setPendingAutoRestart(false);
     },
     onError: (error) => {
       if (
@@ -43,6 +52,12 @@ export function StartContent() {
       showErrorToast(error, "Kunde inte starta en ny session");
     },
   });
+
+  useEffect(() => {
+    if (pendingAutoRestart && !createSession.isPending) {
+      createSession.mutate();
+    }
+  }, [pendingAutoRestart, createSession]);
 
   return (
     <div className="flex flex-col gap-8">

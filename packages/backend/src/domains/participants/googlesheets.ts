@@ -95,6 +95,7 @@ export async function importGoogleSheetsData(
   }
 
   const [headerRow, ...dataRows] = rows;
+  if (!headerRow) throw new Error("Sheet has no rows");
 
   const col = (name: string): number => {
     const idx = headerRow.indexOf(name);

@@ -20,3 +20,5 @@ export type SessionInfo = {
 };
 
 export const sessionInfoAtom = atom<SessionInfo | null>(null);
+
+export const pendingAutoRestartAtom = atom(false);

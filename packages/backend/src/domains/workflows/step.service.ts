@@ -40,7 +40,7 @@ export type Context = typeof Context.infer;
 
 export async function getCurrentStep(
   sessionId: string,
-): Promise<StepDefinition> {
+): Promise<StepDefinition | null> {
   const session = await prisma.checkinSession.findUniqueOrThrow({
     where: { id: sessionId },
     include: { stepData: true },
@@ -56,9 +56,7 @@ export async function getCurrentStep(
   );
 
   if (!nextStepDefinition) {
-    throw new Error(
-      `No next step found for session ${sessionId}. Something might be misconfigured.`,
-    );
+    return null;
   }
 
   return {
@@ -220,6 +218,61 @@ export async function findLastCompletedStep(
 
 export async function deleteStepData(id: string): Promise<void> {
   await prisma.checkinSessionStepData.delete({ where: { id } });
+}
+
+/**
+ * Checks required steps and marks the session as complete in the database.
+ * Throws if any required steps were not satisfied.
+ * Safe to call on an already-completed session (no-op if completedAt is set).
+ */
+export async function finalizeSession(sessionId: string): Promise<void> {
+  const unmet = await findUnmetRequiredSteps(sessionId);
+  if (unmet.length > 0) {
+    throw new Error(
+      `Session ${sessionId} cannot complete: required steps not satisfied: ${unmet.join(", ")}`,
+    );
+  }
+  await prisma.checkinSession.update({
+    where: { id: sessionId },
+    data: { completedAt: new Date() },
+  });
+}
+
+/**
+ * Returns the `uses` IDs of required steps that have not been completed and
+ * whose `if` condition was not false at the time of the call. An empty array
+ * means all required steps were satisfied and the session may be completed.
+ */
+export async function findUnmetRequiredSteps(
+  sessionId: string,
+): Promise<string[]> {
+  const session = await prisma.checkinSession.findUniqueOrThrow({
+    where: { id: sessionId },
+    include: { stepData: true },
+  });
+  const params = session.params as Record<string, unknown>;
+  const stepConfig = await getStepConfig(session.configFile);
+  const context = createContext(sessionId, session.stepData, params);
+
+  const unmet: string[] = [];
+
+  for (const stepDef of stepConfig.steps) {
+    if (!stepDef.required) continue;
+
+    const completed = session.stepData.some(
+      (d) => d.stepId === stepDef.uses && d.completedAt != null,
+    );
+    if (completed) continue;
+
+    if (stepDef.if) {
+      const result = evaluateExpressionsInString(stepDef.if, context);
+      if (typeof result !== "string" && !result.number()) continue;
+    }
+
+    unmet.push(stepDef.uses);
+  }
+
+  return unmet;
 }
 
 export async function completeStep(

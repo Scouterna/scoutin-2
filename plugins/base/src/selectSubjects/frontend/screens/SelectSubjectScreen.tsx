@@ -17,6 +17,7 @@ const Participant = type({
   firstName: "string",
   lastName: "string",
   "subGroup?": "string | null",
+  "preCheckedIn?": "boolean",
 });
 // type Participant = typeof Participant.infer;
 
@@ -39,7 +40,9 @@ export function SelectSubjectScreen({ payload }: { payload: object }) {
   >(
     validPayload instanceof type.errors
       ? []
-      : validPayload.participants.map((p) => p.id),
+      : validPayload.participants
+          .filter((p) => p.preCheckedIn)
+          .map((p) => p.id),
   );
 
   if (validPayload instanceof type.errors) {

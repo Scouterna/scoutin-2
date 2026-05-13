@@ -52,6 +52,8 @@ model CheckinSession {
 
   // TODO: It might be a good idea to add an expiry time to sessions
 
+  completedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -116,9 +118,11 @@ model Participant {
   // The ID of the participant in the data source.
   idInDataSource String
 
-  firstName String
-  lastName  String
-  subGroup  String?
+  firstName                String
+  lastName                 String
+  subGroup                 String?
+  preliminaryCheckedInAt   DateTime?
+  confirmedCheckedInAt     DateTime?
 
   participantGroup   ParticipantGroup? @relation(fields: [participantGroupId], references: [id])
   participantGroupId String?           @db.Uuid

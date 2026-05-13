@@ -53,7 +53,7 @@ export function AdminLayout({ children }: Props) {
         <List>
           <ListItem disablePadding>
             <ListItemButtonLink
-              to={"/admin/"}
+              to={"/admin"}
               activeOptions={{ exact: true }}
               activeProps={{ selected: true }}
             >

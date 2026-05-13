@@ -15,7 +15,10 @@ import {
   type TypedWSContext,
 } from "../../core/websocket/socketRouter.ts";
 import { startStep } from "../../core/workflow/step.ts";
-import { getCurrentStep } from "../workflows/step.service.ts";
+import {
+  finalizeSession,
+  getCurrentStep,
+} from "../workflows/step.service.ts";
 import { sendSessionInfo } from "./session.service.ts";
 import { verifyJWT } from "./tokens.ts";
 
@@ -85,6 +88,7 @@ export const authRouter = createSocketRouter<MessageTypes>()
 
       const session = await prisma.checkinSession.findUnique({
         where: { id: sessionId },
+        select: { id: true, completedAt: true },
       });
 
       if (!session) {
@@ -130,9 +134,22 @@ export const authRouter = createSocketRouter<MessageTypes>()
         sessionId,
       ) as unknown as TypedWSContext<MessageTypes>;
 
+      if (session.completedAt) {
+        broadcastWs.send({ name: "session:completed" });
+        return;
+      }
+
+      const currentStep = await getCurrentStep(session.id);
+      if (!currentStep) {
+        // Crash recovery: all steps are done but the session was never finalized
+        // (e.g. connection dropped between completing the last step and sending
+        // session:completed). Finalize now so required steps are still checked.
+        await finalizeSession(session.id);
+        broadcastWs.send({ name: "session:completed" });
+        return;
+      }
+
       if (isFirstConnection) {
-        // Start the step normally, broadcasting to all connections.
-        const currentStep = await getCurrentStep(session.id);
         await startStep(c, broadcastWs, currentStep);
       } else {
         // Admin took over. Replay the last screen so the admin sees current state.
@@ -142,7 +159,6 @@ export const authRouter = createSocketRouter<MessageTypes>()
         if (lastScreen) {
           ws.send({ name: "step:showScreen", data: lastScreen });
         } else {
-          const currentStep = await getCurrentStep(session.id);
           await startStep(c, broadcastWs, currentStep);
         }
       }

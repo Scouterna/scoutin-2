@@ -7,6 +7,7 @@ import { prisma } from "../../app/prisma.ts";
 import { sendSessionInfo } from "../../domains/sessions/session.service.ts";
 import {
   completeStep,
+  finalizeSession,
   getCurrentStep,
 } from "../../domains/workflows/step.service.ts";
 import type { MessageTypes } from "../websocket/messageTypes.ts";
@@ -81,6 +82,11 @@ export function createStepContext(
       );
 
       const currentStep = await getCurrentStep(effectiveSessionId);
+      if (currentStep === null) {
+        await finalizeSession(effectiveSessionId);
+        ws.send({ name: "session:completed" });
+        return;
+      }
       await startStep(c, ws, currentStep);
     },
     getInputs() {

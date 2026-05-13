@@ -23,6 +23,13 @@ export const StepDefinition = type({
    * https://docs.github.com/en/actions/reference/workflows-and-actions/expressions.
    */
   "if?": "string",
+  /**
+   * If true, this step must have a completion record for the session to be
+   * considered complete. Steps that are conditionally skipped (via `if`) are
+   * exempt — only steps whose condition was truthy (or had no condition) are
+   * checked.
+   */
+  "required?": "boolean",
 });
 
 export type StepDefinition = typeof StepDefinition.infer;

@@ -48,6 +48,7 @@ export const selectSubjects: StepImplementation = {
           firstName: p.firstName,
           lastName: p.lastName,
           subGroup: p.subGroup,
+          preCheckedIn: p.preliminaryCheckedInAt !== null,
         })),
         subGroups,
       });

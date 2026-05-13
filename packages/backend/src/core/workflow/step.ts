@@ -53,6 +53,11 @@ export async function restartStep(
   }
 
   const currentStep = await getCurrentStep(sessionId);
+  if (!currentStep) {
+    console.warn(`No current step found for session ${sessionId}`);
+    return;
+  }
+
   const step = stepRegistry.get(currentStep.uses);
   if (!step) {
     throw new Error(`Step implementation ${currentStep.uses} not found`);
@@ -97,6 +102,10 @@ export async function goBack(
     }
 
     const currentStep = await getCurrentStep(sessionId);
+    if (!currentStep) {
+      console.warn(`No current step found for session ${sessionId}`);
+      return;
+    }
     await startStep(c, ws, currentStep);
     return;
   }
