@@ -5,33 +5,26 @@ import {
 } from "@scouterna/scoutnet";
 import { type } from "arktype";
 import { prisma } from "../../app/prisma.ts";
+import { BaseDataSource } from "../../config/baseDataSource.ts";
 import { evaluateExpressionsInString } from "../../core/expressions/expressions.ts";
 import { hashLookupValue } from "./data.service.ts";
 
-export const ScoutnetDataSource = type({
-  name: "Record<string, string>",
+export const ScoutnetDataSource = BaseDataSource.and({
   provider: "'scoutnet'",
-  projectId: type("string | number").pipe((v) => String(v)),
-  /**
-   * If provided, only participants registered with these fee IDs will be imported.
-   */
-  "feeIds?": type("(string | number)[]").pipe((arr) =>
-    arr.map((v) => String(v)),
-  ),
-  includeIndividuals: "boolean",
-  includeGroups: "boolean",
-  /**
-   * Sub groups are evaluated in order for each participant. The first matching sub group is chosen.
-   */
-  "subGroups?": type.Record("string", {
-    name: "Record<string, string>",
-    condition: "string",
-  }),
-  keys: {
-    groups: "string",
-    participants: "string",
-    checkin: "string",
-    questions: "string",
+  providerOptions: {
+    projectId: type("string | number").pipe((v) => String(v)),
+    "feeIds?": type("(string | number)[]").pipe((arr) =>
+      arr.map((v) => String(v)),
+    ),
+    includeIndividuals: "boolean",
+    includeGroups: "boolean",
+    "subGroupConditions?": type.Record("string", { condition: "string" }),
+    keys: {
+      groups: "string",
+      participants: "string",
+      checkin: "string",
+      questions: "string",
+    },
   },
 });
 export type ScoutnetDataSource = typeof ScoutnetDataSource.infer;
@@ -77,7 +70,7 @@ export async function importScoutnetData(
 
   // TODO: Care about includeIndividuals and includeGroups. Some events could have both groups and individuals.
 
-  if (dataSource.includeGroups) {
+  if (dataSource.providerOptions.includeGroups) {
     const groups = await getGroups(client, dataSource);
     await prisma.$transaction(
       groups.map((g) =>
@@ -142,7 +135,7 @@ export async function importScoutnetData(
 
       const groupId = p.group_registration_info?.group_id;
 
-      if (dataSource.includeGroups && !groupId) {
+      if (dataSource.providerOptions.includeGroups && !groupId) {
         console.warn(
           `Participant ${p.member_no} is missing group information, but groups are included in the data source. This participant will be skipped.`,
         );
@@ -206,8 +199,8 @@ async function getGroups(
   const res = await client.GET("/project/get/groups", {
     headers: {
       Authorization: createAuthorizationHeader({
-        resourceId: dataSource.projectId,
-        key: dataSource.keys.groups,
+        resourceId: dataSource.providerOptions.projectId,
+        key: dataSource.providerOptions.keys.groups,
       }),
     },
   });
@@ -242,11 +235,12 @@ async function getGroups(
       // Filter out groups that do not match criteria
       .filter((g) => {
         const groupParticipants =
-          g.project_stats?.[dataSource.projectId]?.group_participants ?? 0;
+          g.project_stats?.[dataSource.providerOptions.projectId]
+            ?.group_participants ?? 0;
 
         if (groupParticipants <= 0) {
           console.warn(
-            `Group "${g.groupId}" has no participants registered for project ${dataSource.projectId}, skipping...`,
+            `Group "${g.groupId}" has no participants registered for project ${dataSource.providerOptions.projectId}, skipping...`,
           );
           return false;
         }
@@ -263,8 +257,8 @@ async function getParticipants(
   const res = await client.GET("/project/get/participants", {
     headers: {
       Authorization: createAuthorizationHeader({
-        resourceId: dataSource.projectId,
-        key: dataSource.keys.participants,
+        resourceId: dataSource.providerOptions.projectId,
+        key: dataSource.providerOptions.keys.participants,
       }),
     },
   });
@@ -298,11 +292,14 @@ async function getParticipants(
           return false;
         }
 
-        if (!dataSource.feeIds || dataSource.feeIds.length === 0) {
+        if (
+          !dataSource.providerOptions.feeIds ||
+          dataSource.providerOptions.feeIds.length === 0
+        ) {
           return true;
         }
 
-        return dataSource.feeIds.includes(p.fee_id);
+        return dataSource.providerOptions.feeIds.includes(p.fee_id);
       })
   );
 }
@@ -313,12 +310,13 @@ function resolveSubGroup(
   dataSource: ScoutnetDataSource,
   participant: ScoutnetParticipantOut,
 ): string | null {
-  if (!dataSource.subGroups) return null;
+  const conditions = dataSource.providerOptions.subGroupConditions;
+  if (!conditions) return null;
 
   const context = { participant };
 
-  for (const [key, subGroup] of Object.entries(dataSource.subGroups)) {
-    const result = evaluateExpressionsInString(subGroup.condition, context);
+  for (const [key, { condition }] of Object.entries(conditions)) {
+    const result = evaluateExpressionsInString(condition, context);
     if (typeof result === "string") {
       console.warn(
         `Subgroup condition for "${key}" did not evaluate to a boolean, skipping.`,

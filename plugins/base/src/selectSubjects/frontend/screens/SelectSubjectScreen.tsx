@@ -63,7 +63,13 @@ export function SelectSubjectScreen({ payload }: { payload: object }) {
   for (const subGroup of validPayload.subGroups) {
     subGroupNames[subGroup.id] = subGroup.name.sv;
   }
-  subGroupNames[""] = "Övriga";
+
+  for (const participant of validPayload.participants) {
+    const key = participant.subGroup ?? "";
+    if (!(key in subGroupNames)) {
+      subGroupNames[key] = key || "Övriga";
+    }
+  }
 
   const checkParticipant = (participantId: string) => {
     setSelectedParticipantIds((prev) => [...new Set([...prev, participantId])]);

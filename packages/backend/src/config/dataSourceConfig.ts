@@ -11,9 +11,13 @@
 // mapping signups to the correct data source.
 
 import { type } from "arktype";
+import { GoogleSheetsDataSource } from "../domains/participants/googlesheets.ts";
 import { ScoutnetDataSource } from "../domains/participants/scoutnet.ts";
+import { BaseDataSource } from "./baseDataSource.ts";
 
-export const DataSource = type.or(ScoutnetDataSource);
+export { BaseDataSource };
+
+export const DataSource = type.or(ScoutnetDataSource, GoogleSheetsDataSource);
 export type DataSource = typeof DataSource.infer;
 
 export const DataSourceConfig = type({

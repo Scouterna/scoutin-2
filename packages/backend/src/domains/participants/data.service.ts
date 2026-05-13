@@ -5,6 +5,7 @@ import { prisma } from "../../app/prisma.ts";
 import config from "../../config/config.ts";
 import type { DataSource } from "../../config/dataSourceConfig.ts";
 import { loadDataSourceConfig } from "../../config/dataSourceConfigLoader.ts";
+import { importGoogleSheetsData } from "./googlesheets.ts";
 import { importScoutnetData } from "./scoutnet.ts";
 
 // TODO: Don't just load it from an arbitrary file, but have it configurable
@@ -56,9 +57,15 @@ export async function loadDataSourceIntoDatabase(
     return;
   }
 
-  throw new Error(
-    `Data source provider "${dataSource.provider}" not supported`,
-  );
+  if (dataSource.provider === "googlesheets") {
+    await importGoogleSheetsData(dataSource, dataSourceName);
+    return;
+  }
+
+  // biome-ignore lint/suspicious/noExplicitAny: This is a case that shouldn't happen, but maybe could
+  const providerName = (dataSource as any).provider;
+
+  throw new Error(`Data source provider "${providerName}" not supported`);
 }
 
 export async function loadAllDataSourcesIntoDatabase() {

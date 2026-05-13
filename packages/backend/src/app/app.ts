@@ -5,16 +5,12 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import config from "../config/config.ts";
 import { kiosksRouter } from "../domains/kiosks/kiosks.routes.ts";
-import { loadAllDataSourcesIntoDatabase } from "../domains/participants/data.service.ts";
 import { sessionRouter } from "../domains/sessions/session.routes.ts";
 import { router as sessionSocketRouter } from "../domains/sessions/session.socket.ts";
 import { stepRouter } from "../domains/workflows/step.routes.ts";
 import { loadPlugins } from "../domains/workflows/steps.ts";
 import { adminRouter } from "./admin.ts";
 import { activeWebSocketConnections, registry } from "./metrics.ts";
-
-// TODO: Move this to a job runner
-await loadAllDataSourcesIntoDatabase();
 
 // Load plugins before creating the app
 await loadPlugins();
