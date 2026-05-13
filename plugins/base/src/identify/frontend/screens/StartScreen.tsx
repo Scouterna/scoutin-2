@@ -150,23 +150,26 @@ export function StartScreen({ payload }: { payload: object }) {
         </ScoutButton>
       </div>
 
-      <div className="opacity-20 hover:opacity-100 p-4 -m-4">
-        Debug
-        <div className="flex gap-2">
-          <ScoutButton
-            onScoutClick={() => submitQuery("3236298")}
-            variant="outlined"
-          >
-            Ledare (3236298)
-          </ScoutButton>
-          <ScoutButton
-            onScoutClick={() => submitQuery("3307495")}
-            variant="outlined"
-          >
-            Deltagare (3307495)
-          </ScoutButton>
+      {(window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1") && (
+        <div className="opacity-20 hover:opacity-100 p-4 -m-4">
+          Debug
+          <div className="flex gap-2">
+            <ScoutButton
+              onScoutClick={() => submitQuery("3236298")}
+              variant="outlined"
+            >
+              Ledare (3236298)
+            </ScoutButton>
+            <ScoutButton
+              onScoutClick={() => submitQuery("3307495")}
+              variant="outlined"
+            >
+              Deltagare (3307495)
+            </ScoutButton>
+          </div>
         </div>
-      </div>
+      )}
 
       <BottomSheet open={manualEntryOpen} onClose={closeManualEntry}>
         <form
