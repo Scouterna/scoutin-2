@@ -49,11 +49,11 @@ steps:
   # # applies have a valid Safe From Harm status in Scoutnet.
   # - uses: scoutnet:verifySafeFromHarm
 
-  - uses: base:message
-    required: true
-    with:
-      title: Dummy safe from harm step
-      message: This will eventually be replaced by the real deal
+  # - uses: base:message
+  #   required: true
+  #   with:
+  #     title: Dummy safe from harm step
+  #     message: This will eventually be replaced by the real deal
 
   # - uses: printer:print
   #   with:
