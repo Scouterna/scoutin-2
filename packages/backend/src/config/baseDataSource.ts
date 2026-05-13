@@ -5,5 +5,7 @@ export const BaseDataSource = type({
   "subGroups?": type.Record("string", {
     name: "Record<string, string>",
   }),
+  "activeFrom?": "string",
+  "activeTo?": "string",
 });
 export type BaseDataSource = typeof BaseDataSource.infer;

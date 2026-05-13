@@ -70,6 +70,8 @@ dataSources:
         name:
           sv: Ledare
           en: Leader
+    # activeFrom: 2026-05-13T17:36:00+02:00
+    # activeTo: 2026-05-13T17:39:00+02:00
     providerOptions:
       spreadsheetId: ${GOOGLE_SPREADSHEET_ID}
       sheetName: People

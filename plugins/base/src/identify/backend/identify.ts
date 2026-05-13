@@ -44,9 +44,16 @@ async function searchCandidates(
   dataSources?: string[],
 ): Promise<Candidate[]> {
   const participants = await findParticipantsByLookupValue(query);
-  const filtered = dataSources
-    ? participants.filter((p) => dataSources.includes(p.dataSource))
-    : participants;
+  const now = new Date();
+  const filtered = participants.filter((p) => {
+    if (dataSources && !dataSources.includes(p.dataSource)) return false;
+
+    const ds = dataSourceConfig.dataSources[p.dataSource];
+    if (ds?.activeFrom && new Date(ds.activeFrom) > now) return false;
+    if (ds?.activeTo && new Date(ds.activeTo) < now) return false;
+
+    return true;
+  });
   return filtered.map(participantToCandidate);
 }
 
