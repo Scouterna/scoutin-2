@@ -1,5 +1,6 @@
 import {
   CropLandscape as CropLandscapeIcon,
+  Dashboard as DashboardIcon,
   Link as LinkIcon,
   Route as RouteIcon,
 } from "@mui/icons-material";
@@ -50,6 +51,18 @@ export function AdminLayout({ children }: Props) {
         <Toolbar />
         <Divider />
         <List>
+          <ListItem disablePadding>
+            <ListItemButtonLink
+              to={"/admin/"}
+              activeOptions={{ exact: true }}
+              activeProps={{ selected: true }}
+            >
+              <ListItemIcon>
+                <DashboardIcon />
+              </ListItemIcon>
+              <ListItemText primary="Översikt" />
+            </ListItemButtonLink>
+          </ListItem>
           <ListItem disablePadding>
             <ListItemButtonLink
               to={"/admin/sessions"}
