@@ -11,3 +11,4 @@
 - [ ] `loadAllDataSourcesIntoDatabase` should run on a schedule or something like that.
 - [ ] Add auth to the admin interface and routes.
 - [ ] Two steps with the same `uses` value in a config (e.g. two `base:message` steps) will cause the second to be silently skipped — `findNextStepDefinition` matches on `stepId` and finds the first completion record. Either enforce uniqueness of `uses` per config or track step index in `CheckinSessionStepData`.
+- [ ] Kiosk: When network goes out, the websocket connection is lost and not reconnected.
