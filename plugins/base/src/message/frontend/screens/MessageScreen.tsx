@@ -38,7 +38,9 @@ export function MessageScreen({ payload }: { payload: object }) {
       </div>
       <div>
         <ScoutButton variant="primary" onScoutClick={confirm}>
-          {validPayload.buttonText?.sv ?? validPayload.buttonText?.en ?? "Fortsätt"}
+          {validPayload.buttonText?.sv ??
+            validPayload.buttonText?.en ??
+            "Fortsätt"}
         </ScoutButton>
       </div>
     </div>

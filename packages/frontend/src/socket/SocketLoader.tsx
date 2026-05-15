@@ -1,7 +1,13 @@
 import type { Listeners, MessageTypes } from "@scouterna/scoutin-backend";
 import { ScoutButton, ScoutCard, ScoutLoader } from "@scouterna/ui-react";
 import { useAtom, useAtomValue } from "jotai";
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { createTypedSocket } from "@/api/typedSocket";
 import { openSessionSocket } from "../api/session";
 import { sessionCredentialsAtom } from "../store/session";
@@ -13,7 +19,10 @@ const BASE_RECONNECT_DELAY_MS = 1000;
 const MAX_RECONNECT_DELAY_MS = 30_000;
 
 function reconnectDelay(attempt: number): number {
-  return Math.min(BASE_RECONNECT_DELAY_MS * 2 ** attempt, MAX_RECONNECT_DELAY_MS);
+  return Math.min(
+    BASE_RECONNECT_DELAY_MS * 2 ** attempt,
+    MAX_RECONNECT_DELAY_MS,
+  );
 }
 
 const Wrapper = ({ children }: { children: ReactNode }) => {
@@ -76,7 +85,10 @@ export function SocketLoader({ children }: { children: ReactNode }) {
     setupSocket(s);
 
     if (credentialsRef.current) {
-      s.send({ name: "auth:authenticate", data: { token: credentialsRef.current.token } });
+      s.send({
+        name: "auth:authenticate",
+        data: { token: credentialsRef.current.token },
+      });
     }
 
     s.addEventListener("close", (event) => {
@@ -86,7 +98,9 @@ export function SocketLoader({ children }: { children: ReactNode }) {
 
       const attempt = () => {
         if (reconnectAttempts.current >= MAX_RECONNECT_ATTEMPTS) {
-          setSocketError(`Kunde inte återansluta efter ${MAX_RECONNECT_ATTEMPTS} försök.`);
+          setSocketError(
+            `Kunde inte återansluta efter ${MAX_RECONNECT_ATTEMPTS} försök.`,
+          );
           setReconnecting(false);
           return;
         }

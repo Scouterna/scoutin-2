@@ -15,10 +15,7 @@ import {
   type TypedWSContext,
 } from "../../core/websocket/socketRouter.ts";
 import { startStep } from "../../core/workflow/step.ts";
-import {
-  finalizeSession,
-  getCurrentStep,
-} from "../workflows/step.service.ts";
+import { finalizeSession, getCurrentStep } from "../workflows/step.service.ts";
 import { sendSessionInfo } from "./session.service.ts";
 import { verifyJWT } from "./tokens.ts";
 

@@ -250,7 +250,7 @@ export function AdminSessionOverview({ sessionId }: { sessionId: string }) {
             {socket ? (
               <iframe
                 ref={iframeRef}
-                src="/kiosk-frame"
+                src={`${import.meta.env.BASE_URL.replace(/\/$/, "")}/kiosk-frame`}
                 title="Kiosk preview"
                 style={{
                   flex: 1,
