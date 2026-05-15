@@ -38,6 +38,21 @@ export const Context = type({
 });
 export type Context = typeof Context.infer;
 
+/**
+ * Matches a step completion record against a step definition. When the
+ * definition has an `id`, we match by `idInFlow` so the same implementation
+ * can appear multiple times in a flow with distinct identifiers.
+ */
+function matchesStepData(
+  data: CheckinSessionStepDataModel,
+  stepDefinition: StepDefinition,
+): boolean {
+  if (stepDefinition.id) {
+    return data.idInFlow === stepDefinition.id;
+  }
+  return data.stepId === stepDefinition.uses;
+}
+
 export async function getCurrentStep(
   sessionId: string,
 ): Promise<StepDefinition | null> {
@@ -78,7 +93,7 @@ function findNextStepDefinition(
   stepConfig: StepConfig,
 ): StepDefinition | null {
   for (const stepDefinition of stepConfig.steps) {
-    const data = stepData.find((s) => s.stepId === stepDefinition.uses);
+    const data = stepData.find((s) => matchesStepData(s, stepDefinition));
     const completed = data?.completedAt != null;
 
     if (completed) continue;
@@ -131,7 +146,7 @@ export async function getStepStatuses(
   let foundActive = false;
 
   for (const stepDef of stepConfig.steps) {
-    const data = session.stepData.find((s) => s.stepId === stepDef.uses);
+    const data = session.stepData.find((s) => matchesStepData(s, stepDef));
 
     if (data?.completedAt != null) {
       statuses.push({
@@ -206,7 +221,7 @@ export async function findLastCompletedStep(
 
   for (const stepDefinition of stepConfig.steps) {
     const data = session.stepData.find(
-      (s) => s.stepId === stepDefinition.uses && s.completedAt != null,
+      (s) => matchesStepData(s, stepDefinition) && s.completedAt != null,
     );
     if (data) {
       result = { def: stepDefinition, data };
@@ -260,7 +275,7 @@ export async function findUnmetRequiredSteps(
     if (!stepDef.required) continue;
 
     const completed = session.stepData.some(
-      (d) => d.stepId === stepDef.uses && d.completedAt != null,
+      (d) => matchesStepData(d, stepDef) && d.completedAt != null,
     );
     if (completed) continue;
 
