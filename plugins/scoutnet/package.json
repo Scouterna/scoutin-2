@@ -1,0 +1,27 @@
+{
+  "name": "@scouterna/scoutin-plugin-scoutnet",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.backend.json"
+  },
+  "exports": {
+    "./backend": {
+      "types": "./src/backend/index.ts",
+      "production": "./dist/backend/index.js",
+      "default": "./src/backend/index.ts"
+    },
+    "./frontend": "./src/frontend/index.tsx"
+  },
+  "dependencies": {
+    "@scouterna/scoutin-plugin-api": "workspace:^"
+  },
+  "devDependencies": {
+    "@scouterna/scoutin-backend": "workspace:^",
+    "@scouterna/ui-react": "catalog:",
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "react": "^19.2.5",
+    "typescript": "^6.0.3"
+  }
+}

@@ -13,6 +13,7 @@ COPY packages/frontend/package.json ./packages/frontend/
 COPY packages/plugin-api/package.json ./packages/plugin-api/
 COPY plugins/base/package.json ./plugins/base/
 COPY plugins/malcolm-test/package.json ./plugins/malcolm-test/
+COPY plugins/scoutnet/package.json ./plugins/scoutnet/
 RUN pnpm install --frozen-lockfile
 
 # Copy remaining source files.
@@ -33,6 +34,7 @@ RUN VITE_API_URL=/_services/scoutin-2 pnpm --filter frontend exec vite build --b
 RUN pnpm --filter @scouterna/scoutin-plugin-api run build
 RUN pnpm --filter @scouterna/scoutin-plugin-base run build
 RUN pnpm --filter @scouterna/scoutin-plugin-malcolm-test run build
+RUN pnpm --filter @scouterna/scoutin-plugin-scoutnet run build
 
 # Create a self-contained backend deployment with production deps only.
 # Workspace packages (@scouterna/scoutin-plugin-*) are bundled in as well.

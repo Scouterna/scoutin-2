@@ -25,6 +25,7 @@
     "@scouterna/scoutin-plugin-api": "workspace:^",
     "@scouterna/scoutin-plugin-base": "workspace:^",
     "@scouterna/scoutin-plugin-malcolm-test": "workspace:^",
+    "@scouterna/scoutin-plugin-scoutnet": "workspace:^",
     "@scouterna/scoutnet": "^0.3.25",
     "arktype": "^2.2.0",
     "dotenv": "^17.4.2",

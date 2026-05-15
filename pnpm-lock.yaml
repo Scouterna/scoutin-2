@@ -4,6 +4,15 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    '@scouterna/ui-react':
+      specifier: 4.3.2
+      version: 4.3.2
+    '@scouterna/ui-webc':
+      specifier: 4.3.2
+      version: 4.3.2
+
 importers:
 
   .:
@@ -44,6 +53,9 @@ importers:
       '@scouterna/scoutin-plugin-malcolm-test':
         specifier: workspace:^
         version: link:../../plugins/malcolm-test
+      '@scouterna/scoutin-plugin-scoutnet':
+        specifier: workspace:^
+        version: link:../../plugins/scoutnet
       '@scouterna/scoutnet':
         specifier: ^0.3.25
         version: 0.3.25
@@ -117,6 +129,9 @@ importers:
       '@scouterna/scoutin-plugin-malcolm-test':
         specifier: workspace:^
         version: link:../../plugins/malcolm-test
+      '@scouterna/scoutin-plugin-scoutnet':
+        specifier: workspace:^
+        version: link:../../plugins/scoutnet
       '@scouterna/ui-react':
         specifier: 'catalog:'
         version: 4.3.2(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -313,6 +328,31 @@ importers:
       '@scouterna/ui-react':
         specifier: 'catalog:'
         version: 4.3.2(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@types/react':
+        specifier: ^19.2.14
+        version: 19.2.14
+      react:
+        specifier: ^19.2.5
+        version: 19.2.5
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  plugins/scoutnet:
+    dependencies:
+      '@scouterna/scoutin-plugin-api':
+        specifier: workspace:^
+        version: link:../../packages/plugin-api
+    devDependencies:
+      '@scouterna/scoutin-backend':
+        specifier: workspace:^
+        version: link:../../packages/backend
+      '@scouterna/ui-react':
+        specifier: 'catalog:'
+        version: 4.3.2(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@types/node':
+        specifier: ^25.6.0
+        version: 25.6.0
       '@types/react':
         specifier: ^19.2.14
         version: 19.2.14

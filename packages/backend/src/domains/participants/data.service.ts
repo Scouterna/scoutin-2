@@ -18,7 +18,10 @@ const salt = Buffer.from(config.DATASOURCE_HASHING_SALT);
 
 export function hashLookupValue(value: string): string {
   const end = lookupHashSeconds.startTimer();
-  const hashedValue = createHmac("sha256", secret).update(salt).update(value).digest("hex");
+  const hashedValue = createHmac("sha256", secret)
+    .update(salt)
+    .update(value)
+    .digest("hex");
   end();
   return hashedValue;
 }

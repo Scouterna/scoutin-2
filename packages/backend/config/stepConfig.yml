@@ -45,6 +45,9 @@ steps:
     # explicitly here.
     uses: base:selectSubjects
 
+  - if: ${{ steps.identify.outputs.dataSource == 'groups' }}
+    uses: scoutnet:checkLeaderRequirements
+
   # # verifySafeFromHarm will check that all selected subjects for which it
   # # applies have a valid Safe From Harm status in Scoutnet.
   # - uses: scoutnet:verifySafeFromHarm

@@ -20,6 +20,7 @@
     "@scouterna/scoutin-plugin-api": "workspace:^",
     "@scouterna/scoutin-plugin-base": "workspace:^",
     "@scouterna/scoutin-plugin-malcolm-test": "workspace:^",
+    "@scouterna/scoutin-plugin-scoutnet": "workspace:^",
     "@scouterna/ui-react": "catalog:",
     "@scouterna/ui-webc": "catalog:",
     "@tabler/icons": "^3.41.1",
