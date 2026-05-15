@@ -116,9 +116,7 @@ export async function importScoutnetData(
       rawLookupValues.push(`${p.date_of_birth.replaceAll("-", "")}-${p.ssno}`);
     }
 
-    const lookupValues = await Promise.all(
-      rawLookupValues.map(hashLookupValue),
-    );
+    const lookupValues = rawLookupValues.map(hashLookupValue);
 
     lookupValuesByParticipantId.set(p.member_no, lookupValues);
   }

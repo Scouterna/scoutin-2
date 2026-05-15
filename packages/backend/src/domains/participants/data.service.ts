@@ -1,5 +1,5 @@
+import { createHmac } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { hash } from "argon2";
 import { lookupHashSeconds } from "../../app/metrics.ts";
 import { prisma } from "../../app/prisma.ts";
 import config from "../../config/config.ts";
@@ -16,15 +16,15 @@ export const dataSourceConfig = await loadDataSourceConfig(
 const secret = Buffer.from(config.DATASOURCE_HASHING_SECRET);
 const salt = Buffer.from(config.DATASOURCE_HASHING_SALT);
 
-export async function hashLookupValue(value: string): Promise<string> {
+export function hashLookupValue(value: string): string {
   const end = lookupHashSeconds.startTimer();
-  const hashedValue = await hash(value, { secret, salt });
+  const hashedValue = createHmac("sha256", secret).update(salt).update(value).digest("hex");
   end();
   return hashedValue;
 }
 
 export async function findParticipantsByLookupValue(value: string) {
-  const hashedValue = await hashLookupValue(value);
+  const hashedValue = hashLookupValue(value);
 
   return await prisma.participant.findMany({
     where: {

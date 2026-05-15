@@ -150,9 +150,7 @@ export async function importGoogleSheetsData(
         if (!id) return null;
 
         const personnummer = row[personnummerCol]?.trim();
-        const lookupValues = await Promise.all(
-          [id, personnummer].filter(Boolean).map((v) => hashLookupValue(v!)),
-        );
+        const lookupValues = [id, personnummer].filter(Boolean).map((v) => hashLookupValue(v!));
 
         return {
           id,
