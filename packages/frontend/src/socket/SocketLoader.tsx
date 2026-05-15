@@ -1,15 +1,24 @@
 import type { Listeners, MessageTypes } from "@scouterna/scoutin-backend";
 import { ScoutButton, ScoutCard, ScoutLoader } from "@scouterna/ui-react";
-import { useAtom } from "jotai";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { useAtom, useAtomValue } from "jotai";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { createTypedSocket } from "@/api/typedSocket";
 import { openSessionSocket } from "../api/session";
+import { sessionCredentialsAtom } from "../store/session";
 import { socketAtom } from "../store/socket";
 import { setupSocket } from "./socketLogic";
 
+const MAX_RECONNECT_ATTEMPTS = 10;
+const BASE_RECONNECT_DELAY_MS = 1000;
+const MAX_RECONNECT_DELAY_MS = 30_000;
+
+function reconnectDelay(attempt: number): number {
+  return Math.min(BASE_RECONNECT_DELAY_MS * 2 ** attempt, MAX_RECONNECT_DELAY_MS);
+}
+
 const Wrapper = ({ children }: { children: ReactNode }) => {
   return (
-    <div className="absolute top-0 left-0 w-full h-full flex flex-col gap-4 items-center justify-center bg-white">
+    <div className="absolute top-0 left-0 w-full h-full flex flex-col gap-4 items-center justify-center bg-white z-50">
       {children}
     </div>
   );
@@ -42,41 +51,89 @@ const ErrorInfo = ({ message }: { message: string }) => {
   );
 };
 
-const createSocket = async () => {
+const createRawSocket = async () => {
   const ws = await openSessionSocket();
   return createTypedSocket<Listeners, MessageTypes>(ws);
 };
 
 export function SocketLoader({ children }: { children: ReactNode }) {
   const loaded = useRef(false);
+  const reconnectAttempts = useRef(0);
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [socket, setSocket] = useAtom(socketAtom);
   const [socketError, setSocketError] = useState<string | null>(null);
+  const [reconnecting, setReconnecting] = useState(false);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: setSocket should not be a dependency
+  const credentials = useAtomValue(sessionCredentialsAtom);
+  // Use a ref so the close-event callback always sees the latest value without
+  // needing to re-register the listener on every credentials change.
+  const credentialsRef = useRef(credentials);
+  credentialsRef.current = credentials;
+
+  const connectAndStore = useCallback(async () => {
+    const s = await createRawSocket();
+    setupSocket(s);
+
+    if (credentialsRef.current) {
+      s.send({ name: "auth:authenticate", data: { token: credentialsRef.current.token } });
+    }
+
+    s.addEventListener("close", (event) => {
+      const { code } = event as CloseEvent;
+      console.warn(`WebSocket closed (code ${code}), reconnecting…`);
+      setReconnecting(true);
+
+      const attempt = () => {
+        if (reconnectAttempts.current >= MAX_RECONNECT_ATTEMPTS) {
+          setSocketError(`Kunde inte återansluta efter ${MAX_RECONNECT_ATTEMPTS} försök.`);
+          setReconnecting(false);
+          return;
+        }
+
+        const delay = reconnectDelay(reconnectAttempts.current);
+        reconnectAttempts.current++;
+
+        reconnectTimer.current = setTimeout(async () => {
+          try {
+            await connectAndStore();
+            reconnectAttempts.current = 0;
+            setReconnecting(false);
+          } catch {
+            attempt();
+          }
+        }, delay);
+      };
+
+      attempt();
+    });
+
+    setSocket(s);
+  }, [setSocket]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: connectAndStore and setSocket are stable
   useEffect(() => {
     if (socket || loaded.current) return;
 
     // Ensure we only try to load the socket once, even during strict mode re-renders
     loaded.current = true;
 
-    createSocket()
-      .then((s) => {
-        setupSocket(s);
-        setSocket(s);
-      })
-      .catch((err) => {
-        console.error("Failed to create WebSocket:", err);
+    connectAndStore().catch((err) => {
+      console.error("Failed to create WebSocket:", err);
 
-        let errorString = String(err);
-        if (err instanceof Error) {
-          errorString = `${err.name}: ${err.message}\n${err.stack}`;
-        } else if (err instanceof Event && err.type === "error") {
-          errorString = `WebSocket error`;
-        }
+      let errorString = String(err);
+      if (err instanceof Error) {
+        errorString = `${err.name}: ${err.message}\n${err.stack}`;
+      } else if (err instanceof Event && err.type === "error") {
+        errorString = "WebSocket error";
+      }
 
-        setSocketError(errorString);
-      });
+      setSocketError(errorString);
+    });
+
+    return () => {
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+    };
   }, [socket]);
 
   if (socketError) {
@@ -95,5 +152,14 @@ export function SocketLoader({ children }: { children: ReactNode }) {
     );
   }
 
-  return children;
+  return (
+    <>
+      {children}
+      {reconnecting && (
+        <Wrapper>
+          <ScoutLoader text="Återansluter..." size="xl" />
+        </Wrapper>
+      )}
+    </>
+  );
 }
