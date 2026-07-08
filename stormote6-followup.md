@@ -191,19 +191,44 @@ frontend-reset. Ger spårbarhet i historik/rapporter.
 
 ### Felhantering vid tappad anslutning under inmatning
 
-`[ ]` Källa: Kår "Bättre felhantering... T.ex. man skriver personnummer, men
-inget händer."
+`[x]` Implementerad 2026-07-09. Källa: Kår "Bättre felhantering... T.ex. man
+skriver personnummer, men inget händer."
 
-Bekräftat: `ScreenRenderer.tsx` skickar via socket utan att kolla
-`readyState` – om anslutningen är död men inget `close`-event hunnit köra syns
-inget alls för användaren. Enda feedbacken idag är en fullskärms
-"Återansluter..."-overlay som bara triggas av faktiska close-events.
+Bekräftat: alla sändningar (`ScreenRenderer.tsx` och ~9 andra ställen) gick
+via den delade `createTypedSocket`-wrappern utan att kolla `readyState` – om
+anslutningen är död men inget `close`-event hunnit köra syns inget alls för
+användaren. Enda feedbacken var en fullskärms "Återansluter..."-overlay som
+bara triggades av faktiska close-events (och, sedan
+[heartbeat-punkten](#websocket-krascher-och-tyst-frånkoppling), av
+heartbeat-timeout).
 
 **Plan:**
 - Kolla `readyState` innan send, visa omedelbar felindikation om socket inte
   är öppen.
 - Koppla ihop med heartbeat-arbetet ovan så tysta frånkopplingar upptäcks
   snabbare och overlayn triggas proaktivt istället för reaktivt.
+
+**Genomfört:**
+- Fixat en gång vid den delade väggenomgången istället för vid varje enskilt
+  sändningsställe: `createTypedSocket` (`api/typedSocket.ts`) tar nu en
+  valfri `onSendFailure`-callback; `send()` kollar `readyState !== OPEN` och
+  anropar den istället för att skicka in i tomma intet. Alla ~10
+  sändningsställen (bl.a. `ScreenRenderer.tsx`) täcks automatiskt utan
+  ändringar i respektive fil, eftersom de redan går via samma wrapper.
+- `SocketLoader.tsx`: `handleDisconnect` flyttades till att definieras innan
+  socketen skapas och kopplas in som `onSendFailure`, så den konvergerar med
+  samma reconnect-/overlay-flöde som heartbeat-timeout och `close`-events
+  redan använder (samma idempotens-spärr täcker nu alla tre triggers).
+- Nya enhetstester i `packages/frontend/src/api/typedSocket.test.ts`
+  (öppen/stängd/utan-callback-fallen).
+- **Viktig avgränsning, verifierad under manuell test:** detta täcker bara
+  sändningar när `readyState` redan är `CONNECTING`/`CLOSING`/`CLOSED` (t.ex.
+  ett klick under reconnect-fönstret efter ett riktigt close-event). En
+  genuint tyst frånkoppling (t.ex. wifi som dör) gör inte att `readyState`
+  ändras – webbläsaren har ingen signal om att anslutningen är död förrän
+  något faktiskt misslyckas, så `send()` "lyckas" fortfarande lokalt. Det
+  fallet fångas även fortsatt bara av heartbeaten (~10–15 sekunder), inte av
+  denna ändring – de två mekanismerna är komplementära, inte överlappande.
 
 ### Strukturerad loggning med korrelations-ID
 
