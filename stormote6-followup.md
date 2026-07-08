@@ -114,15 +114,19 @@ köhastighet.
 
 ### WebSocket-krascher och tyst frånkoppling
 
-`[ ]` Källa: Kår "Vi har löst reconnection för crashen. Borde undersöka varför
-den crashar." + Funk "Websocket closed ibland i admin."
+`[x]` Implementerad 2026-07-08. Källa: Kår "Vi har löst reconnection för
+crashen. Borde undersöka varför den crashar." + Funk "Websocket closed ibland
+i admin."
 
-`todo.md:14` listar detta som olöst. Reconnect-logik med backoff finns
+`todo.md:14` listade detta som olöst. Reconnect-logik med backoff fanns
 (`packages/frontend/src/socket/SocketLoader.tsx`), men bara för riktiga
 `close`-events – en tyst frånkoppling (t.ex. wifi som dör utan close-frame)
-upptäcks inte. Ingen ping/pong-heartbeat finns för att detektera detta.
-`plugins/base` har en `heartbeat`-message-typ men den skickas bara manuellt
-från test-/admin-verktyg, aldrig periodiskt från kiosken.
+upptäcktes inte. Ingen ping/pong-heartbeat fanns för att detektera detta.
+Korrigering mot tidigare anteckning: `heartbeat`-meddelandetypen ligger i
+backend-kärnan (`core/websocket/messageTypes.ts` +
+`domains/sessions/session.socket.ts`), inte i `plugins/base` – men det
+stämde att den bara skickades manuellt från test-/admin-verktyg, aldrig
+periodiskt.
 
 **Plan:**
 - Lägg till periodisk ping/pong (client → server heartbeat) i kioskens
@@ -131,6 +135,38 @@ från test-/admin-verktyg, aldrig periodiskt från kiosken.
 - Undersök om samma sak gäller adminpanelens live-socket
   (`AdminSessionOverview.tsx`).
 - Städa bort kvarglömda debug-loggar i samma kodväg (se nästa punkt).
+
+**Genomfört:**
+- Ny delad hjälpare `packages/frontend/src/socket/heartbeat.ts`
+  (`startHeartbeat`): skickar `{ name: "heartbeat" }` var 5:e sekund och
+  räknar missade ekon; efter 2 missade (~15 sekunder totalt) anses
+  anslutningen död.
+- Backendens befintliga `heartbeat`-eko (`session.socket.ts`) återanvänds
+  oförändrat i övrigt, men `requireAuth`-kravet togs bort – heartbeat är nu
+  en ren transportkontroll, oberoende av sessionens auth-status.
+- Viktig upptäckt under implementation: att bara anropa `socket.close()` vid
+  timeout räcker inte – ett `close()`-anrop kan inte slutföra sin handskakning
+  på en redan död anslutning heller, så det väntar tyst tills nätverket
+  kommer tillbaka (samma problem heartbeaten skulle lösa). Lösningen
+  triggar därför reconnect-/felhanteringslogiken direkt från
+  heartbeat-timeouten, med en idempotens-spärr ifall ett riktigt
+  `close`-event ändå kommer senare.
+- **Kiosk** (`SocketLoader.tsx`): heartbeat-timeout triggar samma
+  reconnect-backoff som ett riktigt `close`-event. Backoff-konstanterna
+  (`MAX_RECONNECT_ATTEMPTS`, `reconnectDelay`) flyttades till en delad
+  `packages/frontend/src/socket/reconnect.ts`.
+- **Admin** (`AdminSessionOverview.tsx`): samma heartbeat-detektion, men
+  medvetet begränsad till detektion + befintlig "connection closed"-toast
+  (ingen auto-reconnect) – operatören klickar "Connect" igen manuellt, som
+  idag. Auto-reconnect för adminpanelen prövades men backades ut igen för
+  att hålla ändringen fokuserad; kan tas upp som en egen punkt senare om det
+  behövs.
+- Städade bort kvarglömda `console.log`-brus i samma kodväg:
+  `"Message from server:"` (loggade varje inkommande frame),
+  `"WebSocket connection established"`, `"WebSocket connection closed"`
+  (`api/session.ts`) samt en död kommentar i `api/typedSocket.ts`.
+- Nya enhetstester i `packages/frontend/src/socket/heartbeat.test.ts`
+  (skick-kadens, eko-reset, dödsdetektion, `stop()`, no-op på stängd socket).
 
 ### Automatisk stängning av session efter timeout
 
