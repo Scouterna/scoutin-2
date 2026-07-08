@@ -7,6 +7,7 @@ import { type } from "arktype";
 import { prisma } from "../../app/prisma.ts";
 import { BaseDataSource } from "../../config/baseDataSource.ts";
 import { evaluateExpressionsInString } from "../../core/expressions/expressions.ts";
+import { type Logger, logger } from "../../core/logging/logger.ts";
 import { hashLookupValue } from "./data.service.ts";
 
 export const ScoutnetDataSource = BaseDataSource.and({
@@ -62,16 +63,15 @@ export async function importScoutnetData(
   dataSourceName: string,
 ) {
   const start = performance.now();
-  console.log(
-    `Starting import of Scoutnet data for data source "${dataSourceName}"...`,
-  );
+  const log = logger.child({ dataSource: dataSourceName });
+  log.info("Starting import of Scoutnet data");
 
   const client = getClient();
 
   // TODO: Care about includeIndividuals and includeGroups. Some events could have both groups and individuals.
 
   if (dataSource.providerOptions.includeGroups) {
-    const groups = await getGroups(client, dataSource);
+    const groups = await getGroups(client, dataSource, log);
     await prisma.$transaction(
       groups.map((g) =>
         prisma.participantGroup.upsert({
@@ -94,7 +94,7 @@ export async function importScoutnetData(
     );
   }
 
-  const participants = await getParticipants(client, dataSource);
+  const participants = await getParticipants(client, dataSource, log);
 
   // TODO: Make sure we soft delete cancelled participants and participants that
   // are no longer present in Scoutnet. Soft delete should entail keeping them
@@ -134,8 +134,9 @@ export async function importScoutnetData(
       const groupId = p.group_registration_info?.group_id;
 
       if (dataSource.providerOptions.includeGroups && !groupId) {
-        console.warn(
-          `Participant ${p.member_no} is missing group information, but groups are included in the data source. This participant will be skipped.`,
+        log.warn(
+          { memberNo: p.member_no },
+          "Participant is missing group information, but groups are included in the data source. This participant will be skipped.",
         );
         return [];
       }
@@ -151,7 +152,7 @@ export async function importScoutnetData(
           }
         : undefined;
 
-      const subGroup = resolveSubGroup(dataSource, p);
+      const subGroup = resolveSubGroup(dataSource, p, log);
 
       return [
         prisma.participant.upsert({
@@ -183,16 +184,16 @@ export async function importScoutnetData(
   );
 
   const end = performance.now();
-  console.log(
-    `Finished import of Scoutnet data for data source "${dataSourceName}" in ${(
-      (end - start) / 1000
-    ).toFixed(2)} seconds.`,
+  log.info(
+    { durationSeconds: Number(((end - start) / 1000).toFixed(2)) },
+    "Finished import of Scoutnet data",
   );
 }
 
 async function getGroups(
   client: ScoutnetClient,
   dataSource: ScoutnetDataSource,
+  log: Logger,
 ) {
   const res = await client.GET("/project/get/groups", {
     headers: {
@@ -223,8 +224,9 @@ async function getGroups(
       .flatMap(([groupId, g]) => {
         const out = ScoutnetGroup({ groupId, ...g });
         if (out instanceof type.errors) {
-          console.warn(
-            `Invalid group data from Scoutnet for group "${groupId}": ${out.summary}`,
+          log.warn(
+            { groupId, issues: out.summary },
+            "Invalid group data from Scoutnet",
           );
           return [];
         }
@@ -237,8 +239,12 @@ async function getGroups(
             ?.group_participants ?? 0;
 
         if (groupParticipants <= 0) {
-          console.warn(
-            `Group "${g.groupId}" has no participants registered for project ${dataSource.providerOptions.projectId}, skipping...`,
+          log.warn(
+            {
+              groupId: g.groupId,
+              projectId: dataSource.providerOptions.projectId,
+            },
+            "Group has no participants registered for project, skipping",
           );
           return false;
         }
@@ -251,6 +257,7 @@ async function getGroups(
 async function getParticipants(
   client: ScoutnetClient,
   dataSource: ScoutnetDataSource,
+  log: Logger,
 ) {
   const res = await client.GET("/project/get/participants", {
     headers: {
@@ -277,8 +284,9 @@ async function getParticipants(
       .flatMap((p) => {
         const out = ScoutnetParticipant(p);
         if (out instanceof type.errors) {
-          console.warn(
-            `Invalid participant data from Scoutnet for participant "${p.member_no}": ${out.summary}`,
+          log.warn(
+            { memberNo: p.member_no, issues: out.summary },
+            "Invalid participant data from Scoutnet",
           );
           return [];
         }
@@ -307,6 +315,7 @@ type ScoutnetParticipantOut = typeof ScoutnetParticipant.infer;
 function resolveSubGroup(
   dataSource: ScoutnetDataSource,
   participant: ScoutnetParticipantOut,
+  log: Logger,
 ): string | null {
   const conditions = dataSource.providerOptions.subGroupConditions;
   if (!conditions) return null;
@@ -316,8 +325,9 @@ function resolveSubGroup(
   for (const [key, { condition }] of Object.entries(conditions)) {
     const result = evaluateExpressionsInString(condition, context);
     if (typeof result === "string") {
-      console.warn(
-        `Subgroup condition for "${key}" did not evaluate to a boolean, skipping.`,
+      log.warn(
+        { subGroupKey: key },
+        "Subgroup condition did not evaluate to a boolean, skipping",
       );
       continue;
     }

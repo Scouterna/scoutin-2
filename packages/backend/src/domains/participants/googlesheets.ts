@@ -1,6 +1,7 @@
 import { createSign } from "node:crypto";
 import { prisma } from "../../app/prisma.ts";
 import { BaseDataSource } from "../../config/baseDataSource.ts";
+import { logger } from "../../core/logging/logger.ts";
 import { hashLookupValue } from "./data.service.ts";
 
 export const GoogleSheetsDataSource = BaseDataSource.and({
@@ -74,9 +75,8 @@ export async function importGoogleSheetsData(
   dataSourceName: string,
 ) {
   const start = performance.now();
-  console.log(
-    `Starting import of Google Sheets data for data source "${dataSourceName}"...`,
-  );
+  const log = logger.child({ dataSource: dataSourceName });
+  log.info("Starting import of Google Sheets data");
 
   const accessToken = await getAccessToken(
     dataSource.providerOptions.serviceAccountKey,
@@ -88,8 +88,9 @@ export async function importGoogleSheetsData(
   );
 
   if (rows.length < 2) {
-    console.warn(
-      `No data rows found in sheet "${dataSource.providerOptions.sheetName}"`,
+    log.warn(
+      { sheetName: dataSource.providerOptions.sheetName },
+      "No data rows found in sheet",
     );
     return;
   }
@@ -207,7 +208,8 @@ export async function importGoogleSheetsData(
   );
 
   const end = performance.now();
-  console.log(
-    `Finished import of Google Sheets data for data source "${dataSourceName}" in ${((end - start) / 1000).toFixed(2)} seconds.`,
+  log.info(
+    { durationSeconds: Number(((end - start) / 1000).toFixed(2)) },
+    "Finished import of Google Sheets data",
   );
 }

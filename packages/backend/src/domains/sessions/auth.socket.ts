@@ -1,6 +1,7 @@
 import { type } from "arktype";
 import { authAttempts } from "../../app/metrics.ts";
 import { prisma } from "../../app/prisma.ts";
+import { getLogger, logger } from "../../core/logging/logger.ts";
 import type { MessageTypes } from "../../core/websocket/messageTypes.ts";
 import {
   createBroadcastWs,
@@ -27,7 +28,7 @@ export const requireAuth: RouteMiddleware<null, MessageTypes> = async (
 ) => {
   const isAuthenticated = Boolean(c.get("wsSessionId"));
   if (!isAuthenticated) {
-    console.warn("Unauthorized WebSocket message:", evt.data);
+    getLogger(c).warn({ data: evt.data }, "Unauthorized WebSocket message");
     ws.send({
       name: "auth:status",
       data: {
@@ -49,7 +50,7 @@ export const authRouter = createSocketRouter<MessageTypes>()
     }),
     async (c, evt, ws) => {
       if (!evt.data.token) {
-        console.warn("WebSocket authentication failed: missing token");
+        getLogger(c).warn("WebSocket authentication failed: missing token");
         authAttempts.inc({ outcome: "missing_token" });
         ws.send({
           name: "auth:status",
@@ -64,7 +65,7 @@ export const authRouter = createSocketRouter<MessageTypes>()
       const token = await verifyJWT(evt.data.token);
 
       if (!token?.valid) {
-        console.warn("WebSocket authentication failed: invalid token");
+        getLogger(c).warn("WebSocket authentication failed: invalid token");
         authAttempts.inc({ outcome: "invalid_token" });
         ws.send({
           name: "auth:status",
@@ -89,7 +90,7 @@ export const authRouter = createSocketRouter<MessageTypes>()
       });
 
       if (!session) {
-        console.warn("WebSocket authentication failed: session not found");
+        getLogger(c).warn("WebSocket authentication failed: session not found");
         authAttempts.inc({ outcome: "session_not_found" });
         ws.send({
           name: "auth:status",
@@ -102,6 +103,8 @@ export const authRouter = createSocketRouter<MessageTypes>()
       }
 
       c.set("wsSessionId", sessionId);
+      c.set("logger", logger.child({ connId: c.get("connId"), sessionId }));
+      getLogger(c).info("WebSocket authenticated");
 
       const isFirstConnection = getConnectionCount(sessionId) === 0;
 
@@ -125,7 +128,6 @@ export const authRouter = createSocketRouter<MessageTypes>()
         },
       });
       await sendSessionInfo(sessionId, ws);
-      console.log("WebSocket authenticated successfully");
 
       const broadcastWs = createBroadcastWs(
         sessionId,
@@ -163,11 +165,12 @@ export const authRouter = createSocketRouter<MessageTypes>()
   )
   .bind("auth:clear", null, (c, _evt, ws) => {
     c.set("wsSessionId", undefined);
+    c.set("logger", logger.child({ connId: c.get("connId") }));
+    getLogger(c).info("WebSocket authentication cleared");
     ws.send({
       name: "auth:status",
       data: {
         status: "cleared",
       },
     });
-    console.log("WebSocket authentication cleared");
   });

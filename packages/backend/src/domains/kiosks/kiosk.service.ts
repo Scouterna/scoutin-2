@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "../../app/prisma.ts";
+import { logger } from "../../core/logging/logger.ts";
 import { PrismaClientKnownRequestError } from "../../generated/prisma/internal/prismaNamespace.ts";
 
 function isNotFound(e: unknown): boolean {
@@ -70,7 +71,7 @@ export async function validateKioskKey(key: string): Promise<boolean> {
     return true;
   } catch (e) {
     if (!isNotFound(e))
-      console.error("Unexpected error in validateKioskKey:", e);
+      logger.error({ err: e }, "Unexpected error in validateKioskKey");
     return false;
   }
 }
@@ -83,7 +84,8 @@ export async function renameKiosk(id: string, name: string) {
       select: { id: true, name: true },
     });
   } catch (e) {
-    if (!isNotFound(e)) console.error("Unexpected error in renameKiosk:", e);
+    if (!isNotFound(e))
+      logger.error({ err: e }, "Unexpected error in renameKiosk");
     return null;
   }
 }
@@ -93,7 +95,8 @@ export async function deleteKiosk(id: string): Promise<boolean> {
     await prisma.kiosk.delete({ where: { id } });
     return true;
   } catch (e) {
-    if (!isNotFound(e)) console.error("Unexpected error in deleteKiosk:", e);
+    if (!isNotFound(e))
+      logger.error({ err: e }, "Unexpected error in deleteKiosk");
     return false;
   }
 }

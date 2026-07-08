@@ -1,5 +1,6 @@
 import { type } from "arktype";
 import { stepMethodCallSeconds } from "../../app/metrics.ts";
+import { getLogger } from "../../core/logging/logger.ts";
 import type { MessageTypes } from "../../core/websocket/messageTypes.ts";
 import { createBroadcastWs } from "../../core/websocket/sessionRegistry.ts";
 import {
@@ -17,8 +18,7 @@ export const router = createSocketRouter<MessageTypes>();
 
 const routes = router
   .use(authRouter)
-  .bind("heartbeat", null, requireAuth, (_c, evt, ws) => {
-    console.log("Hi!", evt.data);
+  .bind("heartbeat", null, requireAuth, (_c, _evt, ws) => {
     ws.send({
       name: "heartbeat",
     });
@@ -38,7 +38,7 @@ const routes = router
 
       const currentStep = await getCurrentStep(sessionId);
       if (!currentStep) {
-        console.warn(`No current step found for session ${sessionId}`);
+        getLogger(c).warn("No current step found for session");
         return;
       }
 

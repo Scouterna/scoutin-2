@@ -9,6 +9,9 @@ const Config = type({
     .default("3000"),
   NODE_ENV: type("'development' | 'production'").default("development"),
   BASE_PATH: type("string").default(""),
+  "LOG_LEVEL?": type(
+    "'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent'",
+  ),
   DATABASE_URL: type("string"),
   TOKEN_SECRET: type("string"),
   DATASOURCE_HASHING_SECRET: type("string"),
@@ -38,6 +41,8 @@ const config = new Proxy({} as Config, {
       !process.env.SUPPRESS_CONFIG_WARNINGS ||
       process.env.SUPPRESS_CONFIG_WARNINGS === "false"
     ) {
+      // The logger itself depends on config being loaded, so it can't be used here.
+      // biome-ignore lint/suspicious/noConsole: bootstrap warning before the logger is available
       console.warn(`Accessing property ${prop} before config is loaded`);
     }
     return undefined;

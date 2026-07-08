@@ -5,6 +5,7 @@ import {
   getCurrentStep,
 } from "../../domains/workflows/step.service.ts";
 import { stepRegistry } from "../../domains/workflows/steps.ts";
+import { getLogger } from "../logging/logger.ts";
 import {
   clearScreenTracking,
   setStepMeta,
@@ -54,7 +55,7 @@ export async function restartStep(
 
   const currentStep = await getCurrentStep(sessionId);
   if (!currentStep) {
-    console.warn(`No current step found for session ${sessionId}`);
+    getLogger(c).warn("No current step found for session");
     return;
   }
 
@@ -103,7 +104,7 @@ export async function goBack(
 
     const currentStep = await getCurrentStep(sessionId);
     if (!currentStep) {
-      console.warn(`No current step found for session ${sessionId}`);
+      getLogger(c).warn("No current step found for session");
       return;
     }
     await startStep(c, ws, currentStep);

@@ -26,6 +26,18 @@
       }
     }
   },
+  "overrides": [
+    {
+      "includes": ["packages/backend/**"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "error"
+          }
+        }
+      }
+    }
+  ],
   "javascript": {
     "formatter": {
       "quoteStyle": "double"

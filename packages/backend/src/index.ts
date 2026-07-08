@@ -6,6 +6,7 @@ loadConfig();
 async function main() {
   // Use dynamic import to make sure config is loaded before app is imported
   const { app, injectWebSocket } = await import("./app/app.ts");
+  const { logger } = await import("./core/logging/logger.ts");
 
   const server = serve(
     {
@@ -14,7 +15,7 @@ async function main() {
       hostname: "0.0.0.0",
     },
     (info) => {
-      console.log(`Server is running on http://localhost:${info.port}`);
+      logger.info(`Server is running on http://localhost:${info.port}`);
     },
   );
 

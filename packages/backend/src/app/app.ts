@@ -4,6 +4,8 @@ import { prometheus } from "@hono/prometheus";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import config from "../config/config.ts";
+import { getLogger, logger } from "../core/logging/logger.ts";
+import type { AppEnv } from "../core/websocket/types.ts";
 import { kiosksRouter } from "../domains/kiosks/kiosks.routes.ts";
 import { sessionRouter } from "../domains/sessions/session.routes.ts";
 import { router as sessionSocketRouter } from "../domains/sessions/session.socket.ts";
@@ -16,8 +18,8 @@ import { activeWebSocketConnections, registry } from "./metrics.ts";
 await loadPlugins();
 
 const app = config.BASE_PATH
-  ? (new Hono().basePath(config.BASE_PATH || "/") as Hono)
-  : new Hono();
+  ? (new Hono<AppEnv>().basePath(config.BASE_PATH || "/") as Hono<AppEnv>)
+  : new Hono<AppEnv>();
 
 const { printMetrics, registerMetrics } = prometheus({
   registry,
@@ -25,6 +27,23 @@ const { printMetrics, registerMetrics } = prometheus({
 
 app.use("*", registerMetrics);
 app.get("/metrics", printMetrics);
+
+app.use("/api/*", async (c, next) => {
+  const reqId = crypto.randomUUID();
+  const reqLogger = logger.child({
+    reqId,
+    method: c.req.method,
+    path: c.req.path,
+  });
+  c.set("reqId", reqId);
+  c.set("logger", reqLogger);
+
+  await next();
+
+  const status = c.res.status;
+  const logLine = status >= 500 ? "error" : status >= 400 ? "warn" : "debug";
+  reqLogger[logLine]({ status }, "Request completed");
+});
 
 if (config.NODE_ENV === "development") {
   app.use("/api/*", cors());
@@ -60,13 +79,18 @@ const routes = app
       // Simulate delay for testing purposes
       // await new Promise((resolve) => setTimeout(resolve, 1500));
 
+      const connId = crypto.randomUUID();
+      c.set("connId", connId);
+      c.set("logger", logger.child({ connId }));
+
+      getLogger(c).info("WebSocket connection opened");
       activeWebSocketConnections.inc();
 
       return {
         onMessage: sessionSocketRouter.onMessage(c),
         onClose() {
           activeWebSocketConnections.dec();
-          console.log("WebSocket connection closed");
+          getLogger(c).info("WebSocket connection closed");
           c.get("wsUnregister")?.();
         },
       };

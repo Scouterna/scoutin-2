@@ -13,8 +13,20 @@ export type SetSubjectsOptions = {
   participantIds: string[];
 };
 
+export type StepLogger = {
+  debug(msg: string, ...args: unknown[]): void;
+  debug(obj: object, msg?: string, ...args: unknown[]): void;
+  info(msg: string, ...args: unknown[]): void;
+  info(obj: object, msg?: string, ...args: unknown[]): void;
+  warn(msg: string, ...args: unknown[]): void;
+  warn(obj: object, msg?: string, ...args: unknown[]): void;
+  error(msg: string, ...args: unknown[]): void;
+  error(obj: object, msg?: string, ...args: unknown[]): void;
+};
+
 export type StepMethodContext<TState = Record<string, unknown>> = {
   sessionId: string;
+  logger: StepLogger;
   sendMessage(name: string, payload?: Record<string, unknown>): Promise<void>;
   setCompleted(outputs?: Record<string, unknown>): Promise<void>;
   showScreen(

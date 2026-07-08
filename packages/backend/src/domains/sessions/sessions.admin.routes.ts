@@ -1,9 +1,11 @@
 import { Hono } from "hono";
 import { prisma } from "../../app/prisma.ts";
+import { getLogger } from "../../core/logging/logger.ts";
+import type { AppEnv } from "../../core/websocket/types.ts";
 import { getStepStatuses } from "../workflows/step.service.ts";
 import { createSession, createSessionToken } from "./session.service.ts";
 
-export const sessionsAdminRouter = new Hono()
+export const sessionsAdminRouter = new Hono<AppEnv>()
   .post("/", async (c) => {
     const session = await createSession();
     return c.json({ id: session.id }, 201);
@@ -45,10 +47,9 @@ export const sessionsAdminRouter = new Hono()
     try {
       stepStatuses = await getStepStatuses(session.id);
     } catch (err) {
-      console.error(
+      getLogger(c).error(
+        { err, sessionId: session.id },
         "Failed to compute step statuses for session",
-        session.id,
-        err,
       );
       return c.json({ error: "Failed to load session details" }, 500);
     }

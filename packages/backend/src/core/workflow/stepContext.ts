@@ -10,6 +10,7 @@ import {
   finalizeSession,
   getCurrentStep,
 } from "../../domains/workflows/step.service.ts";
+import { getLogger, logger } from "../logging/logger.ts";
 import type { MessageTypes } from "../websocket/messageTypes.ts";
 import {
   clearStepState,
@@ -35,6 +36,7 @@ export function createStepContext(
 
   return {
     sessionId,
+    logger: getLogger(c),
     async sendMessage(name, payload = {}) {
       ws.send({
         name: "step:message",
@@ -206,6 +208,10 @@ export function createStepContext(
     },
     async overrideSession(newSessionId) {
       c.set("wsSessionId", newSessionId);
+      c.set(
+        "logger",
+        logger.child({ connId: c.get("connId"), sessionId: newSessionId }),
+      );
     },
     async restartStep() {
       await restartStep(c, ws);

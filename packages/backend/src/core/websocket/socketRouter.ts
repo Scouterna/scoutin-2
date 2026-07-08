@@ -1,6 +1,7 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { type } from "arktype";
 import type { WSContext, WSEvents, WSMessageReceive } from "hono/ws";
+import { getLogger } from "../logging/logger.ts";
 import type { TypedContext } from "./types.ts";
 
 type TypedEvent<TSchema extends StandardSchemaV1<object, object> | null> = Omit<
@@ -85,7 +86,10 @@ export function createSocketRouter<TServerMessage extends { name: string }>() {
     (evt, ws) => {
       const payload = parsePayload(evt.data);
       if (payload instanceof type.errors) {
-        console.warn("Failed to parse message:", payload.summary);
+        getLogger(c).warn(
+          { issues: payload.summary },
+          "Failed to parse message",
+        );
         ws.send(
           JSON.stringify({
             name: "error",
@@ -100,7 +104,10 @@ export function createSocketRouter<TServerMessage extends { name: string }>() {
 
       const route = routes[payload.name];
       if (!route || route.middleware.length === 0) {
-        console.warn(`No handler for message name: ${payload.name}`);
+        getLogger(c).warn(
+          { messageName: payload.name },
+          "No handler for message name",
+        );
         ws.send(
           JSON.stringify({
             name: "error",
@@ -121,9 +128,9 @@ export function createSocketRouter<TServerMessage extends { name: string }>() {
         }
 
         if (validationResult.issues) {
-          console.warn(
-            `Validation failed for message "${payload.name}":`,
-            validationResult.issues,
+          getLogger(c).warn(
+            { messageName: payload.name, issues: validationResult.issues },
+            "Validation failed for message",
           );
           ws.send(
             JSON.stringify({
@@ -165,7 +172,7 @@ export function createSocketRouter<TServerMessage extends { name: string }>() {
       };
 
       next().catch((err) => {
-        console.error("Error processing WebSocket message:", err);
+        getLogger(c).error({ err }, "Error processing WebSocket message");
         try {
           ws.send(
             JSON.stringify({
