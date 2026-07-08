@@ -51,9 +51,9 @@ const ErrorInfo = ({ message }: { message: string }) => {
   );
 };
 
-const createRawSocket = async () => {
+const createRawSocket = async (onSendFailure: (reason: string) => void) => {
   const ws = await openSessionSocket();
-  return createTypedSocket<Listeners, MessageTypes>(ws);
+  return createTypedSocket<Listeners, MessageTypes>(ws, onSendFailure);
 };
 
 export function SocketLoader({ children }: { children: ReactNode }) {
@@ -73,21 +73,12 @@ export function SocketLoader({ children }: { children: ReactNode }) {
   credentialsRef.current = credentials;
 
   const connectAndStore = useCallback(async () => {
-    const s = await createRawSocket();
-    setupSocket(s);
-
-    if (credentialsRef.current) {
-      s.send({
-        name: "auth:authenticate",
-        data: { token: credentialsRef.current.token },
-      });
-    }
-
     // A dead connection may never deliver a native `close` event (e.g. the
     // network vanishes without a FIN/RST) — `close()` itself can't complete
     // its handshake in that case either. So reconnection must be triggered
-    // directly from the heartbeat timeout, not only from `close`. This flag
-    // makes the two triggers idempotent in case both eventually fire.
+    // directly from the heartbeat timeout or a failed send, not only from
+    // `close`. This flag makes the triggers idempotent in case more than one
+    // eventually fires.
     let disconnected = false;
     const handleDisconnect = (reason: string) => {
       if (disconnected) return;
@@ -121,6 +112,19 @@ export function SocketLoader({ children }: { children: ReactNode }) {
 
       attempt();
     };
+
+    // Sending while the socket isn't OPEN (e.g. a silent disconnect that
+    // hasn't produced a `close` event yet) is otherwise invisible to the
+    // operator — route it into the same reconnect path as heartbeat/close.
+    const s = await createRawSocket(handleDisconnect);
+    setupSocket(s);
+
+    if (credentialsRef.current) {
+      s.send({
+        name: "auth:authenticate",
+        data: { token: credentialsRef.current.token },
+      });
+    }
 
     stopHeartbeat.current = startHeartbeat(s, () => {
       handleDisconnect("WebSocket heartbeat timed out");

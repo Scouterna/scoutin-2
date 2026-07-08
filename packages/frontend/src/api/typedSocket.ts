@@ -33,7 +33,10 @@ export type TypedSocket<
 export function createTypedSocket<
   TSendTypes extends { name: string },
   TListenTypes extends { name: string },
->(socket: WebSocket): TypedSocket<TSendTypes, TListenTypes> {
+>(
+  socket: WebSocket,
+  onSendFailure?: (reason: string) => void,
+): TypedSocket<TSendTypes, TListenTypes> {
   const listeners = new Map<string, Array<(data: unknown) => void>>();
 
   // TODO: Do we need cleanup of listeners on socket close?
@@ -75,6 +78,10 @@ export function createTypedSocket<
   });
 
   const send = (data: unknown) => {
+    if (socket.readyState !== WebSocket.OPEN) {
+      onSendFailure?.("WebSocket send attempted while not open");
+      return;
+    }
     socket.send(JSON.stringify(data));
   };
   const on = (name: string, listener: (data: unknown) => void) => {
