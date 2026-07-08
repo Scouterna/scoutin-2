@@ -171,11 +171,12 @@ inget alls för användaren. Enda feedbacken idag är en fullskärms
 
 ### Strukturerad loggning med korrelations-ID
 
-`[ ]` Källa: Kår "Bättre loggning i backend... Korrelations-ID eller likn."
+`[x]` Implementerad 2026-07-08. Källa: Kår "Bättre loggning i backend...
+Korrelations-ID eller likn."
 
-Backend använder uteslutande bara `console.log`/`warn`/`error`, ingen
-loggbibliotek, inget request-/session-ID kopplat till loggrader. Går inte att
-i efterhand koppla ihop ett fel en operatör såg i kiosk-UI:t med rätt
+Backend använde uteslutande bara `console.log`/`warn`/`error`, ingen
+loggbibliotek, inget request-/session-ID kopplat till loggrader. Gick inte
+att i efterhand koppla ihop ett fel en operatör såg i kiosk-UI:t med rätt
 backend-loggrad.
 
 **Plan:**
@@ -186,6 +187,24 @@ backend-loggrad.
   `console.log("WebSocket authenticated successfully")` i
   `auth.socket.ts:128` (körs vid *varje* autentisering, inte bara första
   gången) och `console.log("Hi!", ...)` i `session.socket.ts:21`.
+
+**Genomfört:**
+- `pino` (+ `pino-pretty` i dev) infört som loggbibliotek, ny
+  `core/logging/logger.ts` med bas-`logger` och `getLogger(c)`-hjälpare.
+- Både HTTP-anrop och websocket-anslutningar korreleras: varje `/api/*`-
+  request får ett `reqId`, varje websocket-anslutning ett `connId`
+  (bundet på `TypedContext` via `AppEnv`, nytt i `core/websocket/types.ts`).
+  Vid lyckad autentisering binds även `sessionId` in, så alla loggrader
+  för anslutningen efter det innehåller båda ID:na.
+- Alla `console.*`-anrop i backend ersatta med den kontextbundna loggern,
+  inklusive `scoutnet.ts`, `googlesheets.ts`, `kiosk.service.ts` och
+  admin-routes (inte bara websocket-kodvägen). `console.log("Hi!", ...)`
+  togs bort helt (ren brus); den upprepade auth-loggen döptes om till
+  `"WebSocket authenticated"` på info-nivå.
+- Lade till `noConsole: "error"` som biome-regel för `packages/backend/**`
+  så att `console.*` inte smyger sig tillbaka.
+- Ny konfig `LOG_LEVEL` i `config.ts` styr loggnivå; `pino-pretty` används
+  bara i development, JSON i production.
 
 ---
 
