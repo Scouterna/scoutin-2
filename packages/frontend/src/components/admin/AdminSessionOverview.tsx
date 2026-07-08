@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { openAdminSessionSocket } from "@/api/session";
 import type { TypedSocket } from "@/api/typedSocket";
+import { startHeartbeat } from "@/socket/heartbeat";
 import { AdminDebugPanel } from "./AdminDebugPanel";
 
 type LogEntry = {
@@ -43,6 +44,7 @@ export function AdminSessionOverview({ sessionId }: { sessionId: string }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const currentScreenRef = useRef<CurrentScreen | null>(null);
   const intentionalClose = useRef(false);
+  const stopHeartbeat = useRef<(() => void) | null>(null);
 
   const appendLog = (entry: LogEntry) =>
     setMessageLog((prev) => [entry, ...prev.slice(0, 99)]);
@@ -126,7 +128,15 @@ export function AdminSessionOverview({ sessionId }: { sessionId: string }) {
         originalSend(msg);
       };
 
-      sock.addEventListener("close", () => {
+      // A dead connection may never deliver a native `close` event, and
+      // `close()` itself can't complete its handshake in that case either —
+      // so this must run directly from the heartbeat timeout, not only from
+      // `close`. The flag makes the two triggers idempotent.
+      let disconnected = false;
+      const handleDisconnect = () => {
+        if (disconnected) return;
+        disconnected = true;
+        stopHeartbeat.current?.();
         if (!intentionalClose.current) {
           toast.error("WebSocket connection closed", { duration: Infinity });
         }
@@ -135,6 +145,13 @@ export function AdminSessionOverview({ sessionId }: { sessionId: string }) {
         setSocket(null);
         updateCurrentScreen(null);
         socketRef.current = null;
+      };
+
+      sock.addEventListener("close", handleDisconnect);
+
+      stopHeartbeat.current = startHeartbeat(sock, () => {
+        handleDisconnect();
+        sock.close();
       });
 
       setSocket(sock);
@@ -153,6 +170,7 @@ export function AdminSessionOverview({ sessionId }: { sessionId: string }) {
   useEffect(() => {
     return () => {
       intentionalClose.current = true;
+      stopHeartbeat.current?.();
       socketRef.current?.close();
     };
   }, []);

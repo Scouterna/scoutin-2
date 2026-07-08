@@ -124,20 +124,11 @@ export function openSessionSocket(): Promise<WebSocket> {
     try {
       const socket = ws.session.$ws();
 
-      socket.addEventListener("message", (event) => {
-        console.log("Message from server:", event.data);
-      });
-
       socket.addEventListener("error", reject);
 
       socket.addEventListener("open", () => {
-        console.log("WebSocket connection established");
         socket.removeEventListener("error", reject);
         resolve(socket);
-      });
-
-      socket.addEventListener("close", () => {
-        console.log("WebSocket connection closed");
       });
     } catch (e) {
       reject(e);

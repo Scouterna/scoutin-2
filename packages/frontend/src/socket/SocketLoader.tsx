@@ -12,18 +12,9 @@ import { createTypedSocket } from "@/api/typedSocket";
 import { openSessionSocket } from "../api/session";
 import { sessionCredentialsAtom } from "../store/session";
 import { socketAtom } from "../store/socket";
+import { startHeartbeat } from "./heartbeat";
+import { MAX_RECONNECT_ATTEMPTS, reconnectDelay } from "./reconnect";
 import { setupSocket } from "./socketLogic";
-
-const MAX_RECONNECT_ATTEMPTS = 10;
-const BASE_RECONNECT_DELAY_MS = 1000;
-const MAX_RECONNECT_DELAY_MS = 30_000;
-
-function reconnectDelay(attempt: number): number {
-  return Math.min(
-    BASE_RECONNECT_DELAY_MS * 2 ** attempt,
-    MAX_RECONNECT_DELAY_MS,
-  );
-}
 
 const Wrapper = ({ children }: { children: ReactNode }) => {
   return (
@@ -69,6 +60,7 @@ export function SocketLoader({ children }: { children: ReactNode }) {
   const loaded = useRef(false);
   const reconnectAttempts = useRef(0);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stopHeartbeat = useRef<(() => void) | null>(null);
 
   const [socket, setSocket] = useAtom(socketAtom);
   const [socketError, setSocketError] = useState<string | null>(null);
@@ -91,9 +83,17 @@ export function SocketLoader({ children }: { children: ReactNode }) {
       });
     }
 
-    s.addEventListener("close", (event) => {
-      const { code } = event as CloseEvent;
-      console.warn(`WebSocket closed (code ${code}), reconnecting…`);
+    // A dead connection may never deliver a native `close` event (e.g. the
+    // network vanishes without a FIN/RST) — `close()` itself can't complete
+    // its handshake in that case either. So reconnection must be triggered
+    // directly from the heartbeat timeout, not only from `close`. This flag
+    // makes the two triggers idempotent in case both eventually fire.
+    let disconnected = false;
+    const handleDisconnect = (reason: string) => {
+      if (disconnected) return;
+      disconnected = true;
+      console.warn(`${reason}, reconnecting…`);
+      stopHeartbeat.current?.();
       setReconnecting(true);
 
       const attempt = () => {
@@ -120,6 +120,16 @@ export function SocketLoader({ children }: { children: ReactNode }) {
       };
 
       attempt();
+    };
+
+    stopHeartbeat.current = startHeartbeat(s, () => {
+      handleDisconnect("WebSocket heartbeat timed out");
+      s.close();
+    });
+
+    s.addEventListener("close", (event) => {
+      const { code } = event as CloseEvent;
+      handleDisconnect(`WebSocket closed (code ${code})`);
     });
 
     setSocket(s);
@@ -147,6 +157,7 @@ export function SocketLoader({ children }: { children: ReactNode }) {
 
     return () => {
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+      stopHeartbeat.current?.();
     };
   }, [socket]);
 

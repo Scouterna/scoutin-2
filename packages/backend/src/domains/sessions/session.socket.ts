@@ -18,7 +18,7 @@ export const router = createSocketRouter<MessageTypes>();
 
 const routes = router
   .use(authRouter)
-  .bind("heartbeat", null, requireAuth, (_c, _evt, ws) => {
+  .bind("heartbeat", null, (_c, _evt, ws) => {
     ws.send({
       name: "heartbeat",
     });
