@@ -1,5 +1,6 @@
 import type { BackendPlugin } from "@scouterna/scoutin-plugin-api/backend";
 import { block } from "./block/backend/block.ts";
+import { confirmReCheckin } from "./confirmReCheckin/backend/confirmReCheckin.ts";
 import { deduplicateSession } from "./deduplicateSession/backend/deduplicateSession.ts";
 import { identify } from "./identify/backend/identify.ts";
 import { markConfirmedCheckedIn } from "./markConfirmedCheckedIn/backend/markConfirmedCheckedIn.ts";
@@ -14,6 +15,7 @@ export const plugin: BackendPlugin = {
     ctx.registerStep(identify);
     ctx.registerStep(deduplicateSession);
     ctx.registerStep(setActorAsSubject);
+    ctx.registerStep(confirmReCheckin);
     ctx.registerStep(selectSubjects);
     ctx.registerStep(markPreliminaryCheckedIn);
     ctx.registerStep(markConfirmedCheckedIn);

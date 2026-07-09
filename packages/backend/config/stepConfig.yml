@@ -39,6 +39,17 @@ steps:
     # setActorAsSubject sets the session.subjects to the actorId from the session.
     uses: base:setActorAsSubject
 
+  - if: |
+      ${{
+        steps.identify.outputs.dataSource == 'staff' ||
+        steps.identify.outputs.dataSource == 'stormote6_ordinary'
+      }}
+    # Self-checkin only: warns and asks for confirmation if this person is
+    # already checked in. Not used for the groups flow, where a leader
+    # completing another session is expected - there is no "done" state to
+    # protect there.
+    uses: base:confirmReCheckin
+
   - if: ${{ steps.identify.outputs.dataSource == 'groups' }}
     # selectSubjects will automatically use the actorId from the session to
     # determine which members they can select, so we don't need to pass it

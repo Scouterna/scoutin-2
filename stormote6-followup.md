@@ -314,8 +314,8 @@ backend-loggrad.
 
 ### Förhindra dubbel-incheckning
 
-`[~]` Beslut 2026-07-08: kräv bekräftelse. Källa: Kår "Man kan checka in
-flera gånger."
+`[x]` Implementerad 2026-07-09. Beslut 2026-07-08: kräv bekräftelse. Källa:
+Kår "Man kan checka in flera gånger."
 
 Bekräftat: `markConfirmedCheckedIn`/`markPreliminaryCheckedIn` skriver bara
 över tidsstämpeln, ingen spärr. Dedupe av sessioner
@@ -327,14 +327,45 @@ in samma deltagare igen.
 vara helt tyst tillåtet – operatören ska få en bekräftelsedialog ("redan
 incheckad kl X, checka in igen?") och själv välja om det ska genomföras.
 
-**Plan:**
-- Implementera bekräftelsesteget i/kring `markConfirmedCheckedIn`/
-  `markPreliminaryCheckedIn` (eller tidigare i flödet, t.ex. i
-  `selectSubjects` där redan incheckade deltagare kan flaggas visuellt innan
-  bekräftelsen visas).
-- Avgör UI-mönster: troligen samma `requireAcknowledgement`-mekanism som
-  [bekräftelse-checkboxen](#bekräftelse-checkbox-på-sista-skärmen) nedan,
-  eller en enklare modal/varningsskärm.
+**Omprövning under design:** "operatören" är inte samma person i alla flöden.
+För `staff`/`stormote6_ordinary` (on-site-egenincheckning) sätter
+`base:setActorAsSubject` aktören som sin egen enda subject – personen som
+svarar på bekräftelsedialogen är alltså den incheckade själv, inte en
+tredje part med överblick. För `groups` (kårledare) är aktör och subjects
+olika personer, men där finns inget "klart"-tillstånd att skydda – en
+ledare förväntas slutföra flera sessioner under dagen (en session per
+omgång scouter), så att flagga "du har redan en avslutad session" hade gett
+falska positiva varje gång efter första omgången.
+
+**Slutgiltigt beslut:** bekräftelsen gäller enbart on-site-
+egenincheckningen (`staff`/`stormote6_ordinary`). Kårledarflödet lämnas helt
+orört. Byggd som en ny egen kontroll på deltagarens riktiga
+incheckningsstatus (`Participant.confirmedCheckedInAt`) – inte som en
+utbyggnad av `base:deduplicateSession`, vars nyckel (aktör +
+`configFile` + `completedAt: null`) är fel granularitet för detta: den ser
+bara sessioner, inte deltagarens faktiska status, och skulle behöva en
+separat undantagsgren för kårledarflödet ändå.
+
+**Genomfört:**
+- Ny egen steg-typ `base:confirmReCheckin`
+  (`plugins/base/src/confirmReCheckin/backend/confirmReCheckin.ts`), samma
+  mönster som `base:deduplicateSession` (villkorad skärm + publicMethod för
+  att gå vidare).
+- `onStepStart` läser aktörens `Participant.confirmedCheckedInAt` direkt.
+  `null` → `setCompleted()` utan att visa något (vanliga, förstagångsfallet,
+  ingen friktion). Satt → visar `base:confirmReCheckin:confirm` med namn och
+  tidigare incheckningstid.
+- Skärmen (`ConfirmReCheckinScreen.tsx`, `@scouterna/ui-react`) har två
+  knappar: "Ja, checka in igen" anropar stegets `confirm`-metod och flödet
+  fortsätter till `base:markConfirmedCheckedIn` som vanligt (skriver bara
+  över tidsstämpeln, ingen ny rad); "Avbryt" skickar samma `session:abort`
+  som redan används av idle-timeout-flödet – inget nytt backend-meddelande
+  behövdes.
+- Villkorad i `packages/backend/config/stepConfig.yml` på samma
+  `staff`/`stormote6_ordinary`-gren som `base:setActorAsSubject`, placerad
+  direkt efter den och före `base:selectSubjects`/`base:markConfirmedCheckedIn`.
+  `stepConfig.pre-checkin.yml` (mobilflödet, alltid `groups`,
+  `markPreliminaryCheckedIn`) är oförändrad.
 
 ### Bekräftelse-checkbox på sista skärmen
 

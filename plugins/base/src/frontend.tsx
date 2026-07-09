@@ -1,5 +1,6 @@
 import type { FrontendPlugin } from "@scouterna/scoutin-plugin-api/frontend";
 import { setup as blockSetup } from "./block/frontend/index.tsx";
+import { setup as confirmReCheckinSetup } from "./confirmReCheckin/frontend/index.tsx";
 import { setup as deduplicateSetup } from "./deduplicateSession/frontend/index.tsx";
 import { setup as identifySetup } from "./identify/frontend/index.tsx";
 import { setup as messageSetup } from "./message/frontend/index.tsx";
@@ -10,6 +11,7 @@ export const plugin: FrontendPlugin = {
     blockSetup(ctx);
     identifySetup(ctx);
     deduplicateSetup(ctx);
+    confirmReCheckinSetup(ctx);
     selectSubjectsSetup(ctx);
     messageSetup(ctx);
   },
