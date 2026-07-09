@@ -50,9 +50,10 @@ model CheckinSession {
 
   subjects CheckinSubject[]
 
-  // TODO: It might be a good idea to add an expiry time to sessions
-
   completedAt DateTime?
+  // Set when the session is actively aborted (e.g. inactivity timeout).
+  // Mutually exclusive with completedAt in practice.
+  abortedAt   DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

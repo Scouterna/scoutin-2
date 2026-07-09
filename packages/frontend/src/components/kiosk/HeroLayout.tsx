@@ -23,6 +23,9 @@ export type Props = {
   showBackButton: boolean;
   backgroundVideoUrl?: string;
   onBackClick: () => void;
+  /** Shown alongside the back button; lets the operator reset immediately
+   * (e.g. a new person walks up before the idle timeout would fire). */
+  onResetClick?: () => void;
 };
 
 export function HeroLayout({
@@ -32,6 +35,7 @@ export function HeroLayout({
   showBackButton,
   backgroundVideoUrl,
   onBackClick,
+  onResetClick,
 }: Props) {
   const showVideo = backgroundVideoUrl && !prefersReducedMotion;
 
@@ -193,6 +197,16 @@ export function HeroLayout({
               iconPosition="before"
             >
               Gå tillbaka
+            </ScoutButton>
+          )}
+          {showBackButton && onResetClick && (
+            <ScoutButton
+              variant="text"
+              size="large"
+              className="ml-auto not-hover:[--color-text-brand-base:var(--color-white)]"
+              onScoutClick={onResetClick}
+            >
+              Börja om
             </ScoutButton>
           )}
         </div>

@@ -170,24 +170,65 @@ periodiskt.
 
 ### Automatisk stängning av session efter timeout
 
-`[~]` Beslut 2026-07-08: riktig backend-åtgärd. Källa: Kår "Stäng sessionen
-automatiskt efter x sekunder... På sista skärmen, kortare tid."
+`[x]` Implementerad 2026-07-09. Källa: Kår "Stäng sessionen automatiskt
+efter x sekunder... På sista skärmen, kortare tid."
 
-Finns inte alls idag. `CheckinSession`-modellen har en kommentar
-(`schema.prisma:53`) om att en expiry-tid vore bra, men inget är
+Fanns inte alls tidigare. `CheckinSession`-modellen hade en kommentar
+(`schema.prisma:53`) om att en expiry-tid vore bra, men inget var
 implementerat.
 
-**Beslut:** ett timeout-avbrott ska vara en riktig backend-åtgärd –
-sessionen markeras aktivt som avbruten i databasen, inte bara en tyst
+**Beslut:** ett timeout-avbrott är en riktig backend-åtgärd – sessionen
+markeras aktivt som avbruten i databasen (`abortedAt`), inte bara en tyst
 frontend-reset. Ger spårbarhet i historik/rapporter.
 
-**Plan:**
-- Lägg till stöd i backend för att markera en session som avbruten (troligen
-  ett nytt fält bredvid `completedAt` på `CheckinSession`, t.ex.
-  `abortedAt`).
-- Inaktivitetstimer per skärm i frontend som anropar denna backend-åtgärd
-  vid timeout.
-- Kortare timeout specifikt på sista skärmen.
+Uppföljande fråga under implementationen: bör användaren kunna avbryta
+timeouten, och bör backend i så fall pusha ett "kommer snart avbrytas"-
+meddelande med tidsstämpel innan den faktiska avbrytningen? Beslut: nej –
+timern och nedräkningen är helt klientsidan; backend involveras först när
+avbrottet faktiskt utlöses. Slipper en ny websocket-meddelandetyp, en extra
+tur-och-retur och klocksynk-problem mellan klient och server.
+
+**Genomfört:**
+- Nytt fält `abortedAt DateTime?` på `CheckinSession`
+  (`packages/backend/prisma/schema.prisma`), bredvid `completedAt`.
+- Ny `abortSession(sessionId)` i `session.service.ts` – idempotent, no-op om
+  sessionen redan är `completed`/`aborted`.
+- Ny inkommande websocket-rutt `session:abort` i `session.socket.ts`
+  (samma `requireAuth`-mönster som `step:goBack`): anropar `abortSession`
+  och broadcastar sedan det redan existerande `session:terminated`-
+  meddelandet – ingen ny meddelandetyp behövdes, klienten återgår redan
+  till startskärmen på det meddelandet. `auth.socket.ts` kollar numera även
+  `abortedAt` vid reconnect (samma mönster som `completedAt`), så en
+  avbruten session inte återupptas om klienten återansluter.
+- Frontend: rent klientside-timerlogik i
+  `packages/frontend/src/components/kiosk/idleTimer.ts` (ramverksoberoende,
+  samma stil som `heartbeat.ts`) – 45 sekunders inaktivitet startar en
+  10 sekunders nedräkning; all DOM-aktivitet (pointer/tangent/touch) på
+  `window` återställer den. `IdleTimeout.tsx` kopplar ihop detta med
+  sessionens `currentScreenAtom` (bara aktiv medan en skärm faktiskt visas)
+  och visar en nedräkningsoverlay (`Är du fortfarande där?`). Ingen egen
+  "jag stannar kvar"-knapp – vilken DOM-interaktion som helst avbryter
+  redan nedräkningen, en separat knapp vore redundant. Overlayns bakgrund
+  (`bg-black/40 backdrop-blur-xs`) återanvänder samma scrim-stil som
+  `BottomSheet` (numpad-overlayn); kortet har en konstant bredd (`w-lg`)
+  så att det inte ändrar storlek när nedräkningstexten byter längd, och
+  rubrik/text återanvänder samma storleksklasser som förstasidans
+  hero-rubrik/text (`StartContent.tsx`).
+- Manuell återställningsknapp "Börja om" i `HeroLayout.tsx`/`_kiosk/index.tsx`
+  bredvid "Gå tillbaka" – skickar samma `session:abort`, för när en ny
+  person kommer fram innan timeouten hunnit slå till.
+- `sessions.admin.routes.ts` exponerar nu `completedAt`/`abortedAt` i
+  admin-API:t, så avbrutna sessioner syns skilt från slutförda.
+- Enhetstester i `idleTimer.test.ts` (8 st, fake timers) samt manuellt
+  end-till-ände-testad hela vägen: nedräkning visas, aktivitet avbryter
+  nedräkningen, fullbordad timeout skriver `abortedAt` och återgår till
+  startskärmen utan auto-restart, "Börja om" gör samma sak omedelbart.
+- **Avgränsat till kioskflödet** (`_kiosk/index.tsx`) för v1 – mobilflödet
+  (`link.$linkId.tsx`) och `kiosk-frame.tsx` har ingen idle-timeout ännu.
+- **Medvetet avgränsat/uppskjutet:** ingen kortare timeout på sista skärmen
+  än – uniform 45s/10s överallt i v1. Den skiljda sista-skärm-tiden från
+  originalanteckningen är kvar som en framtida finjustering, inte blockerad
+  av något.
 
 ### Felhantering vid tappad anslutning under inmatning
 

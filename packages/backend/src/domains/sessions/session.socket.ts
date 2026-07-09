@@ -13,6 +13,7 @@ import { createStepContext } from "../../core/workflow/stepContext.ts";
 import { getCurrentStep } from "../workflows/step.service.ts";
 import { stepRegistry } from "../workflows/steps.ts";
 import { authRouter, requireAuth } from "./auth.socket.ts";
+import { abortSession } from "./session.service.ts";
 
 export const router = createSocketRouter<MessageTypes>();
 
@@ -95,6 +96,19 @@ const routes = router
       sessionId,
     ) as unknown as TypedWSContext<MessageTypes>;
     await goBack(c, broadcastWs);
+  })
+  .bind("session:abort", null, requireAuth, async (c, _evt, _ws) => {
+    const sessionId = c.get("wsSessionId");
+    if (!sessionId) {
+      throw new Error("No session ID found in context");
+    }
+
+    await abortSession(sessionId);
+
+    const broadcastWs = createBroadcastWs(
+      sessionId,
+    ) as unknown as TypedWSContext<MessageTypes>;
+    broadcastWs.send({ name: "session:terminated" });
   });
 
 export type Listeners = InferListeners<typeof routes>;

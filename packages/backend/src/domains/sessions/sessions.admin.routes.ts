@@ -22,6 +22,8 @@ export const sessionsAdminRouter = new Hono<AppEnv>()
       sessions: sessions.map((s) => ({
         id: s.id,
         createdAt: s.createdAt,
+        completedAt: s.completedAt,
+        abortedAt: s.abortedAt,
         actorName: s.actor?.participant
           ? `${s.actor.participant.firstName} ${s.actor.participant.lastName}`
           : undefined,
@@ -57,6 +59,8 @@ export const sessionsAdminRouter = new Hono<AppEnv>()
     return c.json({
       id: session.id,
       createdAt: session.createdAt,
+      completedAt: session.completedAt,
+      abortedAt: session.abortedAt,
       actor: session.actor
         ? {
             firstName: session.actor.participant?.firstName,

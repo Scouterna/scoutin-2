@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { HeroLayout } from "@/components/kiosk/HeroLayout";
+import { IdleTimeout } from "@/components/kiosk/IdleTimeout";
 import { currentScreenAtom, screenHistoryAtom } from "@/store/session";
 import { socketAtom } from "@/store/socket";
 import heroVideoUrl from "../../../assets/hero_website.mp4";
@@ -28,15 +29,23 @@ function RouteComponent() {
     }
   }, [screenHistory, setScreenHistory, setCurrentScreen, socket]);
 
+  const handleResetClick = useCallback(() => {
+    socket?.send({ name: "session:abort" });
+  }, [socket]);
+
   return (
-    <HeroLayout
-      heroContent={<StartContent />}
-      progressed={currentScreen != null}
-      showBackButton={currentScreen != null}
-      onBackClick={handleBackClick}
-      backgroundVideoUrl={heroVideoUrl}
-    >
-      <ScreenRenderer />
-    </HeroLayout>
+    <>
+      <HeroLayout
+        heroContent={<StartContent />}
+        progressed={currentScreen != null}
+        showBackButton={currentScreen != null}
+        onBackClick={handleBackClick}
+        onResetClick={handleResetClick}
+        backgroundVideoUrl={heroVideoUrl}
+      >
+        <ScreenRenderer />
+      </HeroLayout>
+      <IdleTimeout />
+    </>
   );
 }

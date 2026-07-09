@@ -31,6 +31,16 @@ export async function createSessionToken(sessionId: string): Promise<string> {
   });
 }
 
+export async function abortSession(sessionId: string): Promise<void> {
+  // Idempotent, and a no-op if the session already reached a terminal state
+  // (completed or already aborted) — avoids clobbering a session that
+  // finished in the same window the abort was triggered.
+  await prisma.checkinSession.updateMany({
+    where: { id: sessionId, completedAt: null, abortedAt: null },
+    data: { abortedAt: new Date() },
+  });
+}
+
 export async function sendSessionInfo(
   sessionId: string,
   ws: TypedWSContext<MessageTypes>,

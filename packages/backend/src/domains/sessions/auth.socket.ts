@@ -86,7 +86,7 @@ export const authRouter = createSocketRouter<MessageTypes>()
 
       const session = await prisma.checkinSession.findUnique({
         where: { id: sessionId },
-        select: { id: true, completedAt: true },
+        select: { id: true, completedAt: true, abortedAt: true },
       });
 
       if (!session) {
@@ -135,6 +135,11 @@ export const authRouter = createSocketRouter<MessageTypes>()
 
       if (session.completedAt) {
         broadcastWs.send({ name: "session:completed" });
+        return;
+      }
+
+      if (session.abortedAt) {
+        broadcastWs.send({ name: "session:terminated" });
         return;
       }
 
