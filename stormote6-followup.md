@@ -338,9 +338,9 @@ incheckad kl X, checka in igen?") och själv välja om det ska genomföras.
 
 ### Bekräftelse-checkbox på sista skärmen
 
-`[~]` Beslut 2026-07-08: generell flagga på `base:message`. Källa: Kår
-"Ingen läser texten på sista skärmen... checkbox för att intyga att man
-läst."
+`[x]` Implementerad 2026-07-09. Beslut 2026-07-08: generell flagga på
+`base:message`. Källa: Kår "Ingen läser texten på sista skärmen...
+checkbox för att intyga att man läst."
 
 Verifierat: inget checkbox-/samtyckesmönster finns någonstans i kodbasen
 idag (`plugins/base/src/selectSubjects` har en checkbox, men den är för att
@@ -350,10 +350,22 @@ välja deltagare, inte för samtycke).
 flagga direkt på `base:message`, återanvändbar av alla message-steg (t.ex.
 även [dubbel-incheckning](#förhindra-dubbel-incheckning) ovan).
 
-**Plan:**
-- Implementera i `plugins/base/src/message`: när `requireAcknowledgement` är
-  satt, visa en checkbox och håll "Slutför"/knappen inaktiverad tills den är
-  ikryssad.
+**Genomfört:**
+- Ny valfri `requireAcknowledgement`/`acknowledgementText`-input på
+  `base:message` (`plugins/base/src/message/backend/message.ts`),
+  vidareskickad till skärmen oförändrad.
+- `MessageScreen.tsx` visar en `ScoutCheckbox` när flaggan är satt och
+  håller bekräfta-knappen inaktiverad tills den är ikryssad; utan flaggan
+  är beteendet identiskt med tidigare (ingen checkbox, knappen alltid
+  aktiv).
+- Enbart aktiverad på sista steget i on-site-flödet
+  (`packages/backend/config/stepConfig.yml`, "Incheckning lyckades"-
+  steget efter `base:markConfirmedCheckedIn`). Mobilflödets
+  `base:message` (`stepConfig.pre-checkin.yml`) lämnat oförändrat utan
+  flaggan.
+- Kryssningen kontrolleras bara i klienten (knappens `disabled`-state) –
+  backendens `confirm`-metod litar på det och sätter alltid `completed`
+  när den anropas, samma mönster som andra publicMethods i denna app.
 
 ### Sista stegets titel och knapptext
 
