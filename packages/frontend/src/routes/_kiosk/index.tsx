@@ -29,10 +29,6 @@ function RouteComponent() {
     }
   }, [screenHistory, setScreenHistory, setCurrentScreen, socket]);
 
-  const handleResetClick = useCallback(() => {
-    socket?.send({ name: "session:abort" });
-  }, [socket]);
-
   return (
     <>
       <HeroLayout
@@ -40,7 +36,6 @@ function RouteComponent() {
         progressed={currentScreen != null}
         showBackButton={currentScreen != null}
         onBackClick={handleBackClick}
-        onResetClick={handleResetClick}
         backgroundVideoUrl={heroVideoUrl}
       >
         <ScreenRenderer />
