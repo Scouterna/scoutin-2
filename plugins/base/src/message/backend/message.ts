@@ -10,13 +10,26 @@ export const message: StepImplementation = {
       "sv?": "string",
       "en?": "string",
     }),
+    "requireAcknowledgement?": "boolean",
+    "acknowledgementText?": type({
+      "sv?": "string",
+      "en?": "string",
+    }),
   }),
   hooks: {
     async onStepStart(ctx) {
-      const { title, message, buttonText } = ctx.getInputs() as {
+      const {
+        title,
+        message,
+        buttonText,
+        requireAcknowledgement,
+        acknowledgementText,
+      } = ctx.getInputs() as {
         title?: string;
         message?: string;
         buttonText?: { sv?: string; en?: string };
+        requireAcknowledgement?: boolean;
+        acknowledgementText?: { sv?: string; en?: string };
       };
       const actor = await ctx.getActor();
 
@@ -29,6 +42,8 @@ export const message: StepImplementation = {
         title: title ? interpolate(String(title)) : undefined,
         message: message ? interpolate(String(message)) : undefined,
         buttonText,
+        requireAcknowledgement,
+        acknowledgementText,
       });
     },
   },

@@ -72,6 +72,10 @@ steps:
     with:
       title: Incheckning lyckades
       message: Välkommen!
+      requireAcknowledgement: true
+      acknowledgementText:
+        sv: Jag har läst och förstått informationen
+        en: I have read and understood
       buttonText:
         sv: Slutför
         en: Finish

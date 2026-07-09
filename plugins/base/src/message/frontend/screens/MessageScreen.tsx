@@ -2,8 +2,9 @@ import {
   usePluginSocket,
   ValidationError,
 } from "@scouterna/scoutin-plugin-api/frontend";
-import { ScoutButton } from "@scouterna/ui-react";
+import { ScoutButton, ScoutCheckbox } from "@scouterna/ui-react";
 import { type } from "arktype";
+import { useState } from "react";
 
 const Payload = type({
   "title?": "string",
@@ -12,17 +13,27 @@ const Payload = type({
     "sv?": "string",
     "en?": "string",
   }),
+  "requireAcknowledgement?": "boolean",
+  "acknowledgementText?": type({
+    "sv?": "string",
+    "en?": "string",
+  }),
 });
 
 export function MessageScreen({ payload }: { payload: object }) {
   const socket = usePluginSocket();
+  const [acknowledged, setAcknowledged] = useState(false);
 
   const validPayload = Payload(payload);
   if (validPayload instanceof type.errors) {
     return <ValidationError errors={validPayload} />;
   }
 
+  const requiresAcknowledgement = validPayload.requireAcknowledgement === true;
+  const canConfirm = !requiresAcknowledgement || acknowledged;
+
   const confirm = () => {
+    if (!canConfirm) return;
     socket?.send({ name: "step:callMethod", data: { name: "confirm" } });
   };
 
@@ -36,8 +47,23 @@ export function MessageScreen({ payload }: { payload: object }) {
           <p className="text-body-base">{validPayload.message}</p>
         )}
       </div>
+      {requiresAcknowledgement && (
+        <ScoutCheckbox
+          checked={acknowledged}
+          label={
+            validPayload.acknowledgementText?.sv ??
+            validPayload.acknowledgementText?.en ??
+            "Jag har läst och förstått informationen"
+          }
+          onScoutChecked={(e) => setAcknowledged(e.detail.checked)}
+        />
+      )}
       <div>
-        <ScoutButton variant="primary" onScoutClick={confirm}>
+        <ScoutButton
+          variant="primary"
+          onScoutClick={confirm}
+          disabled={!canConfirm}
+        >
           {validPayload.buttonText?.sv ??
             validPayload.buttonText?.en ??
             "Fortsätt"}
