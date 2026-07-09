@@ -1,0 +1,11 @@
+{
+  "name": "run-scoutin-driver",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "playwright-core": "^1.48.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.48.0"
+  }
+}

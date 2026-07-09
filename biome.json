@@ -10,7 +10,8 @@
     "includes": [
       "**",
       "!packages/frontend/src/routeTree.gen.ts",
-      "!packages/backend/src/core/expressions/github-actions-expressions/**/*"
+      "!packages/backend/src/core/expressions/github-actions-expressions/**/*",
+      "!.claude/skills"
     ]
   },
   "formatter": {
