@@ -19,6 +19,7 @@ import { Route as LinkLinkIdRouteImport } from './routes/link.$linkId'
 import { Route as AdminSessionsRouteImport } from './routes/admin/sessions'
 import { Route as AdminLinksRouteImport } from './routes/admin/links'
 import { Route as AdminKiosksRouteImport } from './routes/admin/kiosks'
+import { Route as AdminCheckinRouteImport } from './routes/admin/checkin'
 import { Route as KioskTestRouteImport } from './routes/_kiosk/test'
 import { Route as AdminSessionsIndexRouteImport } from './routes/admin/sessions.index'
 import { Route as AdminSessionsSessionIdRouteImport } from './routes/admin/sessions.$sessionId'
@@ -72,6 +73,11 @@ const AdminKiosksRoute = AdminKiosksRouteImport.update({
   path: '/kiosks',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminCheckinRoute = AdminCheckinRouteImport.update({
+  id: '/checkin',
+  path: '/checkin',
+  getParentRoute: () => AdminRoute,
+} as any)
 const KioskTestRoute = KioskTestRouteImport.update({
   id: '/test',
   path: '/test',
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/kiosk-frame': typeof KioskFrameRoute
   '/setup': typeof SetupRoute
   '/test': typeof KioskTestRoute
+  '/admin/checkin': typeof AdminCheckinRoute
   '/admin/kiosks': typeof AdminKiosksRoute
   '/admin/links': typeof AdminLinksRoute
   '/admin/sessions': typeof AdminSessionsRouteWithChildren
@@ -106,6 +113,7 @@ export interface FileRoutesByTo {
   '/kiosk-frame': typeof KioskFrameRoute
   '/setup': typeof SetupRoute
   '/test': typeof KioskTestRoute
+  '/admin/checkin': typeof AdminCheckinRoute
   '/admin/kiosks': typeof AdminKiosksRoute
   '/admin/links': typeof AdminLinksRoute
   '/link/$linkId': typeof LinkLinkIdRoute
@@ -121,6 +129,7 @@ export interface FileRoutesById {
   '/kiosk-frame': typeof KioskFrameRoute
   '/setup': typeof SetupRoute
   '/_kiosk/test': typeof KioskTestRoute
+  '/admin/checkin': typeof AdminCheckinRoute
   '/admin/kiosks': typeof AdminKiosksRoute
   '/admin/links': typeof AdminLinksRoute
   '/admin/sessions': typeof AdminSessionsRouteWithChildren
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
     | '/kiosk-frame'
     | '/setup'
     | '/test'
+    | '/admin/checkin'
     | '/admin/kiosks'
     | '/admin/links'
     | '/admin/sessions'
@@ -150,6 +160,7 @@ export interface FileRouteTypes {
     | '/kiosk-frame'
     | '/setup'
     | '/test'
+    | '/admin/checkin'
     | '/admin/kiosks'
     | '/admin/links'
     | '/link/$linkId'
@@ -164,6 +175,7 @@ export interface FileRouteTypes {
     | '/kiosk-frame'
     | '/setup'
     | '/_kiosk/test'
+    | '/admin/checkin'
     | '/admin/kiosks'
     | '/admin/links'
     | '/admin/sessions'
@@ -254,6 +266,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminKiosksRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/checkin': {
+      id: '/admin/checkin'
+      path: '/checkin'
+      fullPath: '/admin/checkin'
+      preLoaderRoute: typeof AdminCheckinRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/_kiosk/test': {
       id: '/_kiosk/test'
       path: '/test'
@@ -305,6 +324,7 @@ const AdminSessionsRouteWithChildren = AdminSessionsRoute._addFileChildren(
 )
 
 interface AdminRouteChildren {
+  AdminCheckinRoute: typeof AdminCheckinRoute
   AdminKiosksRoute: typeof AdminKiosksRoute
   AdminLinksRoute: typeof AdminLinksRoute
   AdminSessionsRoute: typeof AdminSessionsRouteWithChildren
@@ -312,6 +332,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminCheckinRoute: AdminCheckinRoute,
   AdminKiosksRoute: AdminKiosksRoute,
   AdminLinksRoute: AdminLinksRoute,
   AdminSessionsRoute: AdminSessionsRouteWithChildren,

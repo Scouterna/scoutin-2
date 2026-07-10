@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { createTypedSocket } from "@/api/typedSocket";
+import { createTypedSocket, type TypedSocket } from "@/api/typedSocket";
 import { openSessionSocket } from "../api/session";
 import { sessionCredentialsAtom } from "../store/session";
 import { socketAtom } from "../store/socket";
@@ -56,11 +56,25 @@ const createRawSocket = async (onSendFailure: (reason: string) => void) => {
   return createTypedSocket<Listeners, MessageTypes>(ws, onSendFailure);
 };
 
-export function SocketLoader({ children }: { children: ReactNode }) {
+type Props = {
+  children: ReactNode;
+  // Called synchronously with the live socket right before SocketLoader
+  // closes it on unmount (the socket is still OPEN at this point) - lets a
+  // consumer send a final message (e.g. session:abort) without racing the
+  // close. Not used by the kiosk's own usage of this component.
+  onBeforeClose?: (socket: TypedSocket<Listeners, MessageTypes>) => void;
+};
+
+export function SocketLoader({ children, onBeforeClose }: Props) {
   const loaded = useRef(false);
   const reconnectAttempts = useRef(0);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stopHeartbeat = useRef<(() => void) | null>(null);
+  // Set to false only on true component unmount (see the dedicated effect
+  // below) - guards handleDisconnect against reconnecting a socket that
+  // nothing is displaying anymore, e.g. when the component that owns this
+  // SocketLoader navigates away.
+  const isMountedRef = useRef(true);
 
   const [socket, setSocket] = useAtom(socketAtom);
   const [socketError, setSocketError] = useState<string | null>(null);
@@ -72,6 +86,43 @@ export function SocketLoader({ children }: { children: ReactNode }) {
   const credentialsRef = useRef(credentials);
   credentialsRef.current = credentials;
 
+  // "Latest ref" pattern so the unmount-only effect below (which must use an
+  // empty dependency array to only fire once, on true unmount) can still call
+  // the current onBeforeClose without re-running on every render.
+  const onBeforeCloseRef = useRef(onBeforeClose);
+  onBeforeCloseRef.current = onBeforeClose;
+
+  // Kept in sync so the unmount-only effect can reach the live socket without
+  // depending on `socket` (which would make it re-run - and re-close! - on
+  // every reconnect, not just true unmount).
+  const socketRef = useRef<TypedSocket<Listeners, MessageTypes> | null>(null);
+  useEffect(() => {
+    socketRef.current = socket;
+  }, [socket]);
+
+  // Runs its cleanup exactly once, on true component unmount - not on every
+  // reconnect (unlike the per-socket effect below, which intentionally
+  // re-runs its cleanup on each reconnect but must not close anything).
+  // Closing here, rather than leaving the socket for the browser/server to
+  // eventually notice via heartbeat timeout, is what lets a consumer
+  // (onBeforeClose) reliably send a final message first.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: must run its cleanup exactly once, on true unmount - setSocket is stable regardless
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      const s = socketRef.current;
+      if (s) {
+        onBeforeCloseRef.current?.(s);
+        s.close();
+      }
+      // Clearing the atom (not just closing the connection) matters just as
+      // much: the next SocketLoader mount's "don't connect if a socket
+      // already exists" guard would otherwise see this now-closed-but-still-
+      // truthy socket object and skip connecting a replacement.
+      setSocket(null);
+    };
+  }, []);
+
   const connectAndStore = useCallback(async () => {
     // A dead connection may never deliver a native `close` event (e.g. the
     // network vanishes without a FIN/RST) — `close()` itself can't complete
@@ -81,6 +132,11 @@ export function SocketLoader({ children }: { children: ReactNode }) {
     // eventually fires.
     let disconnected = false;
     const handleDisconnect = (reason: string) => {
+      // Nothing is displaying this connection anymore - let it die instead
+      // of reconnecting (and, if unmount already closed it intentionally,
+      // instead of logging a spurious "closed, reconnecting…" for our own
+      // close call).
+      if (!isMountedRef.current) return;
       if (disconnected) return;
       disconnected = true;
       console.warn(`${reason}, reconnecting…`);

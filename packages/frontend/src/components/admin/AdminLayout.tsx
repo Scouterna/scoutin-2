@@ -1,6 +1,7 @@
 import {
   CropLandscape as CropLandscapeIcon,
   Dashboard as DashboardIcon,
+  HowToReg as HowToRegIcon,
   Link as LinkIcon,
   Route as RouteIcon,
 } from "@mui/icons-material";
@@ -61,6 +62,17 @@ export function AdminLayout({ children }: Props) {
                 <DashboardIcon />
               </ListItemIcon>
               <ListItemText primary="Översikt" />
+            </ListItemButtonLink>
+          </ListItem>
+          <ListItem disablePadding>
+            <ListItemButtonLink
+              to={"/admin/checkin"}
+              activeProps={{ selected: true }}
+            >
+              <ListItemIcon>
+                <HowToRegIcon />
+              </ListItemIcon>
+              <ListItemText primary="Incheckning" />
             </ListItemButtonLink>
           </ListItem>
           <ListItem disablePadding>

@@ -34,6 +34,28 @@ export async function create() {
 }
 
 /**
+ * Creates a session running the default (on-site) flow and mints a token for
+ * it, using the admin API. Intended for the staff-operated check-in view -
+ * unlike `create()`, this doesn't require a kiosk key.
+ */
+export async function createAdminSession(): Promise<{
+  id: string;
+  token: string;
+}> {
+  const createRes = await api.admin.sessions.$post({});
+  if (!createRes.ok) throw new Error("Failed to create session");
+  const { id } = await createRes.json();
+
+  const tokenRes = await api.admin.sessions[":id"].token.$post({
+    param: { id },
+  });
+  if (!tokenRes.ok) throw new Error("Failed to obtain session token");
+  const { token } = await tokenRes.json();
+
+  return { id, token };
+}
+
+/**
  * Creates a session from a pre-checkin link and opens an unauthenticated
  * WebSocket connection. Call `authenticateSocket` with the returned token to
  * start the flow. Intended for use in the link flow.

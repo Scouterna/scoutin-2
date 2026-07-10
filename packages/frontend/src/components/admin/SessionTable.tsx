@@ -1,5 +1,6 @@
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -24,9 +25,21 @@ type SessionRow = {
   id: string;
   createdAt: string;
   actorName?: string;
+  completedAt?: string | null;
+  abortedAt?: string | null;
 };
 
 const columnHelper = createColumnHelper<SessionRow>();
+
+function StatusChip({ row }: { row: SessionRow }) {
+  if (row.abortedAt) {
+    return <Chip label="Avbruten" size="small" color="default" />;
+  }
+  if (row.completedAt) {
+    return <Chip label="Slutförd" size="small" color="success" />;
+  }
+  return <Chip label="Pågår" size="small" color="primary" variant="outlined" />;
+}
 
 const columns = [
   columnHelper.accessor("actorName", {
@@ -36,6 +49,11 @@ const columns = [
   columnHelper.accessor("createdAt", {
     header: "Created",
     cell: (info) => new Date(info.getValue()).toLocaleString(),
+  }),
+  columnHelper.display({
+    id: "status",
+    header: "Status",
+    cell: (props) => <StatusChip row={props.row.original} />,
   }),
   columnHelper.accessor("id", {
     header: "ID",

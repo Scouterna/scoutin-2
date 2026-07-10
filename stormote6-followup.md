@@ -771,19 +771,73 @@ de som redan preliminärt checkats in visas som förvalda.
 
 ### Förenkla adminvyn
 
-`[ ]` Källa: Allmänt "Adminvyn: Gör den enklare att använda. Avskalat
-interface utan 'New' → 'Connect'-grejset."
+`[x]` Implementerad 2026-07-10. Källa: Allmänt "Adminvyn: Gör den enklare att
+använda. Avskalat interface utan 'New' → 'Connect'-grejset."
 
-Bekräftat: `SessionTable.tsx` har en "New session"-knapp, och
+Bekräftat vid genomgång: `SessionTable.tsx` har en "New session"-knapp, och
 `AdminSessionOverview.tsx` har en separat "Connect"-knapp som öppnar en
-live-speglande websocket + rå meddelandelogg + debugpanel. Detta täcker sedan
-tidigare även tre kända layoutändringar (ta bort call-method-UI, flytta
-loggen längre ner, deduplicera steg-vyn) som redan finns dokumenterade från
-ett tidigare samtal.
+live-speglande websocket + rå meddelandelogg + debugpanel. De tre tidigare
+kända layoutändringarna (ta bort call-method-UI, flytta loggen längre ner,
+deduplicera steg-vyn) visade sig redan vara åtgärdade i huvudgrenens kod –
+ingen "Call method"-sektion finns längre (bara "Go back"), meddelandeloggen
+ligger redan under skärmvyn, och `SessionDetail` renderar inte längre en
+duplicerad stegtidslinje.
 
-**Plan:**
-- Slå ihop denna insats med de tre redan kända layoutändringarna till en
-  gemensam admin-UX-uppstädning.
+**Omprövning under design:** att skala bort "New"/"Connect" från den
+befintliga live-/debug-vyn hade gjort den mindre användbar för utveckling
+utan att lösa det faktiska behovet bakom önskemålet. Det som efterfrågades
+var egentligen en möjlighet att checka in utan fysisk kiosk – på vissa event
+checkar personal in deltagare manuellt, och det borde fungera som
+kioskflödet men med lätt extra info. **Beslut:** bygg en ny, avskalad vy
+istället för att skala ner den gamla – den befintliga debug-/live-panelen
+(`AdminSessionOverview`) lämnas orörd som utvecklarverktyg, oförändrad.
+
+**Genomfört:**
+- Ny sida **Incheckning** (`/admin/checkin`, `routes/admin/checkin.tsx` +
+  `components/admin/StaffCheckin.tsx`), ny post i adminmenyn
+  (`AdminLayout.tsx`). Kräver ingen kiosk-nyckel/`/setup`-aktivering – bara
+  admininloggning.
+- Kör on-site-flödet (`stepConfig.yml`) helt oförändrat via en ny
+  `POST /admin/sessions` → `POST /admin/sessions/:id/token`-helper
+  (`createAdminSession`, `api/session.ts`), och återanvänder `SocketLoader`
+  + `ScreenRenderer` rakt av – samma skärmar som fysiska kiosken, ingen ny
+  stegkonfig.
+- Ingen idle-timeout (personal är närvarande); en "Nästa person"-knapp visas
+  när flödet är klart istället för kioskens auto-restart, eftersom denna vy
+  inte monterar `StartContent` (som annars konsumerar
+  `pendingAutoRestartAtom`).
+- Ny sidopanel **Extra info** (`StaffInfoPanel.tsx`) som pollar en ny
+  staff-only backend-rutt `GET /admin/sessions/:id/context`
+  (`getSessionContext`, `session.service.ts`) – visar
+  incheckningsstatus/-historik, importvarningar och metadata för
+  aktör/subjects/kår. Frågan kringgår medvetet samma
+  importfel-/borttagnings-filter som kiosk-uppslagen använder
+  (`NO_IMPORT_ERROR_WHERE` m.fl.) – personal ska se datafel som kiosken
+  gömmer, inte ha dem tyst bortfiltrerade.
+- Statuskolumn (Pågår/Slutförd/Avbruten) tillagd i `SessionTable.tsx`,
+  härledd från `completedAt`/`abortedAt`.
+- Tre buggar hittade och fixade under manuell verifiering, alla i delad
+  socket-infrastruktur (`socket/SocketLoader.tsx`):
+  - Lämnade man vyn mitt i ett flöde stängdes websocketen aldrig –
+    `SocketLoader` städade bara bort heartbeat-/reconnect-timern vid
+    unmount, inte själva anslutningen, vilket lämnade `socketAtom` populerad
+    och fick nästa montering att tyst hoppa över anslutning (samma "koppla
+    inte om det redan finns en socket"-spärr som orsakade en liknande bugg
+    vid själva förstamonteringen). Löst med en ny `onBeforeClose`-hook plus
+    en unmount-only cleanup som stänger och nollar atomen, samt en
+    `isMountedRef`-spärr så att den stängningen inte själv triggar en
+    återanslutning.
+  - Lämnade man vyn mitt i en incheckning markeras sessionen numera som
+    avbruten (`session:abort` skickas via `onBeforeClose`, no-op om redan
+    klar/avbruten) – annars låg den kvar som "Pågår" för alltid.
+  - StrictMode:s dubbelanrop av effects i dev skapade två sessioner per
+    montering; fixat med samma "endast en gång"-ref-mönster som
+    `SocketLoader` redan använder.
+- Incheckningsytans höjd är medvetet begränsad (skärmrelativ, inte
+  innehållsstyrd) så att ett kiosksteg med godtyckligt högt innehåll (t.ex.
+  en lång deltagarlista) aldrig trycker ner hela adminsidan.
+- Ny backend-testfil `session.service.test.ts` (6 tester) för
+  `getSessionContext`.
 
 ### Rapporter: incheckade, saknade, ofullständiga
 

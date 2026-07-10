@@ -3,7 +3,11 @@ import { prisma } from "../../app/prisma.ts";
 import { getLogger } from "../../core/logging/logger.ts";
 import type { AppEnv } from "../../core/websocket/types.ts";
 import { getStepStatuses } from "../workflows/step.service.ts";
-import { createSession, createSessionToken } from "./session.service.ts";
+import {
+  createSession,
+  createSessionToken,
+  getSessionContext,
+} from "./session.service.ts";
 
 export const sessionsAdminRouter = new Hono<AppEnv>()
   .post("/", async (c) => {
@@ -73,6 +77,16 @@ export const sessionsAdminRouter = new Hono<AppEnv>()
       })),
       stepStatuses,
     });
+  })
+  .get("/:id/context", async (c) => {
+    const id = c.req.param("id");
+
+    const context = await getSessionContext(id);
+    if (!context) {
+      return c.json({ error: "Session not found" }, 404);
+    }
+
+    return c.json(context);
   })
   .post("/:id/token", async (c) => {
     const id = c.req.param("id");
