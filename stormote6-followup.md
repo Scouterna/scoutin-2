@@ -69,7 +69,7 @@ sparas medvetet till sist trots låg kostnad.
 - [Avanmälda / "Kommer: Nej"-hantering](#avanmälda--kommer-nej-hantering)
 
 **Fas 4 — Admin & rapporter**
-- [Kryssruta för "skickad till infotältet"](#kryssruta-för-skickad-till-infotältet)
+- [Kryssruta för "skickad till infotältet"](#kryssruta-för-skickad-till-infotältet) (uppskjuten – se punkten)
 - [Förenkla adminvyn](#förenkla-adminvyn)
 - [Rapporter: incheckade, saknade, ofullständiga](#rapporter-incheckade-saknade-ofullständiga)
 
@@ -444,7 +444,7 @@ per deltagare.
 
 ### Kryssruta för "skickad till infotältet"
 
-`[ ]` Källa: Funk "Lägg till en kryssruta för de som skickats till
+`[?]` Källa: Funk "Lägg till en kryssruta för de som skickats till
 infotältet. Specialkost, belastningsregister etc."
 
 Finns inte. Ingen sådan flagga i datamodellen eller stegkonfigen.
@@ -456,6 +456,30 @@ Finns inte. Ingen sådan flagga i datamodellen eller stegkonfigen.
 - Bygg en kryssruta i relevant steg-skärm.
 - Detta är en av datapunkterna som ["Rapporter"](#rapporter-incheckade-saknade-ofullständiga)
   ska kunna lista.
+
+**Omprövning 2026-07-10 – uppskjuten, osäker om den hör hemma här:** vid
+genomgång ifrågasattes om en manuell "skickad till infotältet"-markering
+överhuvudtaget hör hemma i ett incheckningssystem. Ursprungsönskemålet
+blandar två olika saker:
+
+1. *Synliggöra vilka som behöver extra hjälp* (specialkost,
+   belastningsregister, Trygga Möten) – detta är riktig incheckningsdata som
+   ändå kommer via enrichers (se
+   [specialbehov](#specialbehov-för-funk-kost-medicin-period) och
+   [Trygga Möten](#trygga-möten--belastningsregister--riktig-implementation)
+   i Fas 5) och hör hemma *automatiskt* i
+   [rapportvyn](#rapporter-incheckade-saknade-ofullständiga), inte som en
+   manuell kryssruta.
+2. *Spåra det manuella överlämnandet/åtgärdsstatusen* ("vi skickade dit dem /
+   det är hanterat") – detta är operativ ärendestatus, inte närvaro eller
+   importerad data, och är dessutom sammanflätat med den ännu obeslutade
+   policyfrågan
+   [infotältets process](#infotältets-process-för-att-ändra-anmälningsdata).
+
+**Beslut:** avvaktar. Den värdefulla halvan (synlighet) hamnar naturligt i
+rapportvyn och beror på Fas 5-enrichers; den manuella markeringshalvan kanske
+inte behöver byggas alls om infotältet har en egen process. Tas upp igen när
+enrichers finns och infotältsprocessen är beslutad.
 
 ---
 
