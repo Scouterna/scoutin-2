@@ -7,6 +7,10 @@ dataSources:
     projectId: 56032
     includeIndividuals: false
     includeGroups: true
+    enrichWith:
+      # Demo enricher (plugins/malcolm-test) exercising the
+      # registerImportEnricher path end-to-end; not real event data.
+      tag: test:staticGroupTag
     subGroups:
       leader:
         name:

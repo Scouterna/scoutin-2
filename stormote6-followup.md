@@ -215,8 +215,11 @@ tur-och-retur och klocksynk-problem mellan klient och server.
   rubrik/text återanvänder samma storleksklasser som förstasidans
   hero-rubrik/text (`StartContent.tsx`).
 - Manuell återställningsknapp "Börja om" i `HeroLayout.tsx`/`_kiosk/index.tsx`
-  bredvid "Gå tillbaka" – skickar samma `session:abort`, för när en ny
-  person kommer fram innan timeouten hunnit slå till.
+  provades bredvid "Gå tillbaka" (skickade samma `session:abort`, för när en
+  ny person kommer fram innan timeouten hunnit slå till), men togs bort igen
+  (`39ed97b`, 2026-07-09): risk för att operatören klickar den av misstag och
+  avslutar en session i onödan. Den automatiska idle-timeouten (45s/10s ovan)
+  täcker samma scenario utan den risken.
 - `sessions.admin.routes.ts` exponerar nu `completedAt`/`abortedAt` i
   admin-API:t, så avbrutna sessioner syns skilt från slutförda.
 - Enhetstester i `idleTimer.test.ts` (8 st, fake timers) samt manuellt
@@ -460,8 +463,8 @@ Finns inte. Ingen sådan flagga i datamodellen eller stegkonfigen.
 
 ### Generisk import-berikning (enrichers)
 
-`[~]` Design klar via diskussion 2026-07-08. Källa: Kår "Personer och grupper
-måste kunna ha metadata."
+`[x]` Implementerad 2026-07-10. Design klar via diskussion 2026-07-08. Källa:
+Kår "Personer och grupper måste kunna ha metadata."
 
 Bakgrund: appens kärna (schema, importkod) ska vara händelseagnostisk.
 Händelsespecifik data (t.ex. bynummer) ska aldrig kräva ändringar i delad
@@ -491,17 +494,45 @@ kod – bara i plugins och config för det aktuella eventet.
   irrelevant för denna design – det är precis vad plugin-gränssnittet är till
   för.
 
-**Plan:**
-- Prisma-migrering: lägg till `metadata Json?` och `hasImportError Boolean
-  @default(false)` på `Participant` och `ParticipantGroup`.
-- Implementera `registerImportEnricher` i plugin-API:t och kör registrerade
-  enrichers efter ordinarie upsert i `data.service.ts`.
-- Lägg till `enrichWith`-parsing i `dataSourceConfigLoader.ts`.
+**Genomfört:**
+- `metadata Json?` och `hasImportError Boolean @default(false)` tillagt på
+  både `Participant` och `ParticipantGroup` (`schema.prisma`), plus
+  `deletedAt DateTime?` på `Participant` (se
+  [avanmälda-punkten](#avanmälda--kommer-nej-hantering) nedan).
+- `registerImportEnricher(enricher)` tillagt i `BackendPluginContext`
+  (`packages/plugin-api/src/backend/index.ts`) – varje enricher deklarerar
+  `name`, `target: "participant" | "group"` och en `enrich(entity, ctx)`.
+  Ny `EnricherRegistry` (mirror av `StepRegistry`,
+  `core/workflow/enricherRegistry.ts`), instansierad och kopplad in i
+  `domains/workflows/steps.ts` – populeras av samma `loadPlugins()`-loop som
+  redan finns, inget nytt vid pluginladdning.
+- `enrichWith?: Record<string, string>` (metadatanyckel → enricher-namn)
+  tillagt på `BaseDataSource` (`config/baseDataSource.ts`), tillgängligt för
+  alla providers. Ingen ändring behövdes i `dataSourceConfigLoader.ts` – den
+  validerar/substituerar env-variabler generiskt via arktype.
+- Enrichers körs i en ny delad `reconcileDataSource(dataSourceName,
+  processedIds, enrichWith)` i `data.service.ts`, anropad från
+  `loadDataSourceIntoDatabase` efter att providerns import lyckats (samma
+  pass som avanmälda-hanteringen nedan). Resultat skrivs read-modify-write
+  till `metadata[nyckel]` – aldrig platt sammanslaget.
+- Demo-enricher `test:staticGroupTag` (`plugins/malcolm-test`) verifierar
+  hela vägen (registrering → config → körning → skriven metadata) utan
+  beroende av riktig extern data; kopplad in i `config_dev/dataSourceConfig.yml`.
+  Ingen riktig by/specialbehov-enricher byggd än (kräver extern datakälla,
+  se [kårinfo](#kårinfo-by-stadsdel-via-berikning) och
+  [specialbehov](#specialbehov-för-funk-kost-medicin-period)).
+- Verifierat end-to-end mot både mockad Prisma (7 enhetstester,
+  `data.service.test.ts`) och riktig dev-databas + riktig plugin-registry
+  (engångsskript mot en isolerad testdatakälla, 13 kontroller): registrering,
+  berikning + metadata-isolering per nyckel, självläkning, felflagga vid
+  kastning (bara den entiteten), grupputeslutning.
+- Backend hade inget testverktyg alls sedan tidigare – Vitest introducerat
+  (`vitest.config.ts`, `pnpm test`) som en del av detta arbete.
 
 ### Filtrera bort deltagare/grupper med importfel
 
-`[~]` Design klar. Källa: uppföljning på ovan – vad händer när import eller en
-enricher faktiskt misslyckas.
+`[x]` Implementerad 2026-07-10. Källa: uppföljning på ovan – vad händer när
+import eller en enricher faktiskt misslyckas.
 
 **Design:**
 - `hasImportError` räknas om helt varje importcykel (ej ackumulerande) – ett
@@ -521,10 +552,57 @@ enricher faktiskt misslyckas.
     `hasImportError`, och exkludera samtliga deltagare i en grupp där
     gruppens `hasImportError` är satt.
 
-**Plan:**
-- Implementera de två filtren.
-- Bygg importlogiken (se enricher-punkten) så den sätter/nollställer
-  `hasImportError` korrekt varje cykel.
+**Genomfört:**
+- Båda filtren implementerade i `data.service.ts`:
+  `findParticipantsByLookupValue` exkluderar `hasImportError`/`deletedAt`;
+  `getSubjectCandidates` exkluderar felmarkerade/borttagna deltagare i
+  gruppen, och returnerar tomt om själva gruppen har `hasImportError`.
+  `markConfirmedCheckedIn`s egna inline-fråga (i `plugins/base`) fick samma
+  filter på sin nästlade `participants`-relation, så `unselectedGroupIds`
+  inte räknar med felmarkerade/borttagna medlemmar.
+- Providers (`scoutnet.ts`, `googlesheets.ts`) sätter `hasImportError: false`
+  på varje lyckad upsert (self-heal) och `hasImportError: true` på en
+  redan importerad rad vars data misslyckas denna cykel (ny post: hoppas
+  över tyst, som idag) – omräknat helt varje cykel, inte ackumulerande.
+
+**Uppföljning 2026-07-10 – `importErrors`:** genomgång av "hur ser vi
+felen?" avslöjade att `hasImportError` som ren boolean inte höll: flera
+samtidiga felkällor på samma entitet (t.ex. en enricher som kastar samtidigt
+som en annan lyckas, eller ett providerfel som sammanfaller med ett
+enricher-fel) kollapsade till en enda boolean utan att gå att skilja åt –
+och en senare lyckad enricher kunde tyst dölja att en *annan* källa
+fortfarande var trasig. Det ursprungliga beslutet ("logga med
+`console.warn`, ingen separat felloggtabell") hade inte resonerat kring
+flerkälle-fallet.
+
+Löst med ett nytt `importErrors: Json?`-fält (samma modeller), en platt
+karta nyckel → anledning: `"provider"` för råa import-/valideringsfel,
+annars enricherns eget registernamn. Varje skrivare rör bara sin egen nyckel
+(read-modify-write, samma mönster som `metadata`), så flera samtidiga fel
+skrivs och läks oberoende av varandra. Providernas blinda `updateMany`-
+flaggning (utan föregående läsning) gör ett platt `{ provider: anledning }`-
+överskrivning medvetet, snarare än att slå ihop – motiverat i koden, eftersom
+`reconcileDataSource`s enrichpass körs direkt efter i samma cykel och ändå
+skriver om varje enrichers egen nyckel.
+
+**Omtag samma dag – kollapsade bort `hasImportError`:** en första version
+behöll `hasImportError`-booleanen som en materialiserad spegling av "kartan
+är icke-tom", men det innebar två fält som hölls i synk enbart via konvention
+över sju skrivställen – exakt den sortens invariant som ruttnar när ett
+åttonde skrivställe glömmer att sätta båda. Booleanen togs därför bort helt;
+`importErrors` är nu enda sanningskällan (icke-tomt objekt = fel; SQL `NULL`
+eller `{}` = rent). De tre uppslagsställena filtrerar på ett delat
+`NO_IMPORT_ERROR_WHERE`-fragment (`data.service.ts`, återexporterat via
+`plugin-services.ts` för `markConfirmedCheckedIn`), och gruppkontrollen i
+`getSubjectCandidates` använder en delad `hasImportErrors()`-hjälpare – båda
+kodar predikatet på exakt ett ställe. Exakt Prisma-filtersyntax för "tomt
+eller null jsonb" bekräftades empiriskt mot dev-databasen först (JSON-null-
+filtrering är Prismas största fotskott). Notera: en okänd kolumn i en
+Prisma-`data`/`update` typcheckar *inte* som fel med denna generator – att
+alla `hasImportError`-skrivningar togs bort verifierades med grep + körning,
+inte av `tsc`. Verifierat med 11 enhetstester (inkl. regressionsfallet: två
+enrichers på samma entitet, en kastar och en lyckas, den lyckade får inte
+rensa den andras nyckel) samt engångsskript mot riktig databas.
 
 ### Kårinfo (by, stadsdel) via berikning
 
@@ -545,8 +623,8 @@ checkades in – detta var aldrig riktig per-kår-data.
 
 ### Avanmälda / "Kommer: Nej"-hantering
 
-`[~]` Beslut 2026-07-08: samma signal som `cancelled`. Källa: Kår
-"Avanmälda och 'Kommer du: Nej' kan checka in."
+`[x]` Implementerad 2026-07-10. Beslut 2026-07-08: samma signal som
+`cancelled`. Källa: Kår "Avanmälda och 'Kommer du: Nej' kan checka in."
 
 Delvis löst: Scoutnets `cancelled`-fält filtreras redan bort vid import
 (`scoutnet.ts:289-291`). Notera: `keys.questions`-nyckeln i
@@ -564,14 +642,23 @@ den nya importlistan, men den gamla raden i databasen rörs inte. Det måste
 säkerställas att en person som avbryter sin anmälan efter första importen
 faktiskt inte längre går att checka in.
 
-**Plan:**
-- Bygg färdigt soft-delete/borttagning av tidigare importerade deltagare som
-  blivit `cancelled` (den TODO:n i `scoutnet.ts` behöver alltså faktiskt
-  lösas som en del av detta, inte bara filtreringen vid första importen).
-- Naturlig plats: samma cykel som sätter/nollställer `hasImportError` (se
-  [import-felhantering](#filtrera-bort-deltagaregrupper-med-importfel)) –
-  en försvunnen/cancelled deltagare bör hanteras i samma
-  omkörningslogik.
+**Genomfört:** (löser båda TODO:erna i `scoutnet.ts:99-105`)
+- **Beslut under implementation:** soft-delete (ny `deletedAt DateTime?` på
+  `Participant`) istället för hård borttagning – bevarar
+  `CheckinSubject`/`CheckinActor`-historik. Ingen anonymisering av
+  personuppgifter ännu (kvarstår som framtida hårdning).
+- `reconcileDataSource` (`data.service.ts`) sätter `deletedAt` på alla
+  deltagare för datakällan vars `idInDataSource` inte fanns med i cykelns
+  bearbetade mängd (dit `cancelled`-filtrerade deltagare aldrig når, se
+  `getParticipants` i `scoutnet.ts`) – omräknat helt varje cykel. En
+  deltagare som återkommer i ett senare import självläker automatiskt via
+  providerns vanliga upsert (`deletedAt: null`).
+- `findParticipantsByLookupValue`/`getSubjectCandidates` exkluderar
+  `deletedAt`-satta rader (samma filter som `hasImportError`, se ovan).
+- Google Sheets-providerns tidigare tysta no-op vid tomt ark
+  (`rows.length < 2`) kastar nu istället ett fel – annars hade en
+  övergående tom hämtning tolkats som "alla deltagare borta" och
+  soft-deletat samtliga för den datakällan.
 
 ### Trygga Möten / belastningsregister – riktig implementation
 

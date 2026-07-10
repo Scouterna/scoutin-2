@@ -125,6 +125,23 @@ model Participant {
   preliminaryCheckedInAt   DateTime?
   confirmedCheckedInAt     DateTime?
 
+  // Arbitrary per-key data written by import enrichers (never flat-merged;
+  // each enricher owns its own key). See registerImportEnricher.
+  metadata     Json?
+  // Per-source import failure reasons, keyed by failure source: "provider"
+  // for raw import/validation failures, or the enricher's registry name for
+  // enricher failures. The single source of truth for "does this row have an
+  // import error": a non-empty object means at least one source failed; SQL
+  // NULL (never flagged) or an empty object {} (self-healed) means clean.
+  // Each writer only ever touches its own key, so multiple simultaneous
+  // failures are recorded and cleared independently.
+  importErrors Json?
+  // Set when this participant was cancelled/removed from the data source
+  // after a previous successful import. Cleared automatically if they
+  // reappear in a later import. Row is kept (not hard-deleted) to preserve
+  // CheckinSubject/CheckinActor history.
+  deletedAt    DateTime?
+
   participantGroup   ParticipantGroup? @relation(fields: [participantGroupId], references: [id])
   participantGroupId String?           @db.Uuid
 
@@ -145,6 +162,18 @@ model ParticipantGroup {
   idInDataSource String
 
   name String
+
+  // Arbitrary per-key data written by import enrichers (never flat-merged;
+  // each enricher owns its own key). See registerImportEnricher.
+  metadata     Json?
+  // Per-source import failure reasons, keyed by failure source: "provider"
+  // for raw import/validation failures, or the enricher's registry name for
+  // enricher failures. The single source of truth for "does this row have an
+  // import error": a non-empty object means at least one source failed; SQL
+  // NULL (never flagged) or an empty object {} (self-healed) means clean.
+  // Each writer only ever touches its own key, so multiple simultaneous
+  // failures are recorded and cleared independently.
+  importErrors Json?
 
   participants Participant[]
 

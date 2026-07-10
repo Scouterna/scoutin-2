@@ -73,7 +73,7 @@ async function fetchSheetRows(
 export async function importGoogleSheetsData(
   dataSource: GoogleSheetsDataSource,
   dataSourceName: string,
-) {
+): Promise<{ participantIds: string[]; groupIds: string[] }> {
   const start = performance.now();
   const log = logger.child({ dataSource: dataSourceName });
   log.info("Starting import of Google Sheets data");
@@ -88,11 +88,15 @@ export async function importGoogleSheetsData(
   );
 
   if (rows.length < 2) {
-    log.warn(
-      { sheetName: dataSource.providerOptions.sheetName },
-      "No data rows found in sheet",
+    // Throw rather than silently returning: the caller runs a soft-delete
+    // reconcile pass after this function returns, keyed on which
+    // participants were processed. Returning an empty set here would read as
+    // "every previously-imported participant is now gone" and soft-delete
+    // everyone for this data source, which a transient empty fetch must not
+    // trigger.
+    throw new Error(
+      `No data rows found in sheet "${dataSource.providerOptions.sheetName}"`,
     );
-    return;
   }
 
   const [headerRow, ...dataRows] = rows;
@@ -129,7 +133,12 @@ export async function importGoogleSheetsData(
           },
         },
         create: { dataSource: dataSourceName, idInDataSource: name, name },
-        update: { name },
+        update: {
+          name,
+          // Self-heal: a group that imports successfully again is no
+          // longer in an error state.
+          importErrors: {},
+        },
       }),
     ),
   );
@@ -202,6 +211,10 @@ export async function importGoogleSheetsData(
           lookupValues,
           participantGroup,
           subGroup: roll,
+          // Self-heal: a participant that imports successfully again is no
+          // longer in an error state or (formerly) soft-deleted.
+          importErrors: {},
+          deletedAt: null,
         },
       });
     }),
@@ -212,4 +225,9 @@ export async function importGoogleSheetsData(
     { durationSeconds: Number(((end - start) / 1000).toFixed(2)) },
     "Finished import of Google Sheets data",
   );
+
+  return {
+    participantIds: rowData.map((d) => d.id),
+    groupIds: [...uniqueGroups],
+  };
 }

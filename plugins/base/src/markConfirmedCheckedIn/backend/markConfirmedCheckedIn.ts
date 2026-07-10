@@ -1,4 +1,7 @@
-import { prisma } from "@scouterna/scoutin-backend/plugin-services";
+import {
+  NO_IMPORT_ERROR_WHERE,
+  prisma,
+} from "@scouterna/scoutin-backend/plugin-services";
 import type { StepImplementation } from "@scouterna/scoutin-plugin-api/backend";
 
 export const markConfirmedCheckedIn: StepImplementation = {
@@ -14,7 +17,12 @@ export const markConfirmedCheckedIn: StepImplementation = {
               participant: {
                 include: {
                   participantGroup: {
-                    include: { participants: { select: { id: true } } },
+                    include: {
+                      participants: {
+                        select: { id: true },
+                        where: { deletedAt: null, ...NO_IMPORT_ERROR_WHERE },
+                      },
+                    },
                   },
                 },
               },

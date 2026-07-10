@@ -102,9 +102,46 @@ export function typedMethod<
   };
 }
 
+// Import enricher types
+
+/**
+ * The subset of a Participant/ParticipantGroup row an enricher gets to read.
+ * Intentionally structural (no Prisma import here) so plugin-api stays
+ * dependency-free; the backend adapts its DB rows to this shape.
+ */
+export type EnrichableEntity = {
+  id: string;
+  dataSource: string;
+  idInDataSource: string;
+  name?: string; // groups
+  firstName?: string; // participants
+  lastName?: string;
+  subGroup?: string | null;
+};
+
+export type ImportEnricherContext = {
+  dataSourceName: string;
+  logger: StepLogger;
+};
+
+export type ImportEnricher = {
+  /** Namespaced, e.g. "stormote6:villageLookup". Referenced by name from a
+   * data source's `enrichWith` config map. */
+  name: string;
+  target: "participant" | "group";
+  /** Return a value to write to `metadata[key]` (key comes from `enrichWith`),
+   * or null/undefined for "no data for this entity" (not an error - no key is
+   * written). Throwing flags the entity with hasImportError. */
+  enrich(
+    entity: EnrichableEntity,
+    ctx: ImportEnricherContext,
+  ): Promise<unknown | null | undefined> | unknown | null | undefined;
+};
+
 // Backend plugin types
 export type BackendPluginContext = {
   registerStep(step: StepImplementation): void;
+  registerImportEnricher(enricher: ImportEnricher): void;
 };
 
 export type BackendPlugin = {

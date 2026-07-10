@@ -13,5 +13,7 @@ export {
   dataSourceConfig,
   findParticipantsByLookupValue,
   getSubjectCandidates,
+  hasImportErrors,
+  NO_IMPORT_ERROR_WHERE,
 } from "./domains/participants/data.service.ts";
 export type { Participant } from "./generated/prisma/client.ts";

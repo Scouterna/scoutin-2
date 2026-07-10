@@ -61,7 +61,7 @@ const ScoutnetParticipant = type({
 export async function importScoutnetData(
   dataSource: ScoutnetDataSource,
   dataSourceName: string,
-) {
+): Promise<{ participantIds: string[]; groupIds: string[] }> {
   const start = performance.now();
   const log = logger.child({ dataSource: dataSourceName });
   log.info("Starting import of Scoutnet data");
@@ -70,10 +70,18 @@ export async function importScoutnetData(
 
   // TODO: Care about includeIndividuals and includeGroups. Some events could have both groups and individuals.
 
+  let processedGroupIds: string[] = [];
+
   if (dataSource.providerOptions.includeGroups) {
-    const groups = await getGroups(client, dataSource, log);
-    await prisma.$transaction(
-      groups.map((g) =>
+    const { valid: groups, invalidGroups } = await getGroups(
+      client,
+      dataSource,
+      log,
+    );
+    processedGroupIds = groups.map((g) => g.groupId);
+
+    await prisma.$transaction([
+      ...groups.map((g) =>
         prisma.participantGroup.upsert({
           where: {
             dataSource_idInDataSource: {
@@ -88,21 +96,37 @@ export async function importScoutnetData(
           },
           update: {
             name: g.name,
+            // Self-heal: a group that imports successfully again is no
+            // longer in an error state.
+            importErrors: {},
           },
         }),
       ),
-    );
+      // Flag rows that already exist but failed validation this cycle. A
+      // no-op for groups that were never successfully imported before. Flat
+      // overwrite of importErrors.provider is safe here: this row still gets
+      // revisited by reconcileDataSource's enrich pass moments later in the
+      // same cycle, which only ever touches its own enricher key and never
+      // this "provider" key.
+      ...invalidGroups.map(({ id, reason }) =>
+        prisma.participantGroup.updateMany({
+          where: { dataSource: dataSourceName, idInDataSource: id },
+          data: { importErrors: { provider: reason } },
+        }),
+      ),
+    ]);
   }
 
-  const participants = await getParticipants(client, dataSource, log);
+  const { valid: participants, invalidParticipants } = await getParticipants(
+    client,
+    dataSource,
+    log,
+  );
 
-  // TODO: Make sure we soft delete cancelled participants and participants that
-  // are no longer present in Scoutnet. Soft delete should entail keeping them
-  // in the database so that our relations don't break, but marking them as
-  // deleted and anonymizing personal data.
-  // TODO: Actually, delete anything that exists in the database but was not in
-  // the filtered array. This means that if a participant is cancelled or
-  // removed from Scoutnet, they will be deleted from our database.
+  // Cancelled/removed participants are excluded from `participants` above (see
+  // getParticipants) and therefore from `processedParticipantIds` below. The
+  // reconcile pass in data.service.ts soft-deletes any previously-imported
+  // participant for this data source that isn't in that set.
 
   const lookupValuesByParticipantId = new Map<string, string[]>();
 
@@ -121,80 +145,115 @@ export async function importScoutnetData(
     lookupValuesByParticipantId.set(p.member_no, lookupValues);
   }
 
-  await prisma.$transaction(
-    participants.flatMap((p) => {
-      const lookupValues = lookupValuesByParticipantId.get(p.member_no);
+  const processedParticipantIds: string[] = [];
+  const skippedMissingGroups: { id: string; reason: string }[] = [];
 
-      if (!lookupValues) {
-        throw new Error(
-          `No lookup values found for participant ${p.member_no}`,
-        );
-      }
+  const upsertOps = participants.flatMap((p) => {
+    const lookupValues = lookupValuesByParticipantId.get(p.member_no);
 
-      const groupId = p.group_registration_info?.group_id;
+    if (!lookupValues) {
+      throw new Error(`No lookup values found for participant ${p.member_no}`);
+    }
 
-      if (dataSource.providerOptions.includeGroups && !groupId) {
-        log.warn(
-          { memberNo: p.member_no },
-          "Participant is missing group information, but groups are included in the data source. This participant will be skipped.",
-        );
-        return [];
-      }
+    const groupId = p.group_registration_info?.group_id;
 
-      const participantGroup = groupId
-        ? {
-            connect: {
-              dataSource_idInDataSource: {
-                dataSource: dataSourceName,
-                idInDataSource: String(groupId),
-              },
-            },
-          }
-        : undefined;
+    if (dataSource.providerOptions.includeGroups && !groupId) {
+      log.warn(
+        { memberNo: p.member_no },
+        "Participant is missing group information, but groups are included in the data source. This participant will be skipped.",
+      );
+      skippedMissingGroups.push({
+        id: p.member_no,
+        reason:
+          "Missing group information (group_id absent while includeGroups is enabled)",
+      });
+      return [];
+    }
 
-      const subGroup = resolveSubGroup(dataSource, p, log);
-
-      return [
-        prisma.participant.upsert({
-          where: {
+    const participantGroup = groupId
+      ? {
+          connect: {
             dataSource_idInDataSource: {
               dataSource: dataSourceName,
-              idInDataSource: p.member_no,
+              idInDataSource: String(groupId),
             },
           },
-          create: {
+        }
+      : undefined;
+
+    const subGroup = resolveSubGroup(dataSource, p, log);
+
+    processedParticipantIds.push(p.member_no);
+
+    return [
+      prisma.participant.upsert({
+        where: {
+          dataSource_idInDataSource: {
             dataSource: dataSourceName,
             idInDataSource: p.member_no,
-            firstName: p.first_name,
-            lastName: p.last_name,
-            lookupValues,
-            participantGroup,
-            subGroup,
           },
-          update: {
-            firstName: p.first_name,
-            lastName: p.last_name,
-            lookupValues,
-            participantGroup,
-            subGroup,
-          },
-        }),
-      ];
-    }),
+        },
+        create: {
+          dataSource: dataSourceName,
+          idInDataSource: p.member_no,
+          firstName: p.first_name,
+          lastName: p.last_name,
+          lookupValues,
+          participantGroup,
+          subGroup,
+        },
+        update: {
+          firstName: p.first_name,
+          lastName: p.last_name,
+          lookupValues,
+          participantGroup,
+          subGroup,
+          // Self-heal: a participant that imports successfully again is no
+          // longer in an error state or (formerly) soft-deleted.
+          importErrors: {},
+          deletedAt: null,
+        },
+      }),
+    ];
+  });
+
+  // Flag rows that already exist but failed validation, or that couldn't be
+  // linked to a group, this cycle. A no-op for participants that were never
+  // successfully imported before. Flat overwrite of importErrors.provider is
+  // safe: a flagged-here participant is by construction absent from
+  // processedParticipantIds, so reconcileDataSource's soft-delete pass sets
+  // deletedAt on it this same cycle, and the enrich pass only visits
+  // deletedAt: null rows - no enricher key gets re-added onto it regardless.
+  const errorFlagOps = [...invalidParticipants, ...skippedMissingGroups].map(
+    ({ id, reason }) =>
+      prisma.participant.updateMany({
+        where: { dataSource: dataSourceName, idInDataSource: id },
+        data: { importErrors: { provider: reason } },
+      }),
   );
+
+  await prisma.$transaction([...upsertOps, ...errorFlagOps]);
 
   const end = performance.now();
   log.info(
     { durationSeconds: Number(((end - start) / 1000).toFixed(2)) },
     "Finished import of Scoutnet data",
   );
+
+  return {
+    participantIds: processedParticipantIds,
+    groupIds: processedGroupIds,
+  };
 }
 
 async function getGroups(
   client: ScoutnetClient,
   dataSource: ScoutnetDataSource,
   log: Logger,
-) {
+): Promise<{
+  valid: (typeof ScoutnetGroup.infer)[];
+  invalidGroups: { id: string; reason: string }[];
+}> {
   const res = await client.GET("/project/get/groups", {
     headers: {
       Authorization: createAuthorizationHeader({
@@ -218,47 +277,53 @@ async function getGroups(
     ),
   );
 
-  return (
-    allGroups
-      // Remap data to validated group objects
-      .flatMap(([groupId, g]) => {
-        const out = ScoutnetGroup({ groupId, ...g });
-        if (out instanceof type.errors) {
-          log.warn(
-            { groupId, issues: out.summary },
-            "Invalid group data from Scoutnet",
-          );
-          return [];
-        }
-        return [out];
-      })
-      // Filter out groups that do not match criteria
-      .filter((g) => {
-        const groupParticipants =
-          g.project_stats?.[dataSource.providerOptions.projectId]
-            ?.group_participants ?? 0;
+  const valid: (typeof ScoutnetGroup.infer)[] = [];
+  const invalidGroups: { id: string; reason: string }[] = [];
 
-        if (groupParticipants <= 0) {
-          log.warn(
-            {
-              groupId: g.groupId,
-              projectId: dataSource.providerOptions.projectId,
-            },
-            "Group has no participants registered for project, skipping",
-          );
-          return false;
-        }
+  for (const [groupId, g] of allGroups) {
+    const out = ScoutnetGroup({ groupId, ...g });
+    if (out instanceof type.errors) {
+      log.warn(
+        { groupId, issues: out.summary },
+        "Invalid group data from Scoutnet",
+      );
+      // The group ID itself comes from the raw object key, independent of
+      // whether the rest of the record validated, so we can still flag an
+      // already-imported row even when validation fails.
+      invalidGroups.push({ id: String(groupId), reason: out.summary });
+      continue;
+    }
 
-        return true;
-      })
-  );
+    const groupParticipants =
+      out.project_stats?.[dataSource.providerOptions.projectId]
+        ?.group_participants ?? 0;
+
+    if (groupParticipants <= 0) {
+      log.warn(
+        {
+          groupId: out.groupId,
+          projectId: dataSource.providerOptions.projectId,
+        },
+        "Group has no participants registered for project, skipping",
+      );
+      // Not a data error - just not part of this project. Leave as-is.
+      continue;
+    }
+
+    valid.push(out);
+  }
+
+  return { valid, invalidGroups };
 }
 
 async function getParticipants(
   client: ScoutnetClient,
   dataSource: ScoutnetDataSource,
   log: Logger,
-) {
+): Promise<{
+  valid: ScoutnetParticipantOut[];
+  invalidParticipants: { id: string; reason: string }[];
+}> {
   const res = await client.GET("/project/get/participants", {
     headers: {
       Authorization: createAuthorizationHeader({
@@ -278,36 +343,46 @@ async function getParticipants(
     throw new Error("No participants data received from Scoutnet");
   }
 
-  return (
-    Object.values(res.data.participants)
-      // Remap data to validated participant objects
-      .flatMap((p) => {
-        const out = ScoutnetParticipant(p);
-        if (out instanceof type.errors) {
-          log.warn(
-            { memberNo: p.member_no, issues: out.summary },
-            "Invalid participant data from Scoutnet",
-          );
-          return [];
-        }
-        return [out];
-      })
-      // Filter out participants that do not match criteria
-      .filter((p) => {
-        if (p.cancelled) {
-          return false;
-        }
+  const valid: ScoutnetParticipantOut[] = [];
+  const invalidParticipants: { id: string; reason: string }[] = [];
 
-        if (
-          !dataSource.providerOptions.feeIds ||
-          dataSource.providerOptions.feeIds.length === 0
-        ) {
-          return true;
-        }
+  for (const p of Object.values(res.data.participants)) {
+    const out = ScoutnetParticipant(p);
+    if (out instanceof type.errors) {
+      log.warn(
+        { memberNo: p.member_no, issues: out.summary },
+        "Invalid participant data from Scoutnet",
+      );
+      // Best effort: only flag an existing row if we can identify which one
+      // this raw record corresponds to.
+      if (p.member_no != null) {
+        invalidParticipants.push({
+          id: String(p.member_no),
+          reason: out.summary,
+        });
+      }
+      continue;
+    }
 
-        return dataSource.providerOptions.feeIds.includes(p.fee_id);
-      })
-  );
+    // Cancelled participants are treated the same as participants removed
+    // from the source entirely: excluded here, then soft-deleted by the
+    // reconcile pass in data.service.ts if they were previously imported.
+    if (out.cancelled) {
+      continue;
+    }
+
+    if (
+      dataSource.providerOptions.feeIds &&
+      dataSource.providerOptions.feeIds.length > 0 &&
+      !dataSource.providerOptions.feeIds.includes(out.fee_id)
+    ) {
+      continue;
+    }
+
+    valid.push(out);
+  }
+
+  return { valid, invalidParticipants };
 }
 
 type ScoutnetParticipantOut = typeof ScoutnetParticipant.infer;
