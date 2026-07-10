@@ -1,4 +1,5 @@
 import {
+  Assessment as AssessmentIcon,
   CropLandscape as CropLandscapeIcon,
   Dashboard as DashboardIcon,
   HowToReg as HowToRegIcon,
@@ -106,6 +107,17 @@ export function AdminLayout({ children }: Props) {
                 <LinkIcon />
               </ListItemIcon>
               <ListItemText primary="Links" />
+            </ListItemButtonLink>
+          </ListItem>
+          <ListItem disablePadding>
+            <ListItemButtonLink
+              to={"/admin/reports"}
+              activeProps={{ selected: true }}
+            >
+              <ListItemIcon>
+                <AssessmentIcon />
+              </ListItemIcon>
+              <ListItemText primary="Rapporter" />
             </ListItemButtonLink>
           </ListItem>
         </List>

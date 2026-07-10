@@ -841,19 +841,78 @@ istället för att skala ner den gamla – den befintliga debug-/live-panelen
 
 ### Rapporter: incheckade, saknade, ofullständiga
 
-`[ ]` Källa: Allmänt "Rapporter: vem är incheckad, vilka saknas, vilka är
-inkompletta... de som skickats till infotältet."
+`[x]` Implementerad 2026-07-10. Källa: Allmänt "Rapporter: vem är incheckad,
+vilka saknas, vilka är inkompletta... de som skickats till infotältet."
 
-Finns inte alls – ingen rapportfunktion, ingen roster-vy i admin.
+Fanns inte alls tidigare – ingen rapportfunktion, ingen roster-vy i admin.
 
-**Plan:**
-- Bygg en admin-roster-vy som kan lista deltagare/grupper med filter på:
-  incheckningsstatus, `hasImportError` (se
-  [import-felhantering](#filtrera-bort-deltagaregrupper-med-importfel)),
-  ["skickad till infotältet"](#kryssruta-för-skickad-till-infotältet)-flaggan.
-- Separata vyer/filter för kår respektive funk, enligt anteckningen.
-- Denna vy blir även den naturliga platsen att göra importfel synliga för
-  personal, eftersom de annars är helt osynliga i kiosk-flödet by design.
+**Beslut (via genomgång 2026-07-10):** appens kärna är händelseagnostisk, så
+vyn får inte anta en fast kår/funk-uppdelning – grupperingen härleds istället
+från datan (en källa med `ParticipantGroup`-rader blir ett gruppträd, en källa
+utan blir platt, ev. bucketerad på `subGroup`). Fem statusar redovisas:
+incheckad, preliminär, saknas, importfel och avanmäld – de två sista medvetet
+synliga för personal trots att kiosken filtrerar bort dem (samma princip som
+`getSessionContext`). ["Skickad till infotältet"](#kryssruta-för-skickad-till-infotältet)-flaggan
+ingår inte – den är fortfarande uppskjuten som separat policyfråga.
+
+**Omprövning under användning – från fulla tabeller till dashboard + sök:**
+Första versionen visade alla deltagare i tabeller (en per grupp/källa),
+virtualiserade med `@tanstack/react-table` + `react-virtual`. Två problem
+uppstod i praktiken: kolumnbredden hoppade till under scroll (virtualiserade
+rader har innehållsberoende bredd, så bredden räknades om när nya rader
+scrollades in), och sidan blev trög – i grunden för att *hela* rostret (alla
+källor, grupper, deltagare, varje fält) skickades till klienten på en
+8-sekunders poll och filtrerades i JS, vilket inte skalar förbi ett par
+tusen deltagare (kommande event kan ha ~20 000). **Löst genom att byta
+modell helt:** en dashboard med bara räknare per källa (`buildRosterSummary`,
+inga grupper/deltagare i svaret) för den återkommande pollningen, och en
+sök-på-begäran (`searchRoster`) som filtrerar i databasen med en `LIMIT`
+istället för i webbläsaren. Den fulla, ovirtualiserade tabellvyn togs bort
+helt – täcks numera bara av CSV-export (som redan fanns) för den som
+behöver hela listan.
+
+**Uppföljning samma dag – fuzzy sök:** kår bad om att sökningen ska vara
+"fuzzy": accentokänslig (é = e) och toleranta mot enstaka felstavningar
+(Malcom = Malcolm). Löst i två separata, additiva steg:
+- Accentokänslighet via Postgres `unaccent`-tillägget (ny migration,
+  `CREATE EXTENSION IF NOT EXISTS unaccent`) – matchning blev
+  `unaccent(kolumn) ILIKE unaccent(mönster)`.
+- Felstavningstolerans via `pg_trgm` (ny migration, trigram-likhet) –
+  `similarity(unaccent(kolumn), unaccent(ord)) > 0.4` som ytterligare
+  `OR`-villkor, aldrig en ersättning av den exakta träffen. Tröskelvärdet
+  0.4 är en uppskattning, verifierad mot verkliga namn i dev-databasen
+  (bl.a. "Malcom"→"Malcolm", "Andrea"→"Andreas", "Carolin"→"Caroline"; en
+  nonsens-sökning gav noll träffar) – inte matematiskt härlett, kan behöva
+  justeras.
+- Prismas fluent-API kan inte anropa SQL-funktioner i ett `where`-villkor,
+  så `searchRoster` byggdes om till en rå, parametriserad fråga
+  (`Prisma.sql`/`Prisma.join`, ingen sträng-konkatenering) istället för
+  `findMany`.
+
+**Genomfört:**
+- Backend (`packages/backend/src/domains/participants/reports.service.ts`):
+  `buildRosterSummary` (räknare per källa, minimalt fältval, ingen
+  grupp-fråga – kostnaden är oberoende av antal deltagare),
+  `searchRoster` (rå SQL, `unaccent` + `pg_trgm`, `take`-cap på 200 träffar),
+  samt den ursprungliga `buildRoster`/`rosterToCsv` kvar oförändrade men nu
+  enbart använda av CSV-exporten.
+  Nya routes i `reports.admin.routes.ts`: `GET /api/admin/reports/roster`
+  (dashboard), `GET /api/admin/reports/search?q=` (sök), `GET
+  /api/admin/reports/roster.csv` (full export, oförändrad).
+- Frontend: ny sida **Rapporter** (`/admin/reports`,
+  `components/admin/RosterReport.tsx`), ny post i adminmenyn. Visar en
+  rutnätsdashboard med en ruta per källa (räknare), en sökruta (debounce
+  300 ms, min 2 tecken) och statusfilter-chips, plus samma
+  "Exportera CSV"-knapp.
+- Nya migrationer: `enable_unaccent_extension`,
+  `enable_pg_trgm_extension` (rena tilläggs-aktiveringar, inga
+  modelländringar).
+- 42 backend-enhetstester (upp från 32) täcker klassificering, gruppering,
+  metadata-uppdelning, CSV-escaping, samt sök-frågans SQL-form (unaccent,
+  similarity, LIMIT, källbegränsning).
+- Verifierat end-till-ände mot riktig dev-databas via `run-scoutin`-skillen:
+  dashboard-räknare stämmer, sökning hittar rätt person över alla källor,
+  CSV laddas ner med korrekt BOM/CRLF/svenska tecken.
 
 ---
 

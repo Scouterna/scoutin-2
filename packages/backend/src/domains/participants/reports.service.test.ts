@@ -1,0 +1,741 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const participantFindMany = vi.fn();
+const groupFindMany = vi.fn();
+const queryRaw = vi.fn();
+
+vi.mock("../../app/prisma.ts", () => ({
+  prisma: {
+    participant: { findMany: participantFindMany },
+    participantGroup: { findMany: groupFindMany },
+    $queryRaw: queryRaw,
+  },
+}));
+
+vi.mock("../../config/config.ts", () => ({
+  default: {
+    DATASOURCE_HASHING_SECRET: "test-secret",
+    DATASOURCE_HASHING_SALT: "test-salt",
+    NODE_ENV: "test",
+  },
+}));
+
+// A hierarchical source ("groups"), a fully-flat source ("staff"), and a flat
+// source with subGroups ("stormote6") - exercises every grouping mode a real
+// dataSourceConfig.yml can produce, without depending on env-var substitution.
+const testDataSourceConfig = {
+  dataSources: {
+    groups: {
+      name: { sv: "Ledare i din kår", en: "Leader in your scout group" },
+      subGroups: { leader: { name: { sv: "Ledare", en: "Leader" } } },
+      enrichWith: {
+        village: "test:reportsGroupTag",
+        diet: "test:reportsParticipantTag",
+      },
+    },
+    staff: {
+      name: { sv: "Funktionär", en: "Staff" },
+    },
+    stormote6: {
+      name: { sv: "Deltagare", en: "Participant" },
+      subGroups: { a: { name: { sv: "Grupp A", en: "Group A" } } },
+    },
+  },
+};
+
+vi.mock("../../config/dataSourceConfigLoader.ts", () => ({
+  loadDataSourceConfig: () => testDataSourceConfig,
+}));
+
+const logStub: {
+  warn: ReturnType<typeof vi.fn>;
+  info: ReturnType<typeof vi.fn>;
+  debug: ReturnType<typeof vi.fn>;
+  error: ReturnType<typeof vi.fn>;
+  child: () => typeof logStub;
+} = {
+  warn: vi.fn(),
+  info: vi.fn(),
+  debug: vi.fn(),
+  error: vi.fn(),
+  child: () => logStub,
+};
+vi.mock("../../core/logging/logger.ts", () => ({ logger: logStub }));
+
+const {
+  buildRoster,
+  buildRosterSummary,
+  pickLocalizedName,
+  rosterToCsv,
+  searchRoster,
+} = await import("./reports.service.ts");
+const { enricherRegistry } = await import("../workflows/steps.ts");
+
+const now = new Date("2026-07-10T10:00:00.000Z");
+
+enricherRegistry.register({
+  name: "test:reportsGroupTag",
+  target: "group",
+  enrich: () => null,
+});
+enricherRegistry.register({
+  name: "test:reportsParticipantTag",
+  target: "participant",
+  enrich: () => null,
+});
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+describe("pickLocalizedName", () => {
+  const map = { sv: "Svenska", en: "English" };
+
+  it("picks the requested locale", () => {
+    expect(pickLocalizedName(map, "en", "fallback")).toBe("English");
+  });
+
+  it("falls back to sv when the locale is missing", () => {
+    expect(pickLocalizedName(map, "de", "fallback")).toBe("Svenska");
+  });
+
+  it("falls back to any available value when sv is also missing", () => {
+    expect(pickLocalizedName({ en: "English" }, "de", "fallback")).toBe(
+      "English",
+    );
+  });
+
+  it("falls back to the raw key when no map is given", () => {
+    expect(pickLocalizedName(undefined, "sv", "fallback")).toBe("fallback");
+  });
+});
+
+describe("buildRoster", () => {
+  beforeEach(() => {
+    groupFindMany.mockResolvedValue([
+      {
+        id: "g1",
+        dataSource: "groups",
+        name: "Kår 1",
+        metadata: { village: "By 5" },
+        importErrors: null,
+      },
+      {
+        id: "g2",
+        dataSource: "groups",
+        name: "Kår 2",
+        metadata: null,
+        importErrors: { "test:reportsGroupTag": "failed" },
+      },
+    ]);
+
+    participantFindMany.mockResolvedValue([
+      // "groups" (hierarchical): one participant per status bucket in g1,
+      // plus one ungrouped participant.
+      {
+        id: "p-confirmed",
+        dataSource: "groups",
+        firstName: "Confirmed",
+        lastName: "Person",
+        subGroup: null,
+        participantGroupId: "g1",
+        preliminaryCheckedInAt: null,
+        confirmedCheckedInAt: now,
+        metadata: { village: "should-not-appear-on-member", diet: "vegan" },
+        importErrors: null,
+        deletedAt: null,
+      },
+      {
+        id: "p-preliminary",
+        dataSource: "groups",
+        firstName: "Preliminary",
+        lastName: "Person",
+        subGroup: null,
+        participantGroupId: "g1",
+        preliminaryCheckedInAt: now,
+        confirmedCheckedInAt: null,
+        metadata: null,
+        importErrors: null,
+        deletedAt: null,
+      },
+      {
+        id: "p-missing",
+        dataSource: "groups",
+        firstName: "Missing",
+        lastName: "Person",
+        subGroup: null,
+        participantGroupId: "g1",
+        preliminaryCheckedInAt: null,
+        confirmedCheckedInAt: null,
+        metadata: null,
+        importErrors: null,
+        deletedAt: null,
+      },
+      {
+        id: "p-error",
+        dataSource: "groups",
+        firstName: "Errored",
+        lastName: "Person",
+        subGroup: null,
+        participantGroupId: "g1",
+        preliminaryCheckedInAt: null,
+        confirmedCheckedInAt: null,
+        metadata: null,
+        importErrors: { provider: "bad row" },
+        deletedAt: null,
+      },
+      {
+        id: "p-cancelled",
+        dataSource: "groups",
+        firstName: "Cancelled",
+        lastName: "Person",
+        subGroup: null,
+        participantGroupId: "g1",
+        // Confirmed *and* later cancelled - cancelled must win.
+        preliminaryCheckedInAt: null,
+        confirmedCheckedInAt: now,
+        metadata: null,
+        importErrors: null,
+        deletedAt: now,
+      },
+      {
+        id: "p-ungrouped",
+        dataSource: "groups",
+        firstName: "Ungrouped",
+        lastName: "Person",
+        subGroup: null,
+        participantGroupId: null,
+        preliminaryCheckedInAt: null,
+        confirmedCheckedInAt: null,
+        metadata: null,
+        importErrors: null,
+        deletedAt: null,
+      },
+      // "staff" (fully flat, no subGroups).
+      {
+        id: "p-staff",
+        dataSource: "staff",
+        firstName: "Staff",
+        lastName: "Person",
+        subGroup: null,
+        participantGroupId: null,
+        preliminaryCheckedInAt: null,
+        confirmedCheckedInAt: now,
+        metadata: null,
+        importErrors: null,
+        deletedAt: null,
+      },
+      // "stormote6" (flat with subGroups): one in subGroup "a", one ungrouped.
+      {
+        id: "p-sub-a",
+        dataSource: "stormote6",
+        firstName: "SubA",
+        lastName: "Person",
+        subGroup: "a",
+        participantGroupId: null,
+        preliminaryCheckedInAt: null,
+        confirmedCheckedInAt: now,
+        metadata: null,
+        importErrors: null,
+        deletedAt: null,
+      },
+      {
+        id: "p-sub-none",
+        dataSource: "stormote6",
+        firstName: "SubNone",
+        lastName: "Person",
+        subGroup: null,
+        participantGroupId: null,
+        preliminaryCheckedInAt: null,
+        confirmedCheckedInAt: null,
+        metadata: null,
+        importErrors: null,
+        deletedAt: null,
+      },
+      // A dataSource no longer present in config - must still surface, not be
+      // silently dropped.
+      {
+        id: "p-orphan",
+        dataSource: "old_event",
+        firstName: "Orphan",
+        lastName: "Person",
+        subGroup: null,
+        participantGroupId: null,
+        preliminaryCheckedInAt: null,
+        confirmedCheckedInAt: null,
+        metadata: null,
+        importErrors: null,
+        deletedAt: null,
+      },
+    ]);
+  });
+
+  function findSource(
+    sources: Awaited<ReturnType<typeof buildRoster>>["sources"],
+    key: string,
+  ) {
+    const source = sources.find((s) => s.key === key);
+    if (!source) throw new Error(`Source "${key}" not found in roster`);
+    return source;
+  }
+
+  it("classifies every status bucket, with cancelled winning over a prior confirmation", async () => {
+    const roster = await buildRoster({ locale: "sv" });
+    const groups = findSource(roster.sources, "groups");
+    const g1 = groups.groups.find((g) => g.id === "g1");
+    if (!g1) throw new Error("g1 not found");
+
+    const statusById = Object.fromEntries(
+      g1.members.map((m) => [m.id, m.status]),
+    );
+    expect(statusById).toEqual({
+      "p-confirmed": "confirmed",
+      "p-preliminary": "preliminaryOnly",
+      "p-missing": "missing",
+      "p-error": "importError",
+      "p-cancelled": "cancelled",
+    });
+    expect(g1.counts).toEqual({
+      confirmed: 1,
+      preliminaryOnly: 1,
+      missing: 1,
+      importError: 1,
+      cancelled: 1,
+      total: 5,
+    });
+  });
+
+  it("renders a hierarchical source as a group tree, with an 'ungrouped' node for null participantGroupId", async () => {
+    const roster = await buildRoster({ locale: "sv" });
+    const groups = findSource(roster.sources, "groups");
+
+    expect(groups.hierarchical).toBe(true);
+    expect(groups.groups.map((g) => g.id)).toEqual(["g1", "g2", null]);
+
+    const ungrouped = groups.groups.find((g) => g.id === null);
+    expect(ungrouped?.kind).toBe("ungrouped");
+    expect(ungrouped?.members.map((m) => m.id)).toEqual(["p-ungrouped"]);
+
+    // Rolled up across every group node in the source.
+    expect(groups.counts.total).toBe(6);
+    expect(groups.counts.missing).toBe(2); // p-missing + p-ungrouped
+  });
+
+  it("flags a group's own import errors independently of its members", async () => {
+    const roster = await buildRoster({ locale: "sv" });
+    const groups = findSource(roster.sources, "groups");
+    const g2 = groups.groups.find((g) => g.id === "g2");
+
+    expect(g2?.hasImportErrors).toBe(true);
+    expect(g2?.importErrors).toEqual({ "test:reportsGroupTag": "failed" });
+    expect(g2?.members).toEqual([]);
+  });
+
+  it("splits enrichWith into member- vs group-level metadata by enricher target", async () => {
+    const roster = await buildRoster({ locale: "sv" });
+    const groups = findSource(roster.sources, "groups");
+
+    expect(groups.memberMetadataColumns).toEqual(["diet"]);
+    expect(groups.groupMetadataColumns).toEqual(["village"]);
+
+    const g1 = groups.groups.find((g) => g.id === "g1");
+    expect(g1?.groupMetadata).toEqual({ village: "By 5" });
+
+    const confirmed = g1?.members.find((m) => m.id === "p-confirmed");
+    // Only the member-level key ("diet") should reach the member row - the
+    // group-level key ("village") must not leak in even though it's present
+    // on the raw participant.metadata blob.
+    expect(confirmed?.metadata).toEqual({ diet: "vegan" });
+  });
+
+  it("renders a fully flat source (no subGroups) as a single node named after the source", async () => {
+    const roster = await buildRoster({ locale: "sv" });
+    const staff = findSource(roster.sources, "staff");
+
+    expect(staff.hierarchical).toBe(false);
+    expect(staff.groups).toHaveLength(1);
+    expect(staff.groups[0]?.name).toBe("Funktionär");
+    expect(staff.groups[0]?.members.map((m) => m.id)).toEqual(["p-staff"]);
+  });
+
+  it("buckets a flat source with subGroups by subGroup, with a fallback node for null subGroup", async () => {
+    const roster = await buildRoster({ locale: "sv" });
+    const stormote6 = findSource(roster.sources, "stormote6");
+
+    const subA = stormote6.groups.find((g) => g.id === "a");
+    expect(subA?.kind).toBe("subGroup");
+    expect(subA?.name).toBe("Grupp A");
+    expect(subA?.members.map((m) => m.id)).toEqual(["p-sub-a"]);
+
+    const ungrouped = stormote6.groups.find((g) => g.id === null);
+    expect(ungrouped?.name).toBe("Utan undergrupp");
+    expect(ungrouped?.members.map((m) => m.id)).toEqual(["p-sub-none"]);
+  });
+
+  it("resolves subGroup display names from config, honoring the requested locale", async () => {
+    const roster = await buildRoster({ locale: "en" });
+    const stormote6 = findSource(roster.sources, "stormote6");
+    const subA = stormote6.groups.find((g) => g.id === "a");
+
+    expect(subA?.name).toBe("Group A");
+    const member = subA?.members.find((m) => m.id === "p-sub-a");
+    expect(member?.subGroupName).toBe("Group A");
+  });
+
+  it("surfaces a dataSource no longer present in config as a synthetic source", async () => {
+    const roster = await buildRoster({ locale: "sv" });
+    const orphan = findSource(roster.sources, "old_event");
+
+    expect(orphan.name).toBe("old_event");
+    expect(orphan.groups[0]?.members.map((m) => m.id)).toEqual(["p-orphan"]);
+  });
+
+  it("scopes the query and result to a single source when sourceKey is given", async () => {
+    await buildRoster({ locale: "sv", sourceKey: "staff" });
+
+    expect(groupFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { dataSource: { in: ["staff"] } },
+      }),
+    );
+    expect(participantFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { dataSource: { in: ["staff"] } },
+      }),
+    );
+  });
+});
+
+describe("rosterToCsv", () => {
+  const baseRoster = (
+    sources: Awaited<ReturnType<typeof buildRoster>>["sources"],
+  ) => ({
+    generatedAt: "2026-07-10T10:00:00.000Z",
+    locale: "sv",
+    sources,
+  });
+
+  it("emits a UTF-8 BOM and one row per member with fixed + dynamic metadata columns", () => {
+    const csv = rosterToCsv(
+      baseRoster([
+        {
+          key: "groups",
+          name: "Ledare i din kår",
+          hierarchical: true,
+          memberMetadataColumns: ["diet"],
+          groupMetadataColumns: ["village"],
+          counts: {
+            confirmed: 1,
+            preliminaryOnly: 0,
+            missing: 0,
+            importError: 0,
+            cancelled: 0,
+            total: 1,
+          },
+          groups: [
+            {
+              id: "g1",
+              name: "Kår 1",
+              kind: "group",
+              counts: {
+                confirmed: 1,
+                preliminaryOnly: 0,
+                missing: 0,
+                importError: 0,
+                cancelled: 0,
+                total: 1,
+              },
+              hasImportErrors: false,
+              importErrors: null,
+              groupMetadata: { village: "By 5" },
+              members: [
+                {
+                  id: "p1",
+                  firstName: "Anna",
+                  lastName: "Andersson",
+                  subGroup: null,
+                  subGroupName: null,
+                  status: "confirmed",
+                  confirmedCheckedInAt: "2026-07-10T10:00:00.000Z",
+                  preliminaryCheckedInAt: null,
+                  hasImportErrors: false,
+                  importErrors: null,
+                  metadata: { diet: "vegan" },
+                },
+              ],
+            },
+          ],
+        },
+      ]),
+    );
+
+    expect(csv.startsWith("﻿")).toBe(true);
+    const lines = csv.slice(1).split("\r\n");
+    expect(lines[0]).toBe(
+      "source,group,subGroup,firstName,lastName,status,confirmedCheckedInAt,preliminaryCheckedInAt,hasImportErrors,diet",
+    );
+    expect(lines[1]).toBe(
+      "Ledare i din kår,Kår 1,,Anna,Andersson,confirmed,2026-07-10T10:00:00.000Z,,false,vegan",
+    );
+  });
+
+  it("quotes and escapes fields containing commas, quotes, or newlines", () => {
+    const csv = rosterToCsv(
+      baseRoster([
+        {
+          key: "groups",
+          name: 'Kår, med "citat"',
+          hierarchical: false,
+          memberMetadataColumns: [],
+          groupMetadataColumns: [],
+          counts: {
+            confirmed: 0,
+            preliminaryOnly: 0,
+            missing: 1,
+            importError: 0,
+            cancelled: 0,
+            total: 1,
+          },
+          groups: [
+            {
+              id: null,
+              name: 'Kår, med "citat"',
+              kind: "ungrouped",
+              counts: {
+                confirmed: 0,
+                preliminaryOnly: 0,
+                missing: 1,
+                importError: 0,
+                cancelled: 0,
+                total: 1,
+              },
+              hasImportErrors: false,
+              importErrors: null,
+              groupMetadata: {},
+              members: [
+                {
+                  id: "p1",
+                  firstName: "Multi\nline",
+                  lastName: "Person",
+                  subGroup: null,
+                  subGroupName: null,
+                  status: "missing",
+                  confirmedCheckedInAt: null,
+                  preliminaryCheckedInAt: null,
+                  hasImportErrors: false,
+                  importErrors: null,
+                  metadata: {},
+                },
+              ],
+            },
+          ],
+        },
+      ]),
+    );
+
+    const lines = csv.slice(1).split("\r\n");
+    // "ungrouped" kind is not "group"/"subGroup", so the group column is
+    // intentionally blank for a flat source's single node.
+    expect(lines[1]).toBe(
+      '"Kår, med ""citat""",,,"Multi\nline",Person,missing,,,false',
+    );
+  });
+});
+
+describe("buildRosterSummary", () => {
+  it("aggregates counts per source without ever querying groups", async () => {
+    participantFindMany.mockResolvedValueOnce([
+      {
+        dataSource: "groups",
+        confirmedCheckedInAt: now,
+        preliminaryCheckedInAt: null,
+        importErrors: null,
+        deletedAt: null,
+      },
+      {
+        dataSource: "groups",
+        confirmedCheckedInAt: null,
+        preliminaryCheckedInAt: null,
+        importErrors: null,
+        deletedAt: null,
+      },
+      {
+        dataSource: "staff",
+        confirmedCheckedInAt: null,
+        preliminaryCheckedInAt: null,
+        importErrors: null,
+        deletedAt: null,
+      },
+    ]);
+
+    const summary = await buildRosterSummary({ locale: "sv" });
+
+    expect(groupFindMany).not.toHaveBeenCalled();
+
+    const groups = summary.sources.find((s) => s.key === "groups");
+    expect(groups?.name).toBe("Ledare i din kår");
+    expect(groups?.counts).toEqual({
+      confirmed: 1,
+      preliminaryOnly: 0,
+      missing: 1,
+      importError: 0,
+      cancelled: 0,
+      total: 2,
+    });
+
+    const staff = summary.sources.find((s) => s.key === "staff");
+    expect(staff?.counts.total).toBe(1);
+
+    // A configured source with no participants yet still appears, at zero.
+    const stormote6 = summary.sources.find((s) => s.key === "stormote6");
+    expect(stormote6?.counts.total).toBe(0);
+  });
+
+  it("selects only the minimal scalar fields needed for classification", async () => {
+    participantFindMany.mockResolvedValueOnce([]);
+
+    await buildRosterSummary({ locale: "sv" });
+
+    const [args] = participantFindMany.mock.calls[0] ?? [];
+    expect(args.select).toEqual({
+      dataSource: true,
+      confirmedCheckedInAt: true,
+      preliminaryCheckedInAt: true,
+      importErrors: true,
+      deletedAt: true,
+    });
+  });
+
+  it("surfaces a dataSource no longer present in config as a synthetic source", async () => {
+    participantFindMany.mockResolvedValueOnce([
+      {
+        dataSource: "old_event",
+        confirmedCheckedInAt: null,
+        preliminaryCheckedInAt: null,
+        importErrors: null,
+        deletedAt: null,
+      },
+    ]);
+
+    const summary = await buildRosterSummary({ locale: "sv" });
+    const orphan = summary.sources.find((s) => s.key === "old_event");
+
+    expect(orphan?.name).toBe("old_event");
+    expect(orphan?.counts.total).toBe(1);
+  });
+});
+
+describe("searchRoster", () => {
+  it("returns no results and never queries the database below the minimum query length", async () => {
+    const results = await searchRoster("a");
+
+    expect(results).toEqual([]);
+    expect(queryRaw).not.toHaveBeenCalled();
+  });
+
+  it("calls unaccent() on both column and pattern, once per whitespace-separated word", async () => {
+    queryRaw.mockResolvedValueOnce([]);
+
+    await searchRoster("anders sagnell");
+
+    const [fragment] = queryRaw.mock.calls[0] ?? [];
+    // Two words -> two (firstName OR lastName) groups, each contributing two
+    // ILIKE comparisons and two similarity() comparisons (one per column) -
+    // four unaccent() calls on columns per word, eight total.
+    expect(fragment.text.match(/unaccent\(p\./g)).toHaveLength(8);
+    expect(fragment.values).toContain("%anders%");
+    expect(fragment.values).toContain("%sagnell%");
+  });
+
+  it("also matches via trigram similarity, additively alongside the exact ILIKE match", async () => {
+    queryRaw.mockResolvedValueOnce([]);
+
+    await searchRoster("malcom");
+
+    const [fragment] = queryRaw.mock.calls[0] ?? [];
+    // One similarity() comparison per column (firstName, lastName).
+    expect(fragment.text.match(/similarity\(/g)).toHaveLength(2);
+    expect(fragment.values).toContain("malcom");
+    expect(fragment.values).toContain(0.4);
+  });
+
+  it("caps the query with LIMIT, so large matches never load unbounded rows", async () => {
+    queryRaw.mockResolvedValueOnce([]);
+
+    await searchRoster("anna");
+
+    const [fragment] = queryRaw.mock.calls[0] ?? [];
+    expect(fragment.text).toMatch(/LIMIT/);
+    expect(fragment.values).toContain(200);
+  });
+
+  it("scopes the query to configured data sources", async () => {
+    queryRaw.mockResolvedValueOnce([]);
+
+    await searchRoster("anna");
+
+    const [fragment] = queryRaw.mock.calls[0] ?? [];
+    expect(fragment.values).toEqual(
+      expect.arrayContaining(["groups", "staff", "stormote6"]),
+    );
+  });
+
+  it("maps a match to its source name, group name, subGroup name, and metadata", async () => {
+    queryRaw.mockResolvedValueOnce([
+      {
+        id: "p1",
+        dataSource: "groups",
+        firstName: "Anna",
+        lastName: "Andersson",
+        subGroup: "leader",
+        participantGroupId: "g1",
+        preliminaryCheckedInAt: null,
+        confirmedCheckedInAt: now,
+        metadata: { diet: "vegan", village: "hidden-from-search-too" },
+        importErrors: null,
+        deletedAt: null,
+        groupName: "Kår 1",
+      },
+    ]);
+
+    const results = await searchRoster("anna", { locale: "sv" });
+    const row = results[0];
+    if (!row) throw new Error("expected a search result");
+
+    expect(row.sourceName).toBe("Ledare i din kår");
+    expect(row.groupName).toBe("Kår 1");
+    expect(row.subGroupName).toBe("Ledare");
+    expect(row.status).toBe("confirmed");
+    // Same member-vs-group metadata split as buildRoster - "village" is a
+    // group-level enrichWith key and must not leak into a member row here
+    // either, even though it's present on the raw metadata blob.
+    expect(row.metadata).toEqual({ diet: "vegan" });
+  });
+
+  it("resolves a match with no group as a null groupName", async () => {
+    queryRaw.mockResolvedValueOnce([
+      {
+        id: "p1",
+        dataSource: "staff",
+        firstName: "Erik",
+        lastName: "Eriksson",
+        subGroup: null,
+        participantGroupId: null,
+        preliminaryCheckedInAt: null,
+        confirmedCheckedInAt: null,
+        metadata: null,
+        importErrors: null,
+        deletedAt: null,
+        groupName: null,
+      },
+    ]);
+
+    const results = await searchRoster("erik", { locale: "sv" });
+    const row = results[0];
+    if (!row) throw new Error("expected a search result");
+
+    expect(row.groupName).toBeNull();
+    expect(row.sourceName).toBe("Funktionär");
+    expect(row.status).toBe("missing");
+  });
+});
