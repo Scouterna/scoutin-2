@@ -12,3 +12,4 @@
 - [ ] Add auth to the admin interface and routes.
 - [ ] Two steps with the same `uses` value in a config (e.g. two `base:message` steps) will cause the second to be silently skipped — `findNextStepDefinition` matches on `stepId` and finds the first completion record. Either enforce uniqueness of `uses` per config or track step index in `CheckinSessionStepData`.
 - [ ] Kiosk: When network goes out, the websocket connection is lost and not reconnected.
+- [ ] `identify.ts`'s `searchCandidates` silently drops a matched participant whose `dataSource` is no longer present in `dataSourceConfig.yml` (e.g. stale rows left over from a data source since removed/commented out) instead of surfacing it anywhere. Fixed the crash this used to cause (it previously threw), but we should log or warn when this happens so it doesn't go unnoticed.

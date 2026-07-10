@@ -93,11 +93,28 @@ export async function getSubjectCandidates(actorParticipantId: string) {
   return actorParticipant.participantGroup?.participants ?? [];
 }
 
+/**
+ * Common return shape for every data-source provider's import function.
+ * `sourceRecords` is optional and per-provider: it lets a provider expose the
+ * raw record it fetched for a participant/group (keyed by `idInDataSource`)
+ * so enrichers can read provider fields that never make it into the app's own
+ * data model, without a second API call. Providers with no such raw record
+ * (e.g. Google Sheets) simply omit it or return empty maps.
+ */
+export type DataSourceImportResult = {
+  participantIds: string[];
+  groupIds: string[];
+  sourceRecords?: {
+    participant: Map<string, unknown>;
+    group: Map<string, unknown>;
+  };
+};
+
 export async function loadDataSourceIntoDatabase(
   dataSource: DataSource,
   dataSourceName: string,
 ) {
-  let processed: { participantIds: string[]; groupIds: string[] };
+  let processed: DataSourceImportResult;
 
   if (dataSource.provider === "scoutnet") {
     processed = await importScoutnetData(dataSource, dataSourceName);
@@ -139,7 +156,7 @@ export async function loadAllDataSourcesIntoDatabase() {
  */
 export async function reconcileDataSource(
   dataSourceName: string,
-  processed: { participantIds: string[]; groupIds: string[] },
+  processed: DataSourceImportResult,
   enrichWith: Record<string, string> | undefined,
 ) {
   const log = logger.child({ dataSource: dataSourceName });
@@ -188,6 +205,9 @@ export async function reconcileDataSource(
         const value = await enricher.enrich(entity, {
           dataSourceName,
           logger: enricherLog,
+          sourceRecord: processed.sourceRecords?.[enricher.target]?.get(
+            entity.idInDataSource,
+          ),
         });
 
         // Success (even with no data to write) means this source is healthy -

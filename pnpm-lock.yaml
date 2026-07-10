@@ -57,8 +57,8 @@ importers:
         specifier: workspace:^
         version: link:../../plugins/scoutnet
       '@scouterna/scoutnet':
-        specifier: ^0.3.25
-        version: 0.3.25
+        specifier: ^0.3.26
+        version: 0.3.26
       arktype:
         specifier: ^2.2.0
         version: 2.2.0
@@ -352,6 +352,9 @@ importers:
       '@scouterna/scoutin-plugin-api':
         specifier: workspace:^
         version: link:../../packages/plugin-api
+      arktype:
+        specifier: ^2.2.0
+        version: 2.2.0
     devDependencies:
       '@scouterna/scoutin-backend':
         specifier: workspace:^
@@ -359,9 +362,6 @@ importers:
       '@scouterna/ui-react':
         specifier: 'catalog:'
         version: 4.3.2(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-      '@types/node':
-        specifier: ^25.6.0
-        version: 25.6.0
       '@types/react':
         specifier: ^19.2.14
         version: 19.2.14
@@ -371,6 +371,9 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+      vitest:
+        specifier: ^4.1.5
+        version: 4.1.5(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(jsdom@29.1.1)(vite@8.0.10(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
 
 packages:
 
@@ -1503,8 +1506,8 @@ packages:
   '@scouterna/design-tokens@0.0.6':
     resolution: {integrity: sha512-wgqjEkTiSv+mfnpYBHkIpArRuZotZMJles+F4vhgBxsFO3p6t++jbIrp7IHh4BzsF9Du4HdTnzmqlFsCirSXag==}
 
-  '@scouterna/scoutnet@0.3.25':
-    resolution: {integrity: sha512-G8Ce3sAIedX+vzWRwDMM0qKyEFXjI4VHqd3JrZRuuGQqm1EjOrTx7x5zOiOZPhoDi6/0qpNcnPvqBYTRlnHE5Q==}
+  '@scouterna/scoutnet@0.3.26':
+    resolution: {integrity: sha512-ecmN5qpl85qQa1oqBxMzkGCP5ubpEvw5sgYJb6pYqlXBycrAnpGIzDFsc5utXihP0MJVW987HECf5Xb7IqbGHA==}
 
   '@scouterna/tailwind-theme@0.0.5':
     resolution: {integrity: sha512-4zh2xpvNuAlBRv5SzIgbm9h4KyQ+QOtpbbLapLyWAMtCLIXM6dsGBvQeQ52s1Q6uzrqO25KLD43+L/FBV10Obw==}
@@ -4577,7 +4580,7 @@ snapshots:
     dependencies:
       glob: 13.0.6
 
-  '@scouterna/scoutnet@0.3.25':
+  '@scouterna/scoutnet@0.3.26':
     dependencies:
       openapi-fetch: 0.17.0
 

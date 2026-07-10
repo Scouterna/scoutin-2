@@ -28,66 +28,69 @@ dataSources:
   #       checkin: ${SCOUTNET_GROUPS_CHECKIN_KEY}
   #       questions: ${SCOUTNET_GROUPS_QUESTIONS_KEY}
 
-  # staff:
+  staff:
+    name:
+      sv: funktionär
+      en: staff (IST)
+    provider: scoutnet
+    enrichWith:
+      safeFromHarm: scoutnet:safeFromHarm
+      criminalRecordExtract: scoutnet:criminalRecordExtract
+    providerOptions:
+      projectId: 52716
+      feeIds:
+        - 32207
+      includeIndividuals: true
+      includeGroups: false
+      keys:
+        groups: ${SCOUTNET_STAFF_GROUPS_KEY}
+        participants: ${SCOUTNET_STAFF_PARTICIPANTS_KEY}
+        checkin: ${SCOUTNET_STAFF_CHECKIN_KEY}
+        questions: ${SCOUTNET_STAFF_QUESTIONS_KEY}
+
+  # stormote6_ordinary:
   #   name:
-  #     sv: funktionär
-  #     en: staff (IST)
+  #     sv: deltagare på Stormöte 6
+  #     en: deltagare på Stormöte 6
   #   provider: scoutnet
   #   providerOptions:
-  #     projectId: 56033
-  #     feeIds:
-  #       - 32016
+  #     projectId: 72237
   #     includeIndividuals: true
   #     includeGroups: false
   #     keys:
-  #       groups: ${SCOUTNET_STAFF_GROUPS_KEY}
-  #       participants: ${SCOUTNET_STAFF_PARTICIPANTS_KEY}
-  #       checkin: ${SCOUTNET_STAFF_CHECKIN_KEY}
-  #       questions: ${SCOUTNET_STAFF_QUESTIONS_KEY}
+  #       groups: ${SCOUTNET_STORMOTE6_ORDINARY_GROUPS_KEY}
+  #       participants: ${SCOUTNET_STORMOTE6_ORDINARY_PARTICIPANTS_KEY}
+  #       checkin: ${SCOUTNET_STORMOTE6_ORDINARY_CHECKIN_KEY}
+  #       questions: ${SCOUTNET_STORMOTE6_ORDINARY_QUESTIONS_KEY}
 
-  stormote6_ordinary:
-    name:
-      sv: deltagare på Stormöte 6
-      en: deltagare på Stormöte 6
-    provider: scoutnet
-    providerOptions:
-      projectId: 72237
-      includeIndividuals: true
-      includeGroups: false
-      keys:
-        groups: ${SCOUTNET_STORMOTE6_ORDINARY_GROUPS_KEY}
-        participants: ${SCOUTNET_STORMOTE6_ORDINARY_PARTICIPANTS_KEY}
-        checkin: ${SCOUTNET_STORMOTE6_ORDINARY_CHECKIN_KEY}
-        questions: ${SCOUTNET_STORMOTE6_ORDINARY_QUESTIONS_KEY}
+  # stormote6_late:
+  #   name:
+  #     sv: deltagare på Stormöte 6 (efteranmälan)
+  #     en: participant at Stormöte 6 (late registration)
+  #   provider: scoutnet
+  #   providerOptions:
+  #     projectId: 76074
+  #     includeIndividuals: true
+  #     includeGroups: false
+  #     keys:
+  #       groups: ${SCOUTNET_STORMOTE6_LATE_GROUPS_KEY}
+  #       participants: ${SCOUTNET_STORMOTE6_LATE_PARTICIPANTS_KEY}
+  #       checkin: ${SCOUTNET_STORMOTE6_LATE_CHECKIN_KEY}
+  #       questions: ${SCOUTNET_STORMOTE6_LATE_QUESTIONS_KEY}
 
-  stormote6_late:
-    name:
-      sv: deltagare på Stormöte 6 (efteranmälan)
-      en: participant at Stormöte 6 (late registration)
-    provider: scoutnet
-    providerOptions:
-      projectId: 76074
-      includeIndividuals: true
-      includeGroups: false
-      keys:
-        groups: ${SCOUTNET_STORMOTE6_LATE_GROUPS_KEY}
-        participants: ${SCOUTNET_STORMOTE6_LATE_PARTICIPANTS_KEY}
-        checkin: ${SCOUTNET_STORMOTE6_LATE_CHECKIN_KEY}
-        questions: ${SCOUTNET_STORMOTE6_LATE_QUESTIONS_KEY}
-
-  groups:
-    name:
-      sv: ledare i din kår
-      en: leader in your scout group
-    provider: googlesheets
-    subGroups:
-      leader:
-        name:
-          sv: Ledare
-          en: Leader
-    # activeFrom: 2026-05-13T17:36:00+02:00
-    # activeTo: 2026-05-13T17:39:00+02:00
-    providerOptions:
-      spreadsheetId: ${GOOGLE_SPREADSHEET_ID}
-      sheetName: People
-      serviceAccountKey: ${GOOGLE_SA_KEY}
+  # groups:
+  #   name:
+  #     sv: ledare i din kår
+  #     en: leader in your scout group
+  #   provider: googlesheets
+  #   subGroups:
+  #     leader:
+  #       name:
+  #         sv: Ledare
+  #         en: Leader
+  #   # activeFrom: 2026-05-13T17:36:00+02:00
+  #   # activeTo: 2026-05-13T17:39:00+02:00
+  #   providerOptions:
+  #     spreadsheetId: ${GOOGLE_SPREADSHEET_ID}
+  #     sheetName: People
+  #     serviceAccountKey: ${GOOGLE_SA_KEY}

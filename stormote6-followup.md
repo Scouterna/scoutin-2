@@ -686,35 +686,101 @@ faktiskt inte längre går att checka in.
 
 ### Trygga Möten / belastningsregister – riktig implementation
 
-`[?]` Blockerad av extern beställning. Källa: Kår "Skärmen för Trygga Möten
+`[x]` Implementerad 2026-07-11. Källa: Kår "Skärmen för Trygga Möten
 och belastningsregister bör göras bra... olika ut för funk och kår."
 
-Viktigt: dagens `scoutnet:checkLeaderRequirements`-plugin är en **fejk** –
-den slumpar en varning (50/50 baserat på en hash av *aktörens* UUID, inte
-per vald deltagare) och visar hårdkodade påhittade namn ("Annette Hittepå",
-"Frans Finnsinte", `LeaderRequirementsWarningScreen.tsx:20-23`). Ingen
-riktig Trygga Möten-/belastningsregister-data finns någonstans i
-datamodellen.
+Historik: dagens `scoutnet:checkLeaderRequirements`-plugin var en **fejk** –
+den slumpade en varning (50/50 baserat på en hash av *aktörens* UUID, inte
+per vald deltagare) och visade hårdkodade påhittade namn ("Annette Hittepå",
+"Frans Finnsinte"). Den var dessutom bara inkopplad i **on-site-flödet**
+villkorat på `dataSource == 'groups'` (kårledare) – aldrig för `staff`
+(funktionärer), som är den faktiska målgruppen för denna kontroll.
 
-Korrigering mot tidigare anteckning: pluginet är tvärtom bara inkopplat i
-**on-site-flödet** (`stepConfig.yml:48-49`, gäller `dataSource == 'groups'`,
-dvs. kårledare) – det finns inte alls i `stepConfig.pre-checkin.yml`
-(mobilflödet). Tillagt i commit `326044c` ("feat: fake scoutnet check"),
-15 maj 2026. "Olika ut för funk och kår" är ändå delvis sant rent tekniskt
-eftersom steget villkoras på `groups` och aldrig körs för `staff`, men
-innehållet är overksamt oavsett flöde.
+**Blockeraren löstes:** `@scouterna/scoutnet`-klienten (uppdaterad till
+0.3.26) exponerar nu `pc_details` (registerutdrag) och `pc_courses`
+(kurs-id → klardatum per medlem; Trygga Möten = kurs-id `"89"`) via
+`/project/get/participants` – samma endpoint importen redan anropar, ingen
+ny endpoint eller separat beställning behövdes för själva API-åtkomsten.
+Korrigering under implementationen: registerutdrag rapporteras av Scoutnet
+enbart som giltigt/tomt, aldrig en tredje "flaggad"-status.
 
-**Öppen fråga:** datakälla saknas – blockerad av
-[belastningsregister-beställningen hos Carl](#belastningsregister-beställning-hos-carl)
-(ren logistik, inte löst än). Trygga Möten-status kommer troligen från
-Scoutnet på samma sätt, men behöver bekräftas separat.
+**Design (beslutad under implementation):**
+- Byggt som **enrichers** (import-tidsögonblicksbild), inte hårdkodat i
+  providern eller som en per-sessions live-koll – samma data ska senare
+  kunna backa pre-camp-rapporten ("funktionärer som saknar TM/registerutdrag",
+  se ["Rapporter"](#rapporter-incheckade-saknade-ofullständiga)).
+- **Capture-at-import:** den råa Scoutnet-posten (med `pc_details`/
+  `pc_courses`, som annars försvinner vid arktype-valideringen till appens
+  egen `Participant`-modell) trådas genom en ny `sourceRecord`-nyckel på
+  `ImportEnricherContext` (`packages/plugin-api/src/backend/index.ts`), via
+  en ny `sourceRecords`-karta i `DataSourceImportResult`
+  (`data.service.ts`/`scoutnet.ts`) – ingen extra API-anrop, inga
+  Scoutnet-nycklar i pluginet.
+- **Registerutdrag = union av två källor:** Scoutnets `pc_details.valid`
+  (primär) ELLER en backfill-lista nyckling på medlemsnummer (för
+  IST/internationell personal som inte finns i det svenska registret).
+- **Trygga Möten = samma mönster:** Scoutnets `pc_courses["89"]` (primär)
+  ELLER en egen backfill-lista, för funktionärer vars avklarande inte fångas
+  i Scoutnets egna kursdata.
+- Båda backfill-listorna är i dagsläget **mockade** (tomma, säddbara i kod)
+  – avsedda att bli en SharePoint-lista senare; enrichern som anropar dem
+  behöver inte ändras när den riktiga källan kopplas in.
+- **Blockeringsregel:** fortsätt bara om båda kontrollerna är OK; annars
+  `session:abort` (samma mekanism som idle-timeout/confirmReCheckin's
+  avbryt), med text som anger *vilken* kontroll som brustit. Inget
+  operatörs-override, ingen riktad enskild re-enrichment – fixen vid ett
+  fel är att åtgärda status och köra om importen.
+- Namngivning: "Trygga Möten" → `safeFromHarm` i kod, "registerutdrag" →
+  `criminalRecordExtract` i kod (engelska identifierare). Den svenska
+  kioskskärmstexten ("Trygga Möten saknas" / "Registerutdrag saknas") är
+  oförändrad – funktionärerna som checkar in är svensktalande.
 
-**Plan (när datakälla finns):**
-- Bygg som en enricher enligt samma mönster som kårinfo.
-- Ersätt slumplogiken i `checkLeaderRequirements.ts` med riktig
-  statuskontroll.
-- Bygg separata skärmvarianter/texter för funk vs. kår om det fortfarande
-  behövs när datan är riktig.
+**Genomfört:**
+- Ny plugin `plugins/scoutnet/` (den gamla fejken borttagen helt, inklusive
+  `checkLeaderRequirements.ts` och dess skärm) med två enrichers
+  (`scoutnet:safeFromHarm`, `scoutnet:criminalRecordExtract`) och ett
+  gate-steg (`scoutnet:complianceGate`).
+- `scoutnet:complianceGate` villkorat enbart på `dataSource == 'staff'` i
+  `packages/backend/config/stepConfig.yml`, placerat direkt efter
+  `base:confirmReCheckin` och före `base:markConfirmedCheckedIn` – kontrollen
+  ska stoppa flödet innan någon annan data visas.
+- `dataSourceConfig.yml`: ny `enrichWith`-mapp på `staff`-källan
+  (`safeFromHarm`/`criminalRecordExtract` → respektive enricher-namn).
+- 22 enhetstester i `plugins/scoutnet` (enrichers + gate-steget, inklusive
+  fail-safe-fallen: trasig eller saknad metadata blockerar, tolkas aldrig
+  tyst som godkänt) plus 2 nya tester i `data.service.test.ts` för
+  `sourceRecord`-trådningen genom `reconcileDataSource`.
+- Verifierat end-till-ände mot ett riktigt Scoutnet-projekt (id 52716, 1501
+  funktionärer) via `run-scoutin`-skillen: en fullt godkänd person checkar
+  in tyst hela vägen till "Incheckning lyckades"; ett Trygga Möten-enda-fel
+  respektive ett registerutdrag-enda-fel visar varsin korrekt avgränsad
+  varningsruta (bara den brustna kontrollen nämns); backfill-vägen
+  verifierades genom att tillfälligt sädda ett riktigt medlemsnummer i
+  listan, bekräfta att metadatan växlade till `source: "backfill"` och att
+  personen checkades in, därefter återställt (ingen testdata kvar i
+  committad backfill-lista).
+- Under granskningen hittades och fixades en separat, obesläktad bugg:
+  `identify.ts` kraschade ("Data source with name X not found in config")
+  när en tidigare importerad rad tillhörde en datakälla som sedan tagits
+  bort ur `dataSourceConfig.yml` – filtreras nu bort tyst i stället för att
+  krascha (se `todo.md` för önskemål om loggning/varning av detta i
+  framtiden, så det inte går obemärkt förbi).
+
+**Kvarstår (separata framtida punkter, ej blockerande):**
+- Riktig SharePoint-backad backfill-källa för båda kontrollerna (mockad
+  och tom just nu, se ovan).
+- Giltighetsdatum kontra eventets längd – om Trygga Möten/registerutdrag
+  löper ut mitt under ett flerdagarsevent räcker inte en enkel
+  giltig/ogiltig-koll vid importtillfället.
+- Rapportering av compliance-status för *alla* deltagare, inte bara via
+  funktionärsgaten (t.ex. för kårledarflödet, där det inte finns någon gate
+  men överblick ändå kan vara värdefull).
+- Copy på varningsskärmen kan komma att omarbetas.
+- Bör enrichers kunna deklarera vilken/vilka datakällor de förutsätter
+  (t.ex. Scoutnet-formad `pc_courses`), så en enricher inte råkar kopplas in
+  på en datakälla den inte är byggd för?
+- Är det säkert att ändra `stepConfig.yml`/`dataSourceConfig.yml` medan ett
+  event pågår (sessioner mitt i flödet)? Inte undersökt.
 
 ### Specialbehov för funk (kost, medicin, period)
 

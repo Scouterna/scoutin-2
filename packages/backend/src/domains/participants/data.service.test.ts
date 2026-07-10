@@ -81,6 +81,13 @@ enricherRegistry.register({
     return { tag: "ok" };
   },
 });
+enricherRegistry.register({
+  name: "test:readsSourceRecord",
+  target: "participant",
+  // Echoes back whatever ctx.sourceRecord it received, so tests can assert
+  // on exactly what reconcileDataSource threaded through.
+  enrich: (_entity, ctx) => ({ received: ctx.sourceRecord ?? null }),
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -366,6 +373,67 @@ describe("reconcileDataSource", () => {
       data: {
         metadata: { tag: { tag: "Bad-tagged" } },
         importErrors: { "test:throwsForBad": "enrichment failed" },
+      },
+    });
+  });
+
+  it("threads a provider's captured source record through to the enricher context, keyed by idInDataSource", async () => {
+    participantFindMany.mockResolvedValueOnce([
+      {
+        id: "p1",
+        dataSource: "staff",
+        idInDataSource: "1",
+        firstName: "Alice",
+        metadata: null,
+        importErrors: null,
+      },
+    ]);
+
+    await reconcileDataSource(
+      "staff",
+      {
+        participantIds: ["1"],
+        groupIds: [],
+        sourceRecords: {
+          participant: new Map([["1", { pc_details: { valid: true } }]]),
+          group: new Map(),
+        },
+      },
+      { raw: "test:readsSourceRecord" },
+    );
+
+    expect(participantUpdate).toHaveBeenCalledWith({
+      where: { id: "p1" },
+      data: {
+        metadata: { raw: { received: { pc_details: { valid: true } } } },
+        importErrors: {},
+      },
+    });
+  });
+
+  it("passes an undefined source record when the provider captured none for this entity (sourceRecords omitted)", async () => {
+    participantFindMany.mockResolvedValueOnce([
+      {
+        id: "p1",
+        dataSource: "groups",
+        idInDataSource: "1",
+        firstName: "Alice",
+        metadata: null,
+        importErrors: null,
+      },
+    ]);
+
+    await reconcileDataSource(
+      "groups",
+      { participantIds: ["1"], groupIds: [] },
+      { raw: "test:readsSourceRecord" },
+    );
+
+    expect(participantUpdate).toHaveBeenCalledWith({
+      where: { id: "p1" },
+      data: {
+        metadata: { raw: { received: null } },
+        importErrors: {},
       },
     });
   });

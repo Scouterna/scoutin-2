@@ -122,6 +122,13 @@ export type EnrichableEntity = {
 export type ImportEnricherContext = {
   dataSourceName: string;
   logger: StepLogger;
+  /** The raw record fetched from the provider for this entity during the
+   * current import cycle (e.g. the raw Scoutnet member object, before
+   * validation stripped it down to `EnrichableEntity`), or `undefined` if the
+   * provider doesn't expose one (e.g. Google Sheets) or none was captured for
+   * this entity. Lets an enricher read provider fields that aren't part of
+   * the app's own data model without a second API call. */
+  sourceRecord?: unknown;
 };
 
 export type ImportEnricher = {

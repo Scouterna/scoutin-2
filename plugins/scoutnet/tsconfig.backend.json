@@ -6,10 +6,9 @@
     "strict": true,
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
-    "types": ["node"],
     "rewriteRelativeImportExtensions": true,
     "outDir": "./dist",
     "rootDir": "./src"
   },
-  "include": ["src/backend"]
+  "include": ["src/backend.ts"]
 }

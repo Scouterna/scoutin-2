@@ -8,6 +8,7 @@ import { prisma } from "../../app/prisma.ts";
 import { BaseDataSource } from "../../config/baseDataSource.ts";
 import { evaluateExpressionsInString } from "../../core/expressions/expressions.ts";
 import { type Logger, logger } from "../../core/logging/logger.ts";
+import type { DataSourceImportResult } from "./data.service.ts";
 import { hashLookupValue } from "./data.service.ts";
 
 export const ScoutnetDataSource = BaseDataSource.and({
@@ -61,7 +62,7 @@ const ScoutnetParticipant = type({
 export async function importScoutnetData(
   dataSource: ScoutnetDataSource,
   dataSourceName: string,
-): Promise<{ participantIds: string[]; groupIds: string[] }> {
+): Promise<DataSourceImportResult> {
   const start = performance.now();
   const log = logger.child({ dataSource: dataSourceName });
   log.info("Starting import of Scoutnet data");
@@ -71,14 +72,16 @@ export async function importScoutnetData(
   // TODO: Care about includeIndividuals and includeGroups. Some events could have both groups and individuals.
 
   let processedGroupIds: string[] = [];
+  let groupSourceRecords = new Map<string, unknown>();
 
   if (dataSource.providerOptions.includeGroups) {
-    const { valid: groups, invalidGroups } = await getGroups(
-      client,
-      dataSource,
-      log,
-    );
+    const {
+      valid: groups,
+      invalidGroups,
+      sourceRecords: groupRecords,
+    } = await getGroups(client, dataSource, log);
     processedGroupIds = groups.map((g) => g.groupId);
+    groupSourceRecords = groupRecords;
 
     await prisma.$transaction([
       ...groups.map((g) =>
@@ -117,11 +120,11 @@ export async function importScoutnetData(
     ]);
   }
 
-  const { valid: participants, invalidParticipants } = await getParticipants(
-    client,
-    dataSource,
-    log,
-  );
+  const {
+    valid: participants,
+    invalidParticipants,
+    sourceRecords: participantSourceRecords,
+  } = await getParticipants(client, dataSource, log);
 
   // Cancelled/removed participants are excluded from `participants` above (see
   // getParticipants) and therefore from `processedParticipantIds` below. The
@@ -243,6 +246,10 @@ export async function importScoutnetData(
   return {
     participantIds: processedParticipantIds,
     groupIds: processedGroupIds,
+    sourceRecords: {
+      participant: participantSourceRecords,
+      group: groupSourceRecords,
+    },
   };
 }
 
@@ -253,6 +260,7 @@ async function getGroups(
 ): Promise<{
   valid: (typeof ScoutnetGroup.infer)[];
   invalidGroups: { id: string; reason: string }[];
+  sourceRecords: Map<string, unknown>;
 }> {
   const res = await client.GET("/project/get/groups", {
     headers: {
@@ -279,6 +287,7 @@ async function getGroups(
 
   const valid: (typeof ScoutnetGroup.infer)[] = [];
   const invalidGroups: { id: string; reason: string }[] = [];
+  const sourceRecords = new Map<string, unknown>();
 
   for (const [groupId, g] of allGroups) {
     const out = ScoutnetGroup({ groupId, ...g });
@@ -311,9 +320,13 @@ async function getGroups(
     }
 
     valid.push(out);
+    // Raw record (before ScoutnetGroup validation stripped it down), so an
+    // enricher can read provider fields the app's own group model doesn't
+    // carry. Keyed the same way as the upserted row's idInDataSource.
+    sourceRecords.set(out.groupId, g);
   }
 
-  return { valid, invalidGroups };
+  return { valid, invalidGroups, sourceRecords };
 }
 
 async function getParticipants(
@@ -323,6 +336,7 @@ async function getParticipants(
 ): Promise<{
   valid: ScoutnetParticipantOut[];
   invalidParticipants: { id: string; reason: string }[];
+  sourceRecords: Map<string, unknown>;
 }> {
   const res = await client.GET("/project/get/participants", {
     headers: {
@@ -345,6 +359,7 @@ async function getParticipants(
 
   const valid: ScoutnetParticipantOut[] = [];
   const invalidParticipants: { id: string; reason: string }[] = [];
+  const sourceRecords = new Map<string, unknown>();
 
   for (const p of Object.values(res.data.participants)) {
     const out = ScoutnetParticipant(p);
@@ -380,9 +395,14 @@ async function getParticipants(
     }
 
     valid.push(out);
+    // Raw record (before ScoutnetParticipant validation stripped fields like
+    // pc_details/pc_courses), so an enricher can read provider fields the
+    // app's own participant model doesn't carry. out.member_no is already
+    // normalized to the same string used as idInDataSource.
+    sourceRecords.set(out.member_no, p);
   }
 
-  return { valid, invalidParticipants };
+  return { valid, invalidParticipants, sourceRecords };
 }
 
 type ScoutnetParticipantOut = typeof ScoutnetParticipant.infer;

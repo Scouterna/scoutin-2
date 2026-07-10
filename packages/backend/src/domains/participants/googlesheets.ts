@@ -2,6 +2,7 @@ import { createSign } from "node:crypto";
 import { prisma } from "../../app/prisma.ts";
 import { BaseDataSource } from "../../config/baseDataSource.ts";
 import { logger } from "../../core/logging/logger.ts";
+import type { DataSourceImportResult } from "./data.service.ts";
 import { hashLookupValue } from "./data.service.ts";
 
 export const GoogleSheetsDataSource = BaseDataSource.and({
@@ -73,7 +74,7 @@ async function fetchSheetRows(
 export async function importGoogleSheetsData(
   dataSource: GoogleSheetsDataSource,
   dataSourceName: string,
-): Promise<{ participantIds: string[]; groupIds: string[] }> {
+): Promise<DataSourceImportResult> {
   const start = performance.now();
   const log = logger.child({ dataSource: dataSourceName });
   log.info("Starting import of Google Sheets data");

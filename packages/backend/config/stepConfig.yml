@@ -50,14 +50,20 @@ steps:
     # protect there.
     uses: base:confirmReCheckin
 
+  - if: ${{ steps.identify.outputs.dataSource == 'staff' }}
+    # Compliance gate: blocks unless both Safe from Harm (Trygga Möten) and
+    # the criminal record extract (registerutdrag) are OK (computed at import
+    # time by the scoutnet:safeFromHarm / scoutnet:criminalRecordExtract
+    # enrichers, see dataSourceConfig.yml). Runs before any data display per
+    # the staff check-in flow design - a failure should abort cheaply, not
+    # after collecting/showing other info.
+    uses: scoutnet:complianceGate
+
   - if: ${{ steps.identify.outputs.dataSource == 'groups' }}
     # selectSubjects will automatically use the actorId from the session to
     # determine which members they can select, so we don't need to pass it
     # explicitly here.
     uses: base:selectSubjects
-
-  - if: ${{ steps.identify.outputs.dataSource == 'groups' }}
-    uses: scoutnet:checkLeaderRequirements
 
   # # verifySafeFromHarm will check that all selected subjects for which it
   # # applies have a valid Safe From Harm status in Scoutnet.

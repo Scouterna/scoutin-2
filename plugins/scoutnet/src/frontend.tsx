@@ -1,8 +1,8 @@
 import type { FrontendPlugin } from "@scouterna/scoutin-plugin-api/frontend";
-import { setup as checkLeaderRequirementsSetup } from "./checkLeaderRequirements/index.tsx";
+import { setup as complianceGateSetup } from "./complianceGate/frontend/index.tsx";
 
 export const plugin: FrontendPlugin = {
   setup(ctx) {
-    checkLeaderRequirementsSetup(ctx);
+    complianceGateSetup(ctx);
   },
 };
