@@ -46,11 +46,16 @@ async function searchCandidates(
   const participants = await findParticipantsByLookupValue(query);
   const now = new Date();
   const filtered = participants.filter((p) => {
-    if (dataSources && !dataSources.includes(p.dataSource)) return false;
-
     const ds = dataSourceConfig.dataSources[p.dataSource];
-    if (ds?.activeFrom && new Date(ds.activeFrom) > now) return false;
-    if (ds?.activeTo && new Date(ds.activeTo) < now) return false;
+    // A participant whose data source is no longer configured (e.g. a past
+    // event's source removed from dataSourceConfig.yml, with stale rows left
+    // in the DB) can never be identified - treat it like "not a candidate",
+    // not a hard error.
+    if (!ds) return false;
+
+    if (dataSources && !dataSources.includes(p.dataSource)) return false;
+    if (ds.activeFrom && new Date(ds.activeFrom) > now) return false;
+    if (ds.activeTo && new Date(ds.activeTo) < now) return false;
 
     return true;
   });
