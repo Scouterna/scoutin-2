@@ -14,6 +14,7 @@ COPY packages/plugin-api/package.json ./packages/plugin-api/
 COPY plugins/base/package.json ./plugins/base/
 COPY plugins/malcolm-test/package.json ./plugins/malcolm-test/
 COPY plugins/scoutnet/package.json ./plugins/scoutnet/
+COPY plugins/jamboree26/package.json ./plugins/jamboree26/
 RUN pnpm install --frozen-lockfile
 
 # Copy remaining source files.
@@ -35,6 +36,7 @@ RUN pnpm --filter @scouterna/scoutin-plugin-api run build
 RUN pnpm --filter @scouterna/scoutin-plugin-base run build
 RUN pnpm --filter @scouterna/scoutin-plugin-malcolm-test run build
 RUN pnpm --filter @scouterna/scoutin-plugin-scoutnet run build
+RUN pnpm --filter @scouterna/scoutin-plugin-jamboree26 run build
 
 # Create a self-contained backend deployment with production deps only.
 # Workspace packages (@scouterna/scoutin-plugin-*) are bundled in as well.
