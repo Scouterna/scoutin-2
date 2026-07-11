@@ -633,16 +633,16 @@ describe("searchRoster", () => {
     expect(queryRaw).not.toHaveBeenCalled();
   });
 
-  it("calls unaccent() on both column and pattern, once per whitespace-separated word", async () => {
+  it("matches per whitespace-separated word against both firstName and lastName", async () => {
     queryRaw.mockResolvedValueOnce([]);
 
     await searchRoster("anders sagnell");
 
     const [fragment] = queryRaw.mock.calls[0] ?? [];
     // Two words -> two (firstName OR lastName) groups, each contributing two
-    // ILIKE comparisons and two similarity() comparisons (one per column) -
-    // four unaccent() calls on columns per word, eight total.
-    expect(fragment.text.match(/unaccent\(p\./g)).toHaveLength(8);
+    // ILIKE comparisons, four total.
+    expect(fragment.text.match(/ILIKE/g)).toHaveLength(4);
+    expect(fragment.text).not.toMatch(/unaccent/);
     expect(fragment.values).toContain("%anders%");
     expect(fragment.values).toContain("%sagnell%");
   });

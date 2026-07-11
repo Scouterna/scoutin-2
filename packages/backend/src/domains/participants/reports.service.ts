@@ -481,10 +481,9 @@ type RawSearchRow = ParticipantRow & { groupName: string | null };
  * word, each word required to hit firstName OR lastName, so "anders
  * sagnell" matches "Anders Baba Sagnell" without a computed full-name column.
  *
- * Uses a raw query (not the usual findMany({ where })) because it needs two
- * Postgres extensions Prisma's fluent filter DSL can't call as SQL functions:
- * unaccent() for accent-insensitive matching ("e" finding "é"), and pg_trgm's
- * similarity() for typo tolerance ("malcom" finding "Malcolm") - additive
+ * Uses a raw query (not the usual findMany({ where })) because it needs
+ * pg_trgm's similarity() for typo tolerance ("malcom" finding "Malcolm"),
+ * which Prisma's fluent filter DSL can't call as a SQL function - additive
  * alongside the exact/substring match, never narrowing it. Still fully
  * parameterized via Prisma.sql/Prisma.join - no string-built SQL, so no
  * injection risk.
@@ -503,10 +502,10 @@ export async function searchRoster(
   const wordConditions = words.map((word) => {
     const pattern = `%${word}%`;
     return Prisma.sql`(
-      unaccent(p."firstName") ILIKE unaccent(${pattern})
-      OR unaccent(p."lastName") ILIKE unaccent(${pattern})
-      OR similarity(unaccent(p."firstName"), unaccent(${word})) > ${TYPO_SIMILARITY_THRESHOLD}
-      OR similarity(unaccent(p."lastName"), unaccent(${word})) > ${TYPO_SIMILARITY_THRESHOLD}
+      p."firstName" ILIKE ${pattern}
+      OR p."lastName" ILIKE ${pattern}
+      OR similarity(p."firstName", ${word}) > ${TYPO_SIMILARITY_THRESHOLD}
+      OR similarity(p."lastName", ${word}) > ${TYPO_SIMILARITY_THRESHOLD}
     )`;
   });
 
