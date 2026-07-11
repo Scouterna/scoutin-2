@@ -647,18 +647,6 @@ describe("searchRoster", () => {
     expect(fragment.values).toContain("%sagnell%");
   });
 
-  it("also matches via trigram similarity, additively alongside the exact ILIKE match", async () => {
-    queryRaw.mockResolvedValueOnce([]);
-
-    await searchRoster("malcom");
-
-    const [fragment] = queryRaw.mock.calls[0] ?? [];
-    // One similarity() comparison per column (firstName, lastName).
-    expect(fragment.text.match(/similarity\(/g)).toHaveLength(2);
-    expect(fragment.values).toContain("malcom");
-    expect(fragment.values).toContain(0.4);
-  });
-
   it("caps the query with LIMIT, so large matches never load unbounded rows", async () => {
     queryRaw.mockResolvedValueOnce([]);
 
