@@ -24,6 +24,16 @@ export function ComplianceGateBlockedScreen({ payload }: { payload: object }) {
     socket?.send({ name: "session:abort" });
   };
 
+  const handleBypass = () => {
+    if (
+      window.confirm(
+        "Är du säker på att du vill checka in personen ändå, trots att kraven inte är uppfyllda?",
+      )
+    ) {
+      socket?.send({ name: "step:callMethod", data: { name: "bypass" } });
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -41,14 +51,17 @@ export function ComplianceGateBlockedScreen({ payload }: { payload: object }) {
 
       {!criminalRecordExtractOk && (
         <ScoutCallout variant="warning" heading="Registerutdrag saknas">
-          Detta hanteras separat - se rutinerna för utdrag ur
-          belastningsregistret (Truls dokument) innan incheckning kan slutföras.
+          Se rutin för utdrag ur belastningsregistret. Uppdatera i Scoutnet när
+          utdraget är klart, så kan du checka in igen.
         </ScoutCallout>
       )}
 
-      <div>
+      <div className="flex gap-4">
         <ScoutButton variant="primary" onScoutClick={handleAbort}>
           Avbryt
+        </ScoutButton>
+        <ScoutButton variant="outlined" onScoutClick={handleBypass}>
+          Fortsätt ändå
         </ScoutButton>
       </div>
     </div>
