@@ -123,4 +123,12 @@ describe("scoutnet:complianceGate", () => {
       /No actor found/,
     );
   });
+
+  it("completes the step when bypass is called", async () => {
+    const ctx = makeCtx();
+
+    await complianceGate.publicMethods?.bypass?.handler(ctx, undefined);
+
+    expect(ctx.setCompleted).toHaveBeenCalledTimes(1);
+  });
 });

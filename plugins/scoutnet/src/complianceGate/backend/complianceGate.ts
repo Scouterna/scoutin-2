@@ -18,13 +18,21 @@ const Metadata = type({
  * from Harm (Trygga Möten) and the criminal record extract (registerutdrag)
  * are OK (see enrichers/safeFromHarm.ts, enrichers/criminalRecordExtract.ts
  * for how those statuses are computed at import time). "Block" means route
- * to human handling, not reject the person - the blocked screen's only
- * action is session:abort, same mechanism used elsewhere for idle-timeout
- * and confirmReCheckin's cancel. There is no `confirm`/proceed publicMethod:
- * this step never lets a failing person through on their own say.
+ * to human handling - the blocked screen offers session:abort, same
+ * mechanism used elsewhere for idle-timeout and confirmReCheckin's cancel,
+ * plus a `bypass` publicMethod so an admin overseeing the kiosk can
+ * override and let the person through anyway (the frontend confirms this
+ * with a browser dialog before calling it).
  */
 export const complianceGate: StepImplementation = {
   id: "scoutnet:complianceGate",
+  publicMethods: {
+    bypass: {
+      async handler(ctx) {
+        await ctx.setCompleted();
+      },
+    },
+  },
   hooks: {
     async onStepStart(ctx) {
       const actor = await ctx.getActor();
