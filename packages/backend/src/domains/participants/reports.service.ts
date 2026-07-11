@@ -465,11 +465,6 @@ export type SearchResultRow = MemberRow & {
 
 const MIN_SEARCH_QUERY_LENGTH = 2;
 const MAX_SEARCH_RESULTS = 200;
-// Trigram similarity cutoff for typo tolerance (e.g. "malcom" -> "Malcolm").
-// Explicit literal rather than the pg_trgm.similarity_threshold GUC, so it's
-// visible here and easy to retune - not a scientifically derived number, a
-// starting point to sanity-check against real names.
-const TYPO_SIMILARITY_THRESHOLD = 0.4;
 
 type RawSearchRow = ParticipantRow & { groupName: string | null };
 
@@ -480,13 +475,6 @@ type RawSearchRow = ParticipantRow & { groupName: string | null };
  * cause of the reported lag at ~20k rows). Matches per whitespace-separated
  * word, each word required to hit firstName OR lastName, so "anders
  * sagnell" matches "Anders Baba Sagnell" without a computed full-name column.
- *
- * Uses a raw query (not the usual findMany({ where })) because it needs
- * pg_trgm's similarity() for typo tolerance ("malcom" finding "Malcolm"),
- * which Prisma's fluent filter DSL can't call as a SQL function - additive
- * alongside the exact/substring match, never narrowing it. Still fully
- * parameterized via Prisma.sql/Prisma.join - no string-built SQL, so no
- * injection risk.
  */
 export async function searchRoster(
   query: string,
@@ -504,8 +492,6 @@ export async function searchRoster(
     return Prisma.sql`(
       p."firstName" ILIKE ${pattern}
       OR p."lastName" ILIKE ${pattern}
-      OR similarity(p."firstName", ${word}) > ${TYPO_SIMILARITY_THRESHOLD}
-      OR similarity(p."lastName", ${word}) > ${TYPO_SIMILARITY_THRESHOLD}
     )`;
   });
 
