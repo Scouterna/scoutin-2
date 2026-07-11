@@ -2,6 +2,7 @@
   "plugins": [
     "@scouterna/scoutin-plugin-base",
     "@scouterna/scoutin-plugin-malcolm-test",
-    "@scouterna/scoutin-plugin-scoutnet"
+    "@scouterna/scoutin-plugin-scoutnet",
+    "@scouterna/scoutin-plugin-jamboree26"
   ]
 }

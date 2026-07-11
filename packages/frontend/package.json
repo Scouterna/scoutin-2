@@ -19,6 +19,7 @@
     "@scouterna/design-tokens": "0.0.6",
     "@scouterna/scoutin-plugin-api": "workspace:^",
     "@scouterna/scoutin-plugin-base": "workspace:^",
+    "@scouterna/scoutin-plugin-jamboree26": "workspace:^",
     "@scouterna/scoutin-plugin-malcolm-test": "workspace:^",
     "@scouterna/scoutin-plugin-scoutnet": "workspace:^",
     "@scouterna/ui-react": "catalog:",

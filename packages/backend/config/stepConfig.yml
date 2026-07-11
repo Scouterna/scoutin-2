@@ -59,6 +59,15 @@ steps:
     # after collecting/showing other info.
     uses: scoutnet:complianceGate
 
+  - if: ${{ steps.identify.outputs.dataSource == 'staff' }}
+    # Informational only (never blocks): shows the person their own
+    # registered special needs (diet, medical, period), computed at import
+    # time by the jamboree26:specialNeeds enricher from Scoutnet registration
+    # answers (see dataSourceConfig.yml). Skips silently when nothing is
+    # registered. Placed after the compliance gate so a blocked person never
+    # reaches it.
+    uses: jamboree26:specialNeeds
+
   - if: ${{ steps.identify.outputs.dataSource == 'groups' }}
     # selectSubjects will automatically use the actorId from the session to
     # determine which members they can select, so we don't need to pass it

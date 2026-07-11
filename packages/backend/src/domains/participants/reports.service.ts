@@ -1,7 +1,12 @@
 import { prisma } from "../../app/prisma.ts";
+import type { EnrichWithEntry } from "../../config/baseDataSource.ts";
 import { Prisma } from "../../generated/prisma/client.ts";
 import { enricherRegistry } from "../workflows/steps.ts";
-import { dataSourceConfig, hasImportErrors } from "./data.service.ts";
+import {
+  dataSourceConfig,
+  hasImportErrors,
+  resolveEnrichEntry,
+} from "./data.service.ts";
 
 const DEFAULT_LOCALE = "sv";
 
@@ -135,11 +140,14 @@ function pickKeys(
  * keys, based on each referenced enricher's registered `target`. An unknown or
  * unregistered enricher name defaults to member-level - conservative, since
  * that's where the vast majority of enrichers write. */
-function splitMetadataColumns(enrichWith: Record<string, string> | undefined) {
+function splitMetadataColumns(
+  enrichWith: Record<string, EnrichWithEntry> | undefined,
+) {
   const memberMetadataColumns: string[] = [];
   const groupMetadataColumns: string[] = [];
 
-  for (const [metadataKey, enricherName] of Object.entries(enrichWith ?? {})) {
+  for (const [metadataKey, rawEntry] of Object.entries(enrichWith ?? {})) {
+    const { name: enricherName } = resolveEnrichEntry(rawEntry);
     const enricher = enricherRegistry.get(enricherName);
     if (enricher?.target === "group") {
       groupMetadataColumns.push(metadataKey);

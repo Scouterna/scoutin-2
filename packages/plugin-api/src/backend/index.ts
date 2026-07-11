@@ -129,6 +129,18 @@ export type ImportEnricherContext = {
    * this entity. Lets an enricher read provider fields that aren't part of
    * the app's own data model without a second API call. */
   sourceRecord?: unknown;
+  /** Static, per-entry config from the data source's `enrichWith` entry (the
+   * object form: `{ name: "...", options: {...} }`), or `undefined` when the
+   * entry used the bare-string form. Lets a single enricher be reused across
+   * events with event-specific parameters (e.g. Scoutnet registration
+   * question IDs), instead of hardcoding them in the enricher itself. */
+  options?: Record<string, unknown>;
+  /** Optional per-import-cycle context shared across every entity of this
+   * data source (unlike `sourceRecord`, which is per-entity) - e.g.
+   * Scoutnet's question-ID -> choice-ID -> human-readable label lookup,
+   * fetched once per cycle rather than once per entity. `undefined` if the
+   * provider doesn't expose one. */
+  providerContext?: unknown;
 };
 
 export type ImportEnricher = {

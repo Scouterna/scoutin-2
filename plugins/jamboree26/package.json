@@ -1,0 +1,29 @@
+{
+  "name": "@scouterna/scoutin-plugin-jamboree26",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.backend.json",
+    "test": "vitest run"
+  },
+  "exports": {
+    "./backend": {
+      "types": "./src/backend.ts",
+      "production": "./dist/backend.js",
+      "default": "./src/backend.ts"
+    },
+    "./frontend": "./src/frontend.tsx"
+  },
+  "dependencies": {
+    "@scouterna/scoutin-plugin-api": "workspace:^",
+    "arktype": "^2.2.0"
+  },
+  "devDependencies": {
+    "@scouterna/scoutin-backend": "workspace:^",
+    "@scouterna/ui-react": "catalog:",
+    "@types/react": "^19.2.14",
+    "react": "^19.2.5",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
+  }
+}

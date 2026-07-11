@@ -50,6 +50,9 @@ importers:
       '@scouterna/scoutin-plugin-base':
         specifier: workspace:^
         version: link:../../plugins/base
+      '@scouterna/scoutin-plugin-jamboree26':
+        specifier: workspace:^
+        version: link:../../plugins/jamboree26
       '@scouterna/scoutin-plugin-malcolm-test':
         specifier: workspace:^
         version: link:../../plugins/malcolm-test
@@ -135,6 +138,9 @@ importers:
       '@scouterna/scoutin-plugin-base':
         specifier: workspace:^
         version: link:../../plugins/base
+      '@scouterna/scoutin-plugin-jamboree26':
+        specifier: workspace:^
+        version: link:../../plugins/jamboree26
       '@scouterna/scoutin-plugin-malcolm-test':
         specifier: workspace:^
         version: link:../../plugins/malcolm-test
@@ -324,6 +330,34 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+
+  plugins/jamboree26:
+    dependencies:
+      '@scouterna/scoutin-plugin-api':
+        specifier: workspace:^
+        version: link:../../packages/plugin-api
+      arktype:
+        specifier: ^2.2.0
+        version: 2.2.0
+    devDependencies:
+      '@scouterna/scoutin-backend':
+        specifier: workspace:^
+        version: link:../../packages/backend
+      '@scouterna/ui-react':
+        specifier: 'catalog:'
+        version: 4.3.2(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@types/react':
+        specifier: ^19.2.14
+        version: 19.2.14
+      react:
+        specifier: ^19.2.5
+        version: 19.2.5
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.5
+        version: 4.1.5(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(jsdom@29.1.1)(vite@8.0.10(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
 
   plugins/malcolm-test:
     dependencies:

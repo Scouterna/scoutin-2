@@ -784,23 +784,260 @@ enbart som giltigt/tomt, aldrig en tredje "flaggad"-status.
 
 ### Specialbehov för funk (kost, medicin, period)
 
-`[~]` Beslut 2026-07-08: Scoutnet-källa. Källa: Funk-flöde: "Medicinsk el",
-"Period", "Specialkost".
+`[x]` Implementerad 2026-07-11. Beslut 2026-07-08: Scoutnet-källa. Källa:
+Funk-flöde: "Medicinsk el", "Period", "Specialkost".
 
-Inget av detta finns i datamodellen idag (`Participant` har bara namn, grupp,
-`subGroup`, incheckningstider).
+Inget av detta fanns i datamodellen tidigare (`Participant` hade bara namn,
+grupp, `subGroup`, incheckningstider).
 
 **Beslut:** datan kommer från Scoutnet (anmälningsfrågor), inte manuell
 inmatning vid incheckning.
 
-**Plan:** bygg som en eller flera enrichers, samma mönster som
-[kårinfo](#kårinfo-by-stadsdel-via-berikning) – beror alltså på
-[generisk import-berikning](#generisk-import-berikning-enrichers). Eftersom
-detta sannolikt kräver Scoutnets `/questions`-endpoint (se
-[Avanmälda-punkten](#avanmälda--kommer-nej-hantering) ovan, där samma
-endpoint diskuterades men bedömdes onödig där) kan denna punkt bli den
-faktiska anledningen att implementera frågehämtning i `scoutnet.ts` – avgör
-om `/questions`-integrationen ska byggas gemensamt för båda.
+**Blockeraren löstes utan ny endpoint:** till skillnad från vad som antogs
+här och i [Avanmälda-punkten](#avanmälda--kommer-nej-hantering) krävdes inget
+`/questions`-anrop. Scoutnets `/project/get/participants` (som importen redan
+anropar) returnerar varje deltagares svar **inline** som
+`questions: { [frågeId]: svar | null }` – samma `sourceRecord`-kanal som
+[Trygga Möten](#trygga-möten--belastningsregister--riktig-implementation)
+redan läser. `keys.questions` (fråge-*definitioner*/etiketter, inte svar)
+förblir därför oanvänd, precis som innan.
+
+**Omtag samma dag – "tre fält" var fel modell:** en första version antog tre
+enkla nyckel-fält (`diet`/`medical`/`period`, var sitt fråge-ID). Kår gav
+sedan den faktiska frågelistan (`question-ids.md`) – **21 frågor**, inte tre,
+och "period" visade sig inte alls betyda mensperiod utan **lägerets
+närvaroperioder** ("Jag kan inte delta alla dagar under förlägret/
+lägerperioden/efterlägret", var och en en checkbox + en multiselect för vilka
+dagar). Specialkost är dessutom 13 enskilda allergen-checkboxar plus ett
+fritextfält, inte ett fritt textfält. Hela designen byggdes om:
+
+**Design (beslutad under omtaget):**
+- **Enrichern är fullt generisk**, utan domänkunskap om kost/medicin/frånvaro:
+  `options.questions` i `enrichWith` är en platt karta
+  `fältnamn -> fråge-ID`, godtyckligt stor. Enrichern kopierar bara varje
+  konfigurerat fälts råa svar in under sitt fältnamn
+  (`metadata.specialNeeds[fältnamn] = ctx.sourceRecord.questions[fråge-ID]`).
+  Det krävde att `enrichWith` utökades generiskt: en post kan nu vara antingen
+  en bar sträng (`namn: enrichernamn`, som innan) eller ett objekt
+  (`namn: { name: enrichernamn, options: {...} }`), där `options` trådas
+  igenom till enrichern som en ny `ctx.options`
+  (`packages/plugin-api/src/backend/index.ts`,
+  `packages/backend/src/config/baseDataSource.ts`). Bakåtkompatibelt – alla
+  befintliga sträng-enrichWith-poster (`safeFromHarm`, `criminalRecordExtract`)
+  är oförändrade. `reconcileDataSource` och rapportvyns
+  `splitMetadataColumns` (`reports.service.ts`) normaliserar via en delad
+  `resolveEnrichEntry`-hjälpare (`data.service.ts`).
+- **Grupperingen/tolkningen ligger i steget, inte enrichern.** Steget
+  (`scoutnet:specialNeeds`) känner en fältnamnskonvention (`dietGluten`,
+  `dietOther`, `medicalElectricity`, `absenceForlagerLimited`/
+  `absenceForlagerDays` osv – en per lägerperiod) och bygger tre kurerade
+  sektioner till skärmen: **Specialkost** (bara ikryssade allergener som en
+  lista + ev. fritext), **Medicinskt behov** (el-checkbox), **Frånvaro**
+  (en rad per lägerperiod, bara om just den periodens "kan inte delta alla
+  dagar"-checkbox är ikryssad, med vilka dagar om angivet). Detta är en
+  medveten avvägning: att återanvända samma tre kategorier för ett framtida
+  event kräver bara konfigändring (nya fråge-ID:n), men en helt ny kategori
+  kräver kodändring i steget. Alternativet (etiketter också i config, helt
+  generisk radvis-rendering utan kategorisering) valdes bort – sämre UX för
+  detta konkreta, kända frågeset.
+- **Checkbox-tolkning är en overifierad heuristik:** `isChecked()` behandlar
+  varje värde som inte är `null`/`""`/`"0"`/`"false"` som ikryssad – fail-open
+  (visar hellre info än gömmer den) i brist på ett bekräftat exempel på hur
+  Scoutnet faktiskt kodar en ikryssad checkbox i `questions`-kartan.
+  **Kvarstår:** verifiera mot riktig data och skärp om det behövs.
+- **Medveten avvägning kring synlighet:** i on-site-funktionärsflödet är
+  personen som checkar in sitt eget subject
+  (`base:setActorAsSubject`) – skärmen visar alltså funktionären sina egna
+  registrerade uppgifter på kiosken (axelkikning möjlig). Detta matchar det
+  ursprungliga Stormöte 6-funkflödet och är den explicit valda designen,
+  inte en biverkning. Samma skärm syns även i den manuella
+  `/admin/checkin`-vyn (den återanvänder `ScreenRenderer`). Villkorad på
+  `dataSource == 'staff'` i `stepConfig.yml`, placerad direkt efter
+  `scoutnet:complianceGate` (en blockerad person når den aldrig) och före
+  `base:markConfirmedCheckedIn`.
+- Medvetet **inte** byggt: hämtning av mänskligt läsbara fråge-*etiketter*
+  via `/project/get/questions` + den vilande `keys.questions` – etiketterna
+  (svenska namn för alla 21 frågor) är istället hårdkodade i steget, se ovan.
+
+**Omtag samma dag – flyttad till egen `jamboree26`-plugin:** `staff`-
+datakällan (`projectId: 52716`) är inte Stormöte 6-testeventet (det är
+`stormote6_ordinary`/`stormote6_late`, båda utkommenterade) utan ett separat,
+riktigt event. Fråge-ID:na och deras gruppering (13 allergener,
+frånvaroperioder, el-behov) är helt specifika för det eventets
+anmälningsformulär – att lägga dem i den delade `scoutnet`-pluginet (som är
+tänkt att vara händelseagnostiskt, samma princip som
+[generisk import-berikning](#generisk-import-berikning-enrichers)) hade
+brutit mot samma regel som `stormote6:villageLookup` redan följer. Flyttat i
+sin helhet till en ny `plugins/jamboree26/`, med namnrymden bytt från
+`scoutnet:specialNeeds` till `jamboree26:specialNeeds` överallt (enricher-
+namn, steg-id, skärmnamn). `question-ids.md` flyttad till
+`plugins/jamboree26/question-ids.md` som källdokumentation. `scoutnet`-
+pluginet återgår till att enbart innehålla `complianceGate` +
+`safeFromHarm`/`criminalRecordExtract` (de är genuint händelseagnostiska
+svenska scoutkrav, till skillnad från detta).
+
+**Genomfört:**
+- `enrichWith` generisk options-utökning (se ovan) i `baseDataSource.ts`,
+  `plugin-api/src/backend/index.ts`, `data.service.ts`, `reports.service.ts`.
+- Ny plugin `plugins/jamboree26/` (eget `package.json`, `tsconfig(.backend).json`,
+  `vitest.config.ts`, registrerad i `plugins.json` samt som
+  `workspace:^`-beroende i `packages/backend`/`packages/frontend`).
+  `plugins/jamboree26/src/enrichers/specialNeeds.ts` (fullt generisk, se ovan)
+  + steg `plugins/jamboree26/src/specialNeeds/{backend,frontend}/` (kurerad
+  gruppering i steget; skärm byggd med `@scouterna/ui-react`,
+  `ScoutCallout`/`ScoutButton`, samma mönster som
+  `ConfirmReCheckinScreen`/`ComplianceGateBlockedScreen`), båda registrerade
+  i `plugins/jamboree26/src/backend.ts`/`frontend.tsx`.
+- `dataSourceConfig.yml`: `staff.enrichWith.specialNeeds` (objektform,
+  `name: jamboree26:specialNeeds`) med alla 21 verkliga fråge-ID:n från
+  `plugins/jamboree26/question-ids.md` inlagda direkt (inga platshållare
+  kvar – korrigering av den första versionens tre `REPLACE_ME_*`-
+  platshållare, som byggde på en felaktig avgränsning av scopet).
+  `stepConfig.yml`: `uses: jamboree26:specialNeeds`.
+- 24 nya enhetstester (9 för enrichern, 10 för steget, plus de ursprungliga)
+  plus verifiering att alla befintliga `enrichWith`-beroende tester
+  (`data.service.test.ts`, `reports.service.test.ts`) fortsatt passerar
+  oförändrade med den nya sträng|objekt-unionen. Den nya
+  `dataSourceConfig.yml`-posten validerad direkt mot `BaseDataSource`-
+  arktype-schemat (fristående skript, kringgår en icke-relaterad cirkulär
+  import-kedja som gör att modulen inte går att ladda isolerat via `tsx`
+  utanför appens vanliga startordning).
+- **Kvarstår innan skarpt event:** verifiera `isChecked()`-heuristiken (se
+  ovan) och hela vägen end-to-end mot ett riktigt Scoutnet-projekt (via
+  `run-scoutin`-skillen) innan detta är produktionsklart.
+
+**Bugg hittad 2026-07-11 vid faktisk användning – alla fält null:** Kår
+rapporterade att informationsskärmen aldrig visades trots faktiska svar.
+`metadata.specialNeeds` visade sig innehålla samtliga 21 fält som `null` för
+den testade personen. Verifierat direkt mot Scoutnets riktiga API (projekt
+52716): fråge-ID:na stämde (samtliga 21 finns i det riktiga svaret), men
+enricherns `SourceRecord`-schema (`type.Record("string", "string | null")`)
+krävde att **varje** värde i `questions`-kartan var en sträng eller null.
+Scoutnets flervalsfrågor (t.ex. våra tre "vilka dagar"-fält) returnerar
+istället en **array** av valda alternativ-ID:n – och en enda sådan array
+någonstans i en persons `questions`-objekt (vilket gäller så gott som alla,
+eftersom flervalsfrågor är vanliga i formuläret) gjorde att **hela**
+valideringen av objektet misslyckades, vilket tystade alla 21 konfigurerade
+fält till `null`. Bekräftat empiriskt: 1678 av 1813 funktionärer (93 %)
+träffades av detta. **Fixat:** schemat vidgat till
+`"string | string[] | null"` i både enrichern och steget – 0 av 1813 misslyckas
+nu. Nya regressionstester i `specialNeeds.test.ts` (enrichern) täcker exakt
+detta fall (en obesläktad flervalsfråga på samma person ska inte kunna
+nolla ut resten).
+
+**Uppföljning samma dag – visa etiketter, inte rå-ID:n:** efter buggfixen
+visade "vilka dagar"-fälten korrekt data, men som råa Scoutnet-alternativ-ID:n
+(t.ex. "61762, 61763, ..."), inte läsbara datum. Löst genom att äntligen bygga
+den tidigare medvetet uteslutna fråge-*etikett*-hämtningen: ny
+`getQuestionChoiceLabels` i `scoutnet.ts` anropar `/project/get/questions`
+(samma `keys.questions` som redan låg oanvänd i config) – först utan
+`form_id` för att lista projektets formulär, sedan en gång per formulär för
+att hämta `questions[id].choices[choiceId].option` (den faktiska texten,
+t.ex. "Lördag 11 juli"). Hämtas en gång per importcykel (inte per deltagare)
+och trådas igenom som ett nytt **icke-per-entitet** kontext-fält
+(`DataSourceImportResult.providerContext` → `ImportEnricherContext.providerContext`,
+`packages/plugin-api/src/backend/index.ts`, `data.service.ts`) – skilt från
+`sourceRecord`, som är per-entitet. Enrichern (`enrichers/specialNeeds.ts`)
+översätter nu varje flervalssvars ID:n till etiketter via detta, med
+fallback till rå-ID om `providerContext` saknas/är trasigt eller en specifik
+etikett inte hittas (t.ex. data-drift) – aldrig ett tyst tapp av svaret.
+Verifierat end-till-ände mot riktig data (medlem 2001798: 10 valda dagar,
+alla korrekt översatta till "Lördag 11 juli", "Söndag 12 juli", ...).
+Bästa-försök: om `/project/get/questions`-anropet misslyckas loggas en
+varning och importen fortsätter ändå (`providerContext: undefined`),
+enrichern faller då tillbaka på rå-ID:n istället för att krascha importen.
+5 nya enhetstester för översättningen (inkl. fallback-fallen).
+
+**Uppföljning samma dag – dag-för-dag-tabell istället för textlista (kårens
+egen begäran):** en sammanhängande textlista med frånvarodagar visade sig
+otydlig. Kåren bad om en tabell: en rubrikrad med datum (t.ex. "11/7") och en
+rad med kryss/bock som visar närvaro per dag, byggd mot exakta datumintervall
+de gav direkt: förläger 11–22 juli, lägerperiod 22 juli–3 augusti, efterläger
+3–7 augusti (bekräftat matcha exakt Scoutnets egna alternativ-antal per
+fråga). Samtidigt bad kåren om att **alltid** visa alla tre perioder samt
+mat/el-sektionerna – oavsett om personen registrerat något – istället för
+att villkorat gömma tomma sektioner.
+
+**Design:** rent event-specifikt (datumintervallen, svensk månadsparsing) –
+byggt helt i **steget** (`specialNeeds/backend/specialNeeds.ts`), inte
+enrichern eller pluginets generiska delar. Enrichern förblir oförändrad och
+generisk (skriver fortfarande översatta etiketter som `"Lördag 11 juli"`).
+Steget genererar nu, per period, en fullständig dag-lista mellan de
+hårdkodade start/slut-datumen (år 2026, direkt angivet – detta plugin
+existerar bara för jamboree26), och tolkar tillbaka varje registrerad
+frånvaro-etikett till ett dag/månad-par via en svensk månadsnamn-uppslagning
+(`SWEDISH_MONTHS`) för att matcha mot dag-listan. **Medvetet val:** matchning
+sker mot etikett-texten (dag + svensk månad), inte mot Scoutnets råa,
+odokumenterade alternativ-ID:n – mer robust om formuläret någonsin byggs om.
+En etikett som inte går att tolka (t.ex. enricherns eget fallback till ett
+oöversatt rå-ID om `providerContext` saknades den importcykeln) ignoreras
+tyst för just den dagen (dagen visas som närvarande) snarare än att krascha
+skärmen.
+
+Eftersom **allt** nu alltid visas togs "hoppa över om inget registrerat"-
+logiken bort helt – steget visar alltid skärmen, aldrig `setCompleted()`
+utan att visa något (utom vid det faktiska "gå vidare"-anropet från
+`confirm`-knappen). Ett tomt läge (inga allergier, inget el-behov, full
+närvaro) visas nu explicit ("Inga registrerade" / "Inget registrerat" /
+full grön tabell) istället för att hoppas över.
+
+Skärmen (`SpecialNeedsScreen.tsx`) bygger en enkel HTML-tabell per period
+(inte `@scouterna/ui-react`-komponenter för själva tabellen, då inget
+tabellkomponent finns i biblioteket) inuti en `overflow-x-auto`-behållare
+(lägerperiodens 13 dagar kan annars bli bredare än kioskskärmen), grön
+bock (✓, `text-green-600`) för närvarande dagar och grå kryss (✗,
+`text-neutral-400`) för frånvarande – båda färgerna verifierade mot
+`@scouterna/tailwind-theme`s faktiska palett innan de användes (temat
+nollställer Tailwinds standardfärger med `--color-*: initial`, så en gissad
+klass hade kunnat rendera helt utan färg).
+
+7 av de tidigare testerna skrevs om för att matcha "visa alltid"-beteendet;
+2 nya tester lades till (dag-matchning inom en period, oberoende matchning
+över flera perioder samtidigt, samt ett fall som verifierar att en
+otolkbar etikett inte kraschar utan bara lämnar dagen som närvarande).
+
+**Uppföljning samma dag – hel-period-avstängning via en fjärde fråga:** Kår
+identifierade ytterligare en fråga, `90174` ("Perioder du önskar delta"),
+en multiselect med tre val – hela perioder, inte enskilda dagar: Förlägret
+(`61759`), Lägerperioden (`61760`), Post-camp/Efterläger (`61761`). Om en
+period inte är vald där ska hela den periodens tabell visa kryss/❌ på varje
+dag, oavsett vad dag-nivå-frågan för samma period säger.
+
+Verifierat direkt mot Scoutnets riktiga API (fråga 90174, projekt 52716)
+innan implementation – både de tre val-ID:na och deras exakta etikettext
+("Förlägret (före 22 juli)", "Lägerperioden (22 juli - 3 augusti)",
+"Post-camp (after August 3)") stämde exakt mot vad kår angav. 1676 av 1813
+funktionärer har svarat på frågan (137 har inte svarat alls).
+
+**Design:** ny konfigurerad fältmappning `periodsAttending: "90174"`
+(`dataSourceConfig.yml`). I steget (`ABSENCE_PERIODS`) fick varje period en
+`attendanceMatchers`-lista med **både** den riktiga Scoutnet-etiketten och
+det råa val-ID:t – eftersom enrichern bara översätter ett flervalssvar till
+etiketter när dess `providerContext`-uppslagning lyckas den importcykeln,
+annars faller den tillbaka på rå-ID:n (samma mekanism som dag-frågorna,
+se ovan).
+
+**Omtag samma dag – "obesvarad" var fel default:** frågan `90174` är
+faktiskt den **första** frågan i formuläret, och dag-nivå-uppföljningen för
+en period ("kan inte delta alla dagar under X") visas i Scoutnets formulär
+bara för den som redan svarat ja till just den perioden här. En första
+version tolkade "frågan helt obesvarad" som ett tredje, neutralt "okänt"-
+läge som inte skulle tvinga fram frånvaro (skilt från "svarade men valde
+bort perioden") – men Kår klargjorde att det är fel: eftersom
+dag-uppföljningen är betingad av denna fråga betyder "inte vald" och "aldrig
+besvarad" exakt samma sak – personen deltar inte i perioden alls, oavsett
+anledning. `isAttendingPeriod()` förenklad till att alltid returnera en ren
+boolean (inget tredje `null`-läge längre): saknat/obesvarat `periodsAttending`
+behandlas identiskt med "svarade men uteslöt perioden". Default när frågan
+inte är besvarad alls är alltså numera **frånvaro på alla tre perioder**,
+inte närvaro – en fullständig omvändning av den ursprungliga (felaktiga)
+defaulten.
+
+7 enhetstester skrevs om för att spegla den nya defaulten (frånvaro istället
+för närvaro när `periodsAttending` saknas); nya/kvarvarande tester täcker
+hel-period-uteslutning trots dag-svar, oförändrad dag-tabell för en vald
+period, matchning via rått ID som fallback, samt att en helt obesvarad
+fråga nu tvingar fram frånvaro på alla tre perioderna (inte tvärtom).
 
 ### Mobil: alla scouter förvalda som default
 

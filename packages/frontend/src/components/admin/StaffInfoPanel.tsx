@@ -56,7 +56,7 @@ function ImportErrorsAlert({ importErrors }: { importErrors: unknown }) {
 function MetadataList({ metadata }: { metadata: unknown }) {
   if (!hasEntries(metadata)) return null;
   return (
-    <Box sx={{ mb: 1 }}>
+    <Box sx={{ mb: 1, overflowX: "auto" }}>
       <Typography
         variant="caption"
         color="text.secondary"

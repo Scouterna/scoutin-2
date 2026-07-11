@@ -2,6 +2,7 @@ import { createHmac } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { lookupHashSeconds } from "../../app/metrics.ts";
 import { prisma } from "../../app/prisma.ts";
+import type { EnrichWithEntry } from "../../config/baseDataSource.ts";
 import config from "../../config/config.ts";
 import type { DataSource } from "../../config/dataSourceConfig.ts";
 import { loadDataSourceConfig } from "../../config/dataSourceConfigLoader.ts";
@@ -10,6 +11,20 @@ import { Prisma } from "../../generated/prisma/client.ts";
 import { enricherRegistry } from "../workflows/steps.ts";
 import { importGoogleSheetsData } from "./googlesheets.ts";
 import { importScoutnetData } from "./scoutnet.ts";
+
+/**
+ * Normalizes an `enrichWith` entry to its two parts: the enricher name to look
+ * up in the registry, and any static `options` to pass through to it. Entries
+ * can be the bare enricher name (string form, no options) or an object form
+ * (`{ name, options }`) - callers should use this instead of re-deriving the
+ * union, so the two forms stay indistinguishable everywhere but here.
+ */
+export function resolveEnrichEntry(entry: EnrichWithEntry): {
+  name: string;
+  options?: Record<string, unknown>;
+} {
+  return typeof entry === "string" ? { name: entry } : entry;
+}
 
 /**
  * `importErrors` (on Participant and ParticipantGroup) is the single source of
@@ -108,6 +123,11 @@ export type DataSourceImportResult = {
     participant: Map<string, unknown>;
     group: Map<string, unknown>;
   };
+  /** Optional per-provider, per-cycle context shared across every entity
+   * (unlike `sourceRecords`, which is per-entity) - e.g. Scoutnet's
+   * question-ID -> choice-ID -> label lookup, fetched once per import cycle.
+   * Threaded into ImportEnricherContext.providerContext for every enricher. */
+  providerContext?: unknown;
 };
 
 export async function loadDataSourceIntoDatabase(
@@ -157,7 +177,7 @@ export async function loadAllDataSourcesIntoDatabase() {
 export async function reconcileDataSource(
   dataSourceName: string,
   processed: DataSourceImportResult,
-  enrichWith: Record<string, string> | undefined,
+  enrichWith: Record<string, EnrichWithEntry> | undefined,
 ) {
   const log = logger.child({ dataSource: dataSourceName });
 
@@ -172,7 +192,8 @@ export async function reconcileDataSource(
 
   if (!enrichWith) return;
 
-  for (const [metadataKey, enricherName] of Object.entries(enrichWith)) {
+  for (const [metadataKey, rawEntry] of Object.entries(enrichWith)) {
+    const { name: enricherName, options } = resolveEnrichEntry(rawEntry);
     const enricher = enricherRegistry.get(enricherName);
     if (!enricher) {
       log.warn(
@@ -208,6 +229,8 @@ export async function reconcileDataSource(
           sourceRecord: processed.sourceRecords?.[enricher.target]?.get(
             entity.idInDataSource,
           ),
+          options,
+          providerContext: processed.providerContext,
         });
 
         // Success (even with no data to write) means this source is healthy -

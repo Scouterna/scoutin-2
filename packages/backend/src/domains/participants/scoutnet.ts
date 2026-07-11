@@ -126,6 +126,12 @@ export async function importScoutnetData(
     sourceRecords: participantSourceRecords,
   } = await getParticipants(client, dataSource, log);
 
+  const questionChoiceLabels = await getQuestionChoiceLabels(
+    client,
+    dataSource,
+    log,
+  );
+
   // Cancelled/removed participants are excluded from `participants` above (see
   // getParticipants) and therefore from `processedParticipantIds` below. The
   // reconcile pass in data.service.ts soft-deletes any previously-imported
@@ -250,7 +256,85 @@ export async function importScoutnetData(
       participant: participantSourceRecords,
       group: groupSourceRecords,
     },
+    providerContext: questionChoiceLabels,
   };
+}
+
+/**
+ * Fetches the question-ID -> choice-ID -> human-readable label lookup for
+ * every form on this project, via `/project/get/questions`. This is separate
+ * from the participants endpoint: answers to multiselect/choice questions
+ * (e.g. which camp days someone is absent) come back on the participant
+ * record as raw choice IDs, not labels - confirmed empirically against a
+ * real project (see stormote6-followup.md). This endpoint is the only way to
+ * resolve those IDs to their displayed text (e.g. "Lördag 11 juli").
+ *
+ * Fetched once per import cycle (not per participant) since it's shared,
+ * project-level data. Best-effort: any failure is logged and swallowed
+ * rather than failing the whole import - an enricher reading
+ * `providerContext` just falls back to raw IDs when it's `undefined`.
+ */
+async function getQuestionChoiceLabels(
+  client: ScoutnetClient,
+  dataSource: ScoutnetDataSource,
+  log: Logger,
+): Promise<Record<string, Record<string, string>> | undefined> {
+  try {
+    const authHeader = createAuthorizationHeader({
+      resourceId: dataSource.providerOptions.projectId,
+      key: dataSource.providerOptions.keys.questions,
+    });
+
+    // Without form_id this endpoint only returns the list of form IDs on the
+    // project (see `messages` hint in the response) - fetch that first, then
+    // fetch each form's actual question definitions.
+    const formsRes = await client.GET("/project/get/questions", {
+      headers: { Authorization: authHeader },
+    });
+
+    if ("error" in formsRes) {
+      throw new Error(
+        `Failed to fetch question forms from Scoutnet: ${formsRes.response.status}`,
+      );
+    }
+
+    const formIds = Object.keys(formsRes.data.forms ?? {});
+    const labels: Record<string, Record<string, string>> = {};
+
+    for (const formId of formIds) {
+      const res = await client.GET("/project/get/questions", {
+        params: { query: { form_id: Number(formId) } },
+        headers: { Authorization: authHeader },
+      });
+
+      if ("error" in res) {
+        log.warn(
+          { formId, status: res.response.status },
+          "Failed to fetch questions for a form, skipping",
+        );
+        continue;
+      }
+
+      for (const [questionId, question] of Object.entries(
+        res.data.questions ?? {},
+      )) {
+        if (!question?.choices) continue;
+        const choiceLabels: Record<string, string> = {};
+        // The choices map's own keys already match the choice IDs that
+        // appear in a participant's answer array (confirmed empirically -
+        // both are the same value, just string key vs. numeric `.value`).
+        for (const [choiceId, choice] of Object.entries(question.choices)) {
+          if (choice?.option != null) choiceLabels[choiceId] = choice.option;
+        }
+        labels[questionId] = choiceLabels;
+      }
+    }
+
+    return labels;
+  } catch (err) {
+    log.warn({ err }, "Failed to fetch Scoutnet question choice labels");
+    return undefined;
+  }
 }
 
 async function getGroups(
