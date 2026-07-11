@@ -36,6 +36,22 @@ const DIET_ALLERGEN_FIELDS: { field: string; label: string }[] = [
   { field: "dietSelleri", label: "Selleri" },
   { field: "dietSenap", label: "Senap" },
   { field: "dietSulfit", label: "Sulfit" },
+  { field: "dietNotkott", label: "Äter ej nötkött" },
+  { field: "dietFlaskkott", label: "Äter ej fläskkött" },
+  { field: "dietHalal", label: "Halal" },
+  {
+    field: "dietVegan",
+    label: "Vegan (avstår helt från allt med animaliskt ursprung)",
+  },
+  {
+    field: "dietLaktoOvoVegetarian",
+    label:
+      "Lakto-ovo-vegetarian (vegetariskt med tillägg av ägg och mejeriprodukter)",
+  },
+  {
+    field: "dietPescetarian",
+    label: "Pescetarian (mejeriprodukter, ägg, fisk och skaldjur)",
+  },
 ];
 const DIET_OTHER_FIELD = "dietOther";
 const MEDICAL_ELECTRICITY_FIELD = "medicalElectricity";

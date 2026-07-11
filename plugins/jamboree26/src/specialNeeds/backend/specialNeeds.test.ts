@@ -182,6 +182,32 @@ describe("jamboree26:specialNeeds step", () => {
     );
   });
 
+  it("shows checked diet preferences (not just allergens) alongside allergens", async () => {
+    withMetadata({
+      dietVegan: "1",
+      dietHalal: "1",
+      dietNotkott: "0",
+    });
+    const ctx = makeCtx();
+
+    await specialNeedsStep.hooks?.onStepStart?.(ctx);
+
+    expect(ctx.showScreen).toHaveBeenCalledWith(
+      "jamboree26:specialNeeds:info",
+      {
+        diet: {
+          allergens: [
+            "Halal",
+            "Vegan (avstår helt från allt med animaliskt ursprung)",
+          ],
+          other: null,
+        },
+        medicalElectricityNeeded: false,
+        absence: NOT_ATTENDING_ANYTHING,
+      },
+    );
+  });
+
   it("includes free-text diet info even with no allergen checkboxes ticked", async () => {
     withMetadata({ dietOther: "Extra allergisk mot kiwi" });
     const ctx = makeCtx();

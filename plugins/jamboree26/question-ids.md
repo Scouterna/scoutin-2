@@ -20,4 +20,10 @@
 89334 checkbox Selleri
 89335 checkbox Senap
 89336 checkbox Sulfit
+89337 checkbox Äter ej nötkött
+89340 checkbox Äter ej fläskkött
+89341 checkbox Halal
+89342 checkbox Vegan (avstår helt från allt med animaliskt ursprung)
+89343 checkbox Lakto-ovo-vegetarian (vegetariskt med tillägg av ägg och mejeriprodukter)
+89344 checkbox Pescetarian (mejeriprodukter, ägg, fisk och skaldjur)
 88286 text Annan relevant kostinformation
