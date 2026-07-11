@@ -8,6 +8,7 @@ import {
 } from "@mui/icons-material";
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
 import Drawer from "@mui/material/Drawer";
 import List from "@mui/material/List";
@@ -16,7 +17,9 @@ import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
+import { useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { api } from "@/api/api";
 import { ListItemButtonLink } from "./muiLinks";
 
 const drawerWidth = 240;
@@ -26,6 +29,13 @@ export type Props = {
 };
 
 export function AdminLayout({ children }: Props) {
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await api.admin.auth.logout.$post();
+    navigate({ to: "/admin/login" });
+  };
+
   return (
     <Box sx={{ display: "flex" }}>
       <AppBar
@@ -33,9 +43,12 @@ export function AdminLayout({ children }: Props) {
         sx={{ width: `calc(100% - ${drawerWidth}px)`, ml: `${drawerWidth}px` }}
       >
         <Toolbar>
-          <Typography variant="h6" noWrap component="div">
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             Scoutin 2 Admin
           </Typography>
+          <Button color="inherit" onClick={handleLogout}>
+            Logga ut
+          </Button>
         </Toolbar>
       </AppBar>
       <Drawer

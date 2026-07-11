@@ -15,4 +15,8 @@ if (!apiUrlRaw) {
 
 const apiUrl = new URL(apiUrlRaw, window.location.href).href;
 
-export const { api, ws } = hcWithType(apiUrl);
+// credentials: "include" so the admin session cookie is sent - harmless for
+// the kiosk/session endpoints, which don't use cookies at all.
+export const { api, ws } = hcWithType(apiUrl, {
+  init: { credentials: "include" },
+});

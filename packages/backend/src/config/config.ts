@@ -14,6 +14,7 @@ const Config = type({
   ),
   DATABASE_URL: type("string"),
   TOKEN_SECRET: type("string"),
+  ADMIN_PASSWORD: type("string"),
   DATASOURCE_HASHING_SECRET: type("string"),
   DATASOURCE_HASHING_SALT: type("string"),
 });

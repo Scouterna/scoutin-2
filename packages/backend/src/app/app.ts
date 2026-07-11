@@ -6,6 +6,7 @@ import { cors } from "hono/cors";
 import config from "../config/config.ts";
 import { getLogger, logger } from "../core/logging/logger.ts";
 import type { AppEnv } from "../core/websocket/types.ts";
+import { adminAuthRouter } from "../domains/admin/admin.auth.routes.ts";
 import { kiosksRouter } from "../domains/kiosks/kiosks.routes.ts";
 import { sessionRouter } from "../domains/sessions/session.routes.ts";
 import { router as sessionSocketRouter } from "../domains/sessions/session.socket.ts";
@@ -46,7 +47,17 @@ app.use("/api/*", async (c, next) => {
 });
 
 if (config.NODE_ENV === "development") {
-  app.use("/api/*", cors());
+  // credentials: true (+ reflecting the request origin instead of "*") is
+  // required for the admin session cookie to be sent cross-origin - in
+  // production the frontend is served from the same origin as the API, so
+  // this dev-only branch is the only place credentialed CORS is needed.
+  app.use(
+    "/api/*",
+    cors({
+      origin: (origin) => origin,
+      credentials: true,
+    }),
+  );
 }
 
 const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
@@ -71,6 +82,7 @@ app.get("/", (c) => {
 const routes = app
   .route("/api/session", sessionRouter)
   .route("/api/step", stepRouter)
+  .route("/api/admin/auth", adminAuthRouter)
   .route("/api/admin", adminRouter)
   .route("/api/kiosk", kiosksRouter)
   .get(
