@@ -9,7 +9,7 @@ import { BaseDataSource } from "../../config/baseDataSource.ts";
 import { evaluateExpressionsInString } from "../../core/expressions/expressions.ts";
 import { type Logger, logger } from "../../core/logging/logger.ts";
 import type { DataSourceImportResult } from "./data.service.ts";
-import { hashLookupValue } from "./data.service.ts";
+import { hashIdentifier } from "./data.service.ts";
 
 export const ScoutnetDataSource = BaseDataSource.and({
   provider: "'scoutnet'",
@@ -149,7 +149,7 @@ export async function importScoutnetData(
       rawLookupValues.push(`${p.date_of_birth.replaceAll("-", "")}-${p.ssno}`);
     }
 
-    const lookupValues = rawLookupValues.map(hashLookupValue);
+    const lookupValues = rawLookupValues.map(hashIdentifier);
 
     lookupValuesByParticipantId.set(p.member_no, lookupValues);
   }

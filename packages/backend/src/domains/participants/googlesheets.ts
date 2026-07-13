@@ -3,7 +3,7 @@ import { prisma } from "../../app/prisma.ts";
 import { BaseDataSource } from "../../config/baseDataSource.ts";
 import { logger } from "../../core/logging/logger.ts";
 import type { DataSourceImportResult } from "./data.service.ts";
-import { hashLookupValue } from "./data.service.ts";
+import { hashIdentifier } from "./data.service.ts";
 
 export const GoogleSheetsDataSource = BaseDataSource.and({
   provider: "'googlesheets'",
@@ -163,7 +163,7 @@ export async function importGoogleSheetsData(
         const personnummer = row[personnummerCol]?.trim();
         const lookupValues = [id, personnummer]
           .filter(Boolean)
-          .map((v) => hashLookupValue(v!));
+          .map((v) => hashIdentifier(v!));
 
         return {
           id,

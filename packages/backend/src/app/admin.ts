@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { requireAdminAuth } from "../domains/admin/adminAuth.service.ts";
+import { blocklistAdminRouter } from "../domains/blocklist/blocklist.admin.routes.ts";
 import { kiosksAdminRouter } from "../domains/kiosks/kiosks.admin.routes.ts";
 import { participantsAdminRouter } from "../domains/participants/participants.admin.routes.ts";
 import { reportsAdminRouter } from "../domains/participants/reports.admin.routes.ts";
@@ -16,4 +17,5 @@ export const adminRouter = new Hono()
   .route("/kiosks", kiosksAdminRouter)
   .route("/links", linksAdminRouter)
   .route("/participants", participantsAdminRouter)
-  .route("/reports", reportsAdminRouter);
+  .route("/reports", reportsAdminRouter)
+  .route("/blocklist", blocklistAdminRouter);

@@ -1,6 +1,8 @@
 import {
   dataSourceConfig,
   findParticipantsByLookupValue,
+  isBlocked,
+  normalizeIdentifier,
   type Participant,
 } from "@scouterna/scoutin-backend/plugin-services";
 import type {
@@ -9,7 +11,11 @@ import type {
 } from "@scouterna/scoutin-plugin-api/backend";
 import { typedMethod } from "@scouterna/scoutin-plugin-api/backend";
 import { type } from "arktype";
-import { normalizeQuery } from "./utils.ts";
+
+// Dedicated terminal screen shown when a blocked identifier is submitted. The
+// screen is registered by the blocklist frontend plugin and self-resets the
+// kiosk after a short timeout.
+const BLOCKED_SCREEN = "base:blocklist:blocked";
 
 type Candidate = {
   id: string;
@@ -128,8 +134,13 @@ export const identify: StepImplementation<State> = {
         ctx.getInputs() as Inputs;
 
       if (identifierHint != null) {
+        if (await isBlocked(String(identifierHint))) {
+          await ctx.showScreen(BLOCKED_SCREEN, {});
+          return;
+        }
+
         const candidates = await searchCandidates(
-          normalizeQuery(String(identifierHint)),
+          normalizeIdentifier(String(identifierHint)),
           dataSources,
         );
         if (candidates.length > 0) {
@@ -151,9 +162,18 @@ export const identify: StepImplementation<State> = {
       }),
       async handler(ctx: StepMethodContext<State>, inputs: unknown) {
         const typedInputs = inputs as { query: string };
+
+        // Native blocklist gate: runs on the raw query before resolution, so it
+        // catches both participants (via any of their identifiers) and people
+        // who aren't in the participants table.
+        if (await isBlocked(typedInputs.query)) {
+          await ctx.showScreen(BLOCKED_SCREEN, {});
+          return;
+        }
+
         const { dataSources, skipConfirmation } = ctx.getInputs() as Inputs;
         const candidates = await searchCandidates(
-          normalizeQuery(typedInputs.query),
+          normalizeIdentifier(typedInputs.query),
           dataSources,
         );
 

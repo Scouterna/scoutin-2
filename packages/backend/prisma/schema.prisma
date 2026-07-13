@@ -40,6 +40,38 @@ model CheckinLink {
   updatedAt  DateTime @updatedAt
 }
 
+// A blocklist entry. Groups a person's identifiers so removing via any one of
+// them removes the whole block (cascade). Intentionally stores NO participant
+// reference and NO raw identifier - only the doubly-hashed values in
+// BlockedIdentifier - so the table cannot be joined back to a person.
+model Block {
+  id          String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt   DateTime            @default(now())
+  // Optional, admin-visible free text. Not anonymous - keep it non-identifying.
+  reason      String?
+  identifiers BlockedIdentifier[]
+}
+
+model BlockedIdentifier {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // hashBlockValue(hashLookupValue(identifier)): a second HMAC under a separate
+  // key over the existing lookup hash. Reversing requires that key.
+  blockHash String   @unique
+  blockId   String   @db.Uuid
+  block     Block    @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+// Generic, append-only action log. `details` is free-form per action but MUST
+// NOT contain identifiers/hashes for blocklist actions (anonymity).
+model AuditLog {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt DateTime @default(now())
+  actor     String?
+  action    String
+  details   Json?
+}
+
 model CheckinSession {
   id         String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   configFile String

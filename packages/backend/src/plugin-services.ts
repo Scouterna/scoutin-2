@@ -9,11 +9,13 @@
  */
 
 export { prisma } from "./app/prisma.ts";
+export { isBlocked } from "./domains/blocklist/blocklist.service.ts";
 export {
   dataSourceConfig,
   findParticipantsByLookupValue,
   getSubjectCandidates,
   hasImportErrors,
   NO_IMPORT_ERROR_WHERE,
+  normalizeIdentifier,
 } from "./domains/participants/data.service.ts";
 export type { Participant } from "./generated/prisma/client.ts";

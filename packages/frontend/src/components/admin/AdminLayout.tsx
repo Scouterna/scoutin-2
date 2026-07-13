@@ -1,5 +1,6 @@
 import {
   Assessment as AssessmentIcon,
+  Block as BlockIcon,
   CropLandscape as CropLandscapeIcon,
   Dashboard as DashboardIcon,
   ExpandLess as ExpandLessIcon,
@@ -37,6 +38,7 @@ function isAdvancedPath(pathname: string): boolean {
     "/admin/sessions",
     "/admin/kiosks",
     "/admin/links",
+    "/admin/blocklist",
   ].some((path) => pathname.startsWith(path));
 }
 
@@ -134,6 +136,18 @@ export function AdminLayout({ children }: Props) {
           </ListItem>
           <Collapse in={advancedOpen} timeout="auto" unmountOnExit>
             <List disablePadding>
+              <ListItem disablePadding>
+                <ListItemButtonLink
+                  to={"/admin/blocklist"}
+                  activeProps={{ selected: true }}
+                  sx={{ pl: 4 }}
+                >
+                  <ListItemIcon>
+                    <BlockIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Blockering" />
+                </ListItemButtonLink>
+              </ListItem>
               <ListItem disablePadding>
                 <ListItemButtonLink
                   to={"/admin/data"}

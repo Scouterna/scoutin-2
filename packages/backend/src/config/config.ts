@@ -17,6 +17,7 @@ const Config = type({
   ADMIN_PASSWORD: type("string"),
   DATASOURCE_HASHING_SECRET: type("string"),
   DATASOURCE_HASHING_SALT: type("string"),
+  BLOCKLIST_HASHING_SECRET: type("string"),
 });
 type Config = typeof Config.infer;
 

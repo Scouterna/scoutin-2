@@ -4,6 +4,7 @@ import { Prisma } from "../../generated/prisma/client.ts";
 import { enricherRegistry } from "../workflows/steps.ts";
 import {
   dataSourceConfig,
+  hashIdentifier,
   hasImportErrors,
   resolveEnrichEntry,
 } from "./data.service.ts";
@@ -556,8 +557,13 @@ export async function listParticipants(opts?: {
   const words = (opts?.query ?? "").trim().split(/\s+/).filter(Boolean);
   for (const word of words) {
     const pattern = `%${word}%`;
+    // Match on name OR on a hashed identifier: identifiers (member number,
+    // personnummer) are only stored as hashes in lookupValues, never as plain
+    // text, so ILIKE can't find them - hash the word the same way import does
+    // and test array membership. Non-identifier words simply won't match a hash.
+    const identifierHash = hashIdentifier(word);
     baseConditions.push(
-      Prisma.sql`(p."firstName" ILIKE ${pattern} OR p."lastName" ILIKE ${pattern})`,
+      Prisma.sql`(p."firstName" ILIKE ${pattern} OR p."lastName" ILIKE ${pattern} OR ${identifierHash} = ANY(p."lookupValues"))`,
     );
   }
 

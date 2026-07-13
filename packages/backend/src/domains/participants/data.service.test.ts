@@ -26,6 +26,7 @@ vi.mock("../../config/config.ts", () => ({
   default: {
     DATASOURCE_HASHING_SECRET: "test-secret",
     DATASOURCE_HASHING_SALT: "test-salt",
+    BLOCKLIST_HASHING_SECRET: "test-blocklist-secret",
     NODE_ENV: "test",
   },
 }));
@@ -55,7 +56,12 @@ vi.mock("../../core/logging/logger.ts", () => ({
   logger: logStub,
 }));
 
-const { reconcileDataSource } = await import("./data.service.ts");
+const {
+  reconcileDataSource,
+  hashIdentifier,
+  hashLookupValue,
+  normalizeIdentifier,
+} = await import("./data.service.ts");
 const { enricherRegistry } = await import("../workflows/steps.ts");
 
 enricherRegistry.register({
@@ -91,6 +97,50 @@ enricherRegistry.register({
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+describe("normalizeIdentifier / hashIdentifier", () => {
+  it("is a no-op for a plain member number", () => {
+    expect(normalizeIdentifier("12345")).toBe("12345");
+  });
+
+  it("trims surrounding whitespace", () => {
+    expect(normalizeIdentifier("  12345  ")).toBe("12345");
+  });
+
+  it("canonicalizes a personnummer to YYYYMMDD-XXXX", () => {
+    // With or without the hyphen, both collapse to the same canonical form.
+    expect(normalizeIdentifier("20050101-1234")).toBe("20050101-1234");
+    expect(normalizeIdentifier("200501011234")).toBe("20050101-1234");
+    expect(normalizeIdentifier(" 2005 0101 1234 ")).toBe("20050101-1234");
+  });
+
+  // Golden values: import composes the 12-digit form and hashes it, so
+  // hashIdentifier(x) MUST equal today's hashLookupValue(x) for these inputs -
+  // otherwise routing import through hashIdentifier would silently break
+  // lookups. Normalization is the identity here, so they must be byte-equal.
+  it("hashIdentifier matches hashLookupValue when normalization is a no-op", () => {
+    expect(hashIdentifier("12345")).toBe(hashLookupValue("12345"));
+    expect(hashIdentifier("20050101-1234")).toBe(
+      hashLookupValue("20050101-1234"),
+    );
+  });
+
+  it("hashes normalized personnummer variants to the same value", () => {
+    expect(hashIdentifier("200501011234")).toBe(
+      hashIdentifier("20050101-1234"),
+    );
+  });
+
+  it("expands a 10-digit personnummer using the reference year", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+    // Year 05 <= current two-digit year (26) => current century (20).
+    expect(normalizeIdentifier("0501011234")).toBe("20050101-1234");
+    // Year 30 > 26 => previous century (19).
+    expect(normalizeIdentifier("3001011234")).toBe("19300101-1234");
+    vi.useRealTimers();
+  });
 });
 
 describe("reconcileDataSource", () => {

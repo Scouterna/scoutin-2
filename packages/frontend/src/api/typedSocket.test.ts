@@ -29,10 +29,7 @@ describe("createTypedSocket send", () => {
   it("forwards to the raw socket and does not call onSendFailure when open", () => {
     const raw = createFakeRawSocket(WebSocket.OPEN);
     const onSendFailure = vi.fn();
-    const socket = createTypedSocket<TestSend, TestListen>(
-      raw,
-      onSendFailure,
-    );
+    const socket = createTypedSocket<TestSend, TestListen>(raw, onSendFailure);
 
     socket.send({ name: "test", data: "hello" });
 
@@ -45,10 +42,7 @@ describe("createTypedSocket send", () => {
   it("calls onSendFailure and does not forward when the socket is not open", () => {
     const raw = createFakeRawSocket(WebSocket.CLOSED);
     const onSendFailure = vi.fn();
-    const socket = createTypedSocket<TestSend, TestListen>(
-      raw,
-      onSendFailure,
-    );
+    const socket = createTypedSocket<TestSend, TestListen>(raw, onSendFailure);
 
     socket.send({ name: "test", data: "hello" });
 

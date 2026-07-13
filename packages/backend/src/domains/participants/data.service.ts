@@ -67,6 +67,71 @@ export function hashLookupValue(value: string): string {
   return hashedValue;
 }
 
+/**
+ * Normalizes a Swedish personal identity number (personnummer).
+ * - Returns null if the input doesn't look like a personal identity number.
+ * - Removes non-digit separators (spaces, hyphens).
+ * - Expands a 10-digit number to 12 digits by prepending the century: the
+ *   previous century if the two-digit year is greater than the current
+ *   two-digit year (i.e. the person would otherwise be in the future),
+ *   otherwise the current century.
+ */
+function normalizePersonalIdentityNumber(ssno: string): string | null {
+  ssno = ssno.replace(/\s+/g, "");
+
+  const pinRegex =
+    /^(?<year>(?:\d{2})?\d{2})(?<month>\d{2})(?<day>\d{2})-?(?<lastfour>\d{4})$/;
+  const match = ssno.match(pinRegex);
+  if (!match?.groups) {
+    return null;
+  }
+
+  const { year, month, day } = match.groups;
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  const yearNumber = Number.parseInt(year, 10);
+
+  let yearPadding = "";
+  if (year.length === 2) {
+    const currentYear = new Date().getFullYear();
+    const currentYearLastTwo = currentYear % 100;
+    const currentYearFirstTwo = Math.floor(currentYear / 100);
+
+    if (yearNumber > currentYearLastTwo) {
+      yearPadding = (currentYearFirstTwo - 1).toString();
+    } else {
+      yearPadding = currentYearFirstTwo.toString();
+    }
+  }
+
+  return `${yearPadding}${year}${month}${day}-${match.groups.lastfour}`;
+}
+
+/**
+ * Canonicalizes a raw identifier before hashing. This is the single source of
+ * truth shared by import, kiosk lookup, and the blocklist - every site that
+ * hashes an identifier MUST normalize through here first, or values stored by
+ * one path won't match values checked by another.
+ */
+export function normalizeIdentifier(raw: string): string {
+  const trimmed = raw.trim();
+  const normalizedPin = normalizePersonalIdentityNumber(trimmed);
+  if (normalizedPin) {
+    return normalizedPin;
+  }
+  return trimmed;
+}
+
+/**
+ * Normalize + hash in one step. Use this instead of `hashLookupValue` for any
+ * raw (un-normalized) identifier so import and lookup stay byte-identical.
+ */
+export function hashIdentifier(raw: string): string {
+  return hashLookupValue(normalizeIdentifier(raw));
+}
+
 export async function findParticipantsByLookupValue(value: string) {
   const hashedValue = hashLookupValue(value);
 
