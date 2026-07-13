@@ -463,61 +463,166 @@ export type SearchResultRow = MemberRow & {
   groupName: string | null;
 };
 
-const MIN_SEARCH_QUERY_LENGTH = 2;
-const MAX_SEARCH_RESULTS = 200;
+export type ParticipantListResult = {
+  results: SearchResultRow[];
+  // Total matching the active filters (search + status), ignoring limit/offset
+  // - lets the client show a count and know when to stop paging.
+  total: number;
+  // Per-bucket counts for the current search, deliberately computed *without*
+  // the status filter applied, so the status pills always show the full
+  // breakdown and toggling one pill never changes another's count.
+  statusCounts: Record<StatusBucket, number>;
+};
+
+function emptyBucketCounts(): Record<StatusBucket, number> {
+  return {
+    confirmed: 0,
+    preliminaryOnly: 0,
+    missing: 0,
+    importError: 0,
+    cancelled: 0,
+  };
+}
+
+export const DEFAULT_PAGE_SIZE = 100;
+export const MAX_PAGE_SIZE = 200;
 
 type RawSearchRow = ParticipantRow & { groupName: string | null };
 
 /**
- * Server-side name search, pushed down to Postgres with a LIMIT instead of
- * shipping the full roster to the browser for client-side filtering - the
- * latter doesn't scale past a few thousand participants (it was the actual
- * cause of the reported lag at ~20k rows). Matches per whitespace-separated
- * word, each word required to hit firstName OR lastName, so "anders
- * sagnell" matches "Anders Baba Sagnell" without a computed full-name column.
+ * SQL mirror of classifyParticipant's precedence, computing the same five
+ * disjoint status buckets Postgres-side so the browse view can filter by
+ * status without shipping the full roster to the browser. importErrors is a
+ * jsonb column (Prisma `Json`); "has errors" means a non-empty object, matching
+ * hasImportErrors (a jsonb `null` or `{}` is not an error).
  */
-export async function searchRoster(
-  query: string,
-  opts?: { locale?: string },
-): Promise<SearchResultRow[]> {
-  const trimmed = query.trim();
-  if (trimmed.length < MIN_SEARCH_QUERY_LENGTH) return [];
+const STATUS_CASE_SQL = Prisma.sql`
+  CASE
+    WHEN p."deletedAt" IS NOT NULL THEN 'cancelled'
+    WHEN p."importErrors" IS NOT NULL
+      AND jsonb_typeof(p."importErrors") = 'object'
+      AND p."importErrors" <> '{}'::jsonb THEN 'importError'
+    WHEN p."confirmedCheckedInAt" IS NOT NULL THEN 'confirmed'
+    WHEN p."preliminaryCheckedInAt" IS NOT NULL THEN 'preliminaryOnly'
+    ELSE 'missing'
+  END
+`;
 
+/**
+ * Server-side, paginated participant listing, pushed down to Postgres instead
+ * of shipping the full roster to the browser for client-side filtering - the
+ * latter doesn't scale past a few thousand participants (it was the actual
+ * cause of the reported lag at ~20k rows).
+ *
+ * With no `query` it browses everyone (the admin "Deltagare" list); with one it
+ * matches per whitespace-separated word, each word required to hit firstName OR
+ * lastName, so "anders sagnell" matches "Anders Baba Sagnell" without a computed
+ * full-name column. `statuses`, when given, restricts to those buckets
+ * (undefined = all; empty = none). Results are windowed with LIMIT/OFFSET and a
+ * fully-specified, stable ORDER BY (id as final tiebreaker) so paging can't
+ * shuffle or duplicate rows across pages.
+ */
+export async function listParticipants(opts?: {
+  query?: string;
+  statuses?: StatusBucket[];
+  limit?: number;
+  offset?: number;
+  locale?: string;
+}): Promise<ParticipantListResult> {
   const locale = opts?.locale ?? DEFAULT_LOCALE;
+  const offset = Math.max(0, Math.floor(opts?.offset ?? 0));
+  const limit = Math.min(
+    MAX_PAGE_SIZE,
+    Math.max(1, Math.floor(opts?.limit ?? DEFAULT_PAGE_SIZE)),
+  );
+
   const sourceKeys = Object.keys(dataSourceConfig.dataSources);
-  const words = trimmed.split(/\s+/).filter(Boolean);
+  if (sourceKeys.length === 0) {
+    return { results: [], total: 0, statusCounts: emptyBucketCounts() };
+  }
 
-  const wordConditions = words.map((word) => {
+  // Base predicate shared by the rows page and the status breakdown: data
+  // source scope plus the name search, but *not* the status filter.
+  const baseConditions: ReturnType<typeof Prisma.sql>[] = [
+    Prisma.sql`p."dataSource" IN (${Prisma.join(sourceKeys)})`,
+  ];
+
+  const words = (opts?.query ?? "").trim().split(/\s+/).filter(Boolean);
+  for (const word of words) {
     const pattern = `%${word}%`;
-    return Prisma.sql`(
-      p."firstName" ILIKE ${pattern}
-      OR p."lastName" ILIKE ${pattern}
-    )`;
-  });
+    baseConditions.push(
+      Prisma.sql`(p."firstName" ILIKE ${pattern} OR p."lastName" ILIKE ${pattern})`,
+    );
+  }
 
-  const rows = await prisma.$queryRaw<RawSearchRow[]>(Prisma.sql`
-    SELECT
-      p.id,
-      p."dataSource",
-      p."firstName",
-      p."lastName",
-      p."subGroup",
-      p."participantGroupId",
-      p."preliminaryCheckedInAt",
-      p."confirmedCheckedInAt",
-      p.metadata,
-      p."importErrors",
-      p."deletedAt",
-      g.name AS "groupName"
-    FROM "Participant" p
-    LEFT JOIN "ParticipantGroup" g ON g.id = p."participantGroupId"
-    WHERE p."dataSource" IN (${Prisma.join(sourceKeys)})
-      AND ${Prisma.join(wordConditions, " AND ")}
-    ORDER BY p."lastName" ASC, p."firstName" ASC
-    LIMIT ${MAX_SEARCH_RESULTS}
-  `);
+  const baseWhere = Prisma.join(baseConditions, " AND ");
 
-  return rows.map((p) => {
+  const statuses = opts?.statuses;
+  const noneVisible = statuses !== undefined && statuses.length === 0;
+  // Skip the status predicate when every bucket is visible - it's a pure
+  // no-op filter then, and dropping it lets Postgres avoid evaluating the CASE.
+  const partialStatusFilter =
+    statuses !== undefined &&
+    statuses.length > 0 &&
+    statuses.length < STATUS_BUCKETS.length;
+
+  const rowConditions = [...baseConditions];
+  if (partialStatusFilter) {
+    rowConditions.push(
+      Prisma.sql`(${STATUS_CASE_SQL}) IN (${Prisma.join(statuses)})`,
+    );
+  }
+  const rowWhere = Prisma.join(rowConditions, " AND ");
+
+  // "Everything hidden" would produce `IN ()` (invalid SQL) and can never
+  // match, so skip the rows query entirely - but still run the breakdown so
+  // the pills keep showing their counts.
+  const rowsPromise = noneVisible
+    ? Promise.resolve([] as RawSearchRow[])
+    : prisma.$queryRaw<RawSearchRow[]>(Prisma.sql`
+      SELECT
+        p.id,
+        p."dataSource",
+        p."firstName",
+        p."lastName",
+        p."subGroup",
+        p."participantGroupId",
+        p."preliminaryCheckedInAt",
+        p."confirmedCheckedInAt",
+        p.metadata,
+        p."importErrors",
+        p."deletedAt",
+        g.name AS "groupName"
+      FROM "Participant" p
+      LEFT JOIN "ParticipantGroup" g ON g.id = p."participantGroupId"
+      WHERE ${rowWhere}
+      ORDER BY p."lastName" ASC, p."firstName" ASC, p.id ASC
+      LIMIT ${limit} OFFSET ${offset}
+    `);
+
+  const [rows, breakdownRows] = await Promise.all([
+    rowsPromise,
+    prisma.$queryRaw<{ status: StatusBucket; count: bigint }[]>(Prisma.sql`
+      SELECT (${STATUS_CASE_SQL}) AS status, COUNT(*)::bigint AS count
+      FROM "Participant" p
+      WHERE ${baseWhere}
+      GROUP BY status
+    `),
+  ]);
+
+  const statusCounts = emptyBucketCounts();
+  for (const row of breakdownRows) {
+    if (row.status in statusCounts)
+      statusCounts[row.status] = Number(row.count);
+  }
+
+  // Total under the active status filter = sum of the visible buckets (all of
+  // them when no filter is set). Disjoint buckets, so this equals a filtered
+  // COUNT without a second query.
+  const visibleBuckets = statuses ?? STATUS_BUCKETS;
+  const total = visibleBuckets.reduce((sum, b) => sum + statusCounts[b], 0);
+
+  const results = rows.map((p) => {
     const config = dataSourceConfig.dataSources[p.dataSource];
     const { memberMetadataColumns } = splitMetadataColumns(config?.enrichWith);
     const subGroupName = p.subGroup
@@ -536,6 +641,8 @@ export async function searchRoster(
       groupName: p.groupName,
     };
   });
+
+  return { results, total, statusCounts };
 }
 
 function csvEscape(value: string): string {

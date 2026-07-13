@@ -65,9 +65,9 @@ vi.mock("../../core/logging/logger.ts", () => ({ logger: logStub }));
 const {
   buildRoster,
   buildRosterSummary,
+  listParticipants,
   pickLocalizedName,
   rosterToCsv,
-  searchRoster,
 } = await import("./reports.service.ts");
 const { enricherRegistry } = await import("../workflows/steps.ts");
 
@@ -625,18 +625,71 @@ describe("buildRosterSummary", () => {
   });
 });
 
-describe("searchRoster", () => {
-  it("returns no results and never queries the database below the minimum query length", async () => {
-    const results = await searchRoster("a");
+describe("listParticipants", () => {
+  // Two queries fire per call (rows + count) via Promise.all; the rows query is
+  // always first. Default both to empty so tests that only care about the rows
+  // query don't have to stub the count, and queue row payloads with
+  // mockResolvedValueOnce (consumed by the first call).
+  beforeEach(() => {
+    queryRaw.mockResolvedValue([]);
+  });
 
-    expect(results).toEqual([]);
-    expect(queryRaw).not.toHaveBeenCalled();
+  it("browses without a query, paging the whole set", async () => {
+    await listParticipants({});
+
+    const [fragment] = queryRaw.mock.calls[0] ?? [];
+    // No search words -> no ILIKE predicates, just the data-source scope.
+    expect(fragment.text).not.toMatch(/ILIKE/);
+    expect(fragment.text).toMatch(/LIMIT/);
+    expect(fragment.text).toMatch(/OFFSET/);
+    // Default page size and offset.
+    expect(fragment.values).toContain(100);
+    expect(fragment.values).toContain(0);
+  });
+
+  it("derives total and per-status counts from the status breakdown query", async () => {
+    queryRaw.mockResolvedValueOnce([]); // rows page
+    queryRaw.mockResolvedValueOnce([
+      { status: "confirmed", count: 10n },
+      { status: "missing", count: 5n },
+    ]); // breakdown
+
+    const result = await listParticipants({});
+
+    expect(result.statusCounts.confirmed).toBe(10);
+    expect(result.statusCounts.missing).toBe(5);
+    // A bucket absent from the breakdown rows is zero, not missing.
+    expect(result.statusCounts.cancelled).toBe(0);
+    // No status filter -> total is every bucket summed.
+    expect(result.total).toBe(15);
+
+    // The second call is the breakdown: grouped by the status CASE, no LIMIT.
+    const breakdownCall = queryRaw.mock.calls[1]?.[0];
+    expect(breakdownCall).toBeDefined();
+    expect(breakdownCall.text).toMatch(/GROUP BY/);
+    expect(breakdownCall.text).not.toMatch(/LIMIT/);
+  });
+
+  it("counts only the visible buckets toward total under a status filter", async () => {
+    queryRaw.mockResolvedValueOnce([]); // rows page
+    queryRaw.mockResolvedValueOnce([
+      { status: "confirmed", count: 10n },
+      { status: "missing", count: 5n },
+      { status: "cancelled", count: 2n },
+    ]); // breakdown, always the full unfiltered set
+
+    const result = await listParticipants({
+      statuses: ["confirmed", "missing"],
+    });
+
+    // Pills still show the full breakdown, including hidden buckets...
+    expect(result.statusCounts.cancelled).toBe(2);
+    // ...but total reflects only the visible buckets.
+    expect(result.total).toBe(15);
   });
 
   it("matches per whitespace-separated word against both firstName and lastName", async () => {
-    queryRaw.mockResolvedValueOnce([]);
-
-    await searchRoster("anders sagnell");
+    await listParticipants({ query: "anders sagnell" });
 
     const [fragment] = queryRaw.mock.calls[0] ?? [];
     // Two words -> two (firstName OR lastName) groups, each contributing two
@@ -647,20 +700,58 @@ describe("searchRoster", () => {
     expect(fragment.values).toContain("%sagnell%");
   });
 
-  it("caps the query with LIMIT, so large matches never load unbounded rows", async () => {
-    queryRaw.mockResolvedValueOnce([]);
-
-    await searchRoster("anna");
+  it("windows the query with LIMIT/OFFSET and clamps the page size", async () => {
+    await listParticipants({ limit: 5000, offset: 40 });
 
     const [fragment] = queryRaw.mock.calls[0] ?? [];
     expect(fragment.text).toMatch(/LIMIT/);
+    expect(fragment.text).toMatch(/OFFSET/);
+    // Requested 5000 rows but the page size is capped at MAX_PAGE_SIZE (200).
     expect(fragment.values).toContain(200);
+    expect(fragment.values).toContain(40);
+  });
+
+  it("filters by status with a CASE predicate when a subset of buckets is visible", async () => {
+    await listParticipants({ statuses: ["confirmed", "missing"] });
+
+    const [fragment] = queryRaw.mock.calls[0] ?? [];
+    expect(fragment.text).toMatch(/CASE/);
+    expect(fragment.values).toContain("confirmed");
+    expect(fragment.values).toContain("missing");
+  });
+
+  it("omits the status predicate when every bucket is visible", async () => {
+    await listParticipants({
+      statuses: [
+        "confirmed",
+        "preliminaryOnly",
+        "missing",
+        "importError",
+        "cancelled",
+      ],
+    });
+
+    const [fragment] = queryRaw.mock.calls[0] ?? [];
+    expect(fragment.text).not.toMatch(/CASE/);
+  });
+
+  it("skips the rows query but still counts when no status is visible", async () => {
+    queryRaw.mockResolvedValueOnce([{ status: "confirmed", count: 3n }]); // breakdown only
+
+    const result = await listParticipants({ statuses: [] });
+
+    expect(result.results).toEqual([]);
+    expect(result.total).toBe(0);
+    // The pills keep their counts even with everything hidden.
+    expect(result.statusCounts.confirmed).toBe(3);
+    // Exactly one query ran: the breakdown. The rows query was skipped to
+    // avoid an invalid `IN ()`.
+    expect(queryRaw).toHaveBeenCalledTimes(1);
+    expect(queryRaw.mock.calls[0]?.[0].text).toMatch(/GROUP BY/);
   });
 
   it("scopes the query to configured data sources", async () => {
-    queryRaw.mockResolvedValueOnce([]);
-
-    await searchRoster("anna");
+    await listParticipants({ query: "anna" });
 
     const [fragment] = queryRaw.mock.calls[0] ?? [];
     expect(fragment.values).toEqual(
@@ -686,7 +777,7 @@ describe("searchRoster", () => {
       },
     ]);
 
-    const results = await searchRoster("anna", { locale: "sv" });
+    const { results } = await listParticipants({ query: "anna", locale: "sv" });
     const row = results[0];
     if (!row) throw new Error("expected a search result");
 
@@ -718,7 +809,7 @@ describe("searchRoster", () => {
       },
     ]);
 
-    const results = await searchRoster("erik", { locale: "sv" });
+    const { results } = await listParticipants({ query: "erik", locale: "sv" });
     const row = results[0];
     if (!row) throw new Error("expected a search result");
 
