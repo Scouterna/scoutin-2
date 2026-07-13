@@ -17,11 +17,11 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as KioskIndexRouteImport } from './routes/_kiosk/index'
 import { Route as LinkLinkIdRouteImport } from './routes/link.$linkId'
 import { Route as AdminSessionsRouteImport } from './routes/admin/sessions'
-import { Route as AdminReportsRouteImport } from './routes/admin/reports'
 import { Route as AdminParticipantsRouteImport } from './routes/admin/participants'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as AdminLinksRouteImport } from './routes/admin/links'
 import { Route as AdminKiosksRouteImport } from './routes/admin/kiosks'
+import { Route as AdminDataRouteImport } from './routes/admin/data'
 import { Route as AdminCheckinRouteImport } from './routes/admin/checkin'
 import { Route as KioskTestRouteImport } from './routes/_kiosk/test'
 import { Route as AdminSessionsIndexRouteImport } from './routes/admin/sessions.index'
@@ -66,11 +66,6 @@ const AdminSessionsRoute = AdminSessionsRouteImport.update({
   path: '/sessions',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminReportsRoute = AdminReportsRouteImport.update({
-  id: '/reports',
-  path: '/reports',
-  getParentRoute: () => AdminRoute,
-} as any)
 const AdminParticipantsRoute = AdminParticipantsRouteImport.update({
   id: '/participants',
   path: '/participants',
@@ -89,6 +84,11 @@ const AdminLinksRoute = AdminLinksRouteImport.update({
 const AdminKiosksRoute = AdminKiosksRouteImport.update({
   id: '/kiosks',
   path: '/kiosks',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDataRoute = AdminDataRouteImport.update({
+  id: '/data',
+  path: '/data',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminCheckinRoute = AdminCheckinRouteImport.update({
@@ -119,11 +119,11 @@ export interface FileRoutesByFullPath {
   '/setup': typeof SetupRoute
   '/test': typeof KioskTestRoute
   '/admin/checkin': typeof AdminCheckinRoute
+  '/admin/data': typeof AdminDataRoute
   '/admin/kiosks': typeof AdminKiosksRoute
   '/admin/links': typeof AdminLinksRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/participants': typeof AdminParticipantsRoute
-  '/admin/reports': typeof AdminReportsRoute
   '/admin/sessions': typeof AdminSessionsRouteWithChildren
   '/link/$linkId': typeof LinkLinkIdRoute
   '/admin/': typeof AdminIndexRoute
@@ -135,11 +135,11 @@ export interface FileRoutesByTo {
   '/setup': typeof SetupRoute
   '/test': typeof KioskTestRoute
   '/admin/checkin': typeof AdminCheckinRoute
+  '/admin/data': typeof AdminDataRoute
   '/admin/kiosks': typeof AdminKiosksRoute
   '/admin/links': typeof AdminLinksRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/participants': typeof AdminParticipantsRoute
-  '/admin/reports': typeof AdminReportsRoute
   '/link/$linkId': typeof LinkLinkIdRoute
   '/': typeof KioskIndexRoute
   '/admin': typeof AdminIndexRoute
@@ -154,11 +154,11 @@ export interface FileRoutesById {
   '/setup': typeof SetupRoute
   '/_kiosk/test': typeof KioskTestRoute
   '/admin/checkin': typeof AdminCheckinRoute
+  '/admin/data': typeof AdminDataRoute
   '/admin/kiosks': typeof AdminKiosksRoute
   '/admin/links': typeof AdminLinksRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/participants': typeof AdminParticipantsRoute
-  '/admin/reports': typeof AdminReportsRoute
   '/admin/sessions': typeof AdminSessionsRouteWithChildren
   '/link/$linkId': typeof LinkLinkIdRoute
   '/_kiosk/': typeof KioskIndexRoute
@@ -175,11 +175,11 @@ export interface FileRouteTypes {
     | '/setup'
     | '/test'
     | '/admin/checkin'
+    | '/admin/data'
     | '/admin/kiosks'
     | '/admin/links'
     | '/admin/login'
     | '/admin/participants'
-    | '/admin/reports'
     | '/admin/sessions'
     | '/link/$linkId'
     | '/admin/'
@@ -191,11 +191,11 @@ export interface FileRouteTypes {
     | '/setup'
     | '/test'
     | '/admin/checkin'
+    | '/admin/data'
     | '/admin/kiosks'
     | '/admin/links'
     | '/admin/login'
     | '/admin/participants'
-    | '/admin/reports'
     | '/link/$linkId'
     | '/'
     | '/admin'
@@ -209,11 +209,11 @@ export interface FileRouteTypes {
     | '/setup'
     | '/_kiosk/test'
     | '/admin/checkin'
+    | '/admin/data'
     | '/admin/kiosks'
     | '/admin/links'
     | '/admin/login'
     | '/admin/participants'
-    | '/admin/reports'
     | '/admin/sessions'
     | '/link/$linkId'
     | '/_kiosk/'
@@ -288,13 +288,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSessionsRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/admin/reports': {
-      id: '/admin/reports'
-      path: '/reports'
-      fullPath: '/admin/reports'
-      preLoaderRoute: typeof AdminReportsRouteImport
-      parentRoute: typeof AdminRoute
-    }
     '/admin/participants': {
       id: '/admin/participants'
       path: '/participants'
@@ -321,6 +314,13 @@ declare module '@tanstack/react-router' {
       path: '/kiosks'
       fullPath: '/admin/kiosks'
       preLoaderRoute: typeof AdminKiosksRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/data': {
+      id: '/admin/data'
+      path: '/data'
+      fullPath: '/admin/data'
+      preLoaderRoute: typeof AdminDataRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/checkin': {
@@ -382,22 +382,22 @@ const AdminSessionsRouteWithChildren = AdminSessionsRoute._addFileChildren(
 
 interface AdminRouteChildren {
   AdminCheckinRoute: typeof AdminCheckinRoute
+  AdminDataRoute: typeof AdminDataRoute
   AdminKiosksRoute: typeof AdminKiosksRoute
   AdminLinksRoute: typeof AdminLinksRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminParticipantsRoute: typeof AdminParticipantsRoute
-  AdminReportsRoute: typeof AdminReportsRoute
   AdminSessionsRoute: typeof AdminSessionsRouteWithChildren
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminCheckinRoute: AdminCheckinRoute,
+  AdminDataRoute: AdminDataRoute,
   AdminKiosksRoute: AdminKiosksRoute,
   AdminLinksRoute: AdminLinksRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminParticipantsRoute: AdminParticipantsRoute,
-  AdminReportsRoute: AdminReportsRoute,
   AdminSessionsRoute: AdminSessionsRouteWithChildren,
   AdminIndexRoute: AdminIndexRoute,
 }

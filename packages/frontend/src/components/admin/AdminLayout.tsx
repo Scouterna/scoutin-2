@@ -2,28 +2,43 @@ import {
   Assessment as AssessmentIcon,
   CropLandscape as CropLandscapeIcon,
   Dashboard as DashboardIcon,
+  ExpandLess as ExpandLessIcon,
+  ExpandMore as ExpandMoreIcon,
   Group as GroupIcon,
   HowToReg as HowToRegIcon,
   Link as LinkIcon,
   Route as RouteIcon,
+  Tune as TuneIcon,
 } from "@mui/icons-material";
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Collapse from "@mui/material/Collapse";
 import Divider from "@mui/material/Divider";
 import Drawer from "@mui/material/Drawer";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
+import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
-import { useNavigate } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useLocation, useNavigate } from "@tanstack/react-router";
+import { type ReactNode, useState } from "react";
 import { api } from "@/api/api";
 import { ListItemButtonLink } from "./muiLinks";
 
 const drawerWidth = 240;
+
+// Pages living under the collapsible "Avancerat" section.
+function isAdvancedPath(pathname: string): boolean {
+  return [
+    "/admin/data",
+    "/admin/sessions",
+    "/admin/kiosks",
+    "/admin/links",
+  ].some((path) => pathname.startsWith(path));
+}
 
 export type Props = {
   children: ReactNode;
@@ -31,6 +46,13 @@ export type Props = {
 
 export function AdminLayout({ children }: Props) {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Start expanded when the user is already on one of the advanced pages, so
+  // the active item is visible on load.
+  const [advancedOpen, setAdvancedOpen] = useState(() =>
+    isAdvancedPath(location.pathname),
+  );
 
   const handleLogout = async () => {
     await api.admin.auth.logout.$post();
@@ -74,9 +96,9 @@ export function AdminLayout({ children }: Props) {
               activeProps={{ selected: true }}
             >
               <ListItemIcon>
-                <DashboardIcon />
+                <AssessmentIcon />
               </ListItemIcon>
-              <ListItemText primary="Översikt" />
+              <ListItemText primary="Rapporter" />
             </ListItemButtonLink>
           </ListItem>
           <ListItem disablePadding>
@@ -102,49 +124,66 @@ export function AdminLayout({ children }: Props) {
             </ListItemButtonLink>
           </ListItem>
           <ListItem disablePadding>
-            <ListItemButtonLink
-              to={"/admin/sessions"}
-              activeProps={{ selected: true }}
-            >
+            <ListItemButton onClick={() => setAdvancedOpen((open) => !open)}>
               <ListItemIcon>
-                <RouteIcon />
+                <TuneIcon />
               </ListItemIcon>
-              <ListItemText primary="Sessions" />
-            </ListItemButtonLink>
+              <ListItemText primary="Avancerat" />
+              {advancedOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            </ListItemButton>
           </ListItem>
-          <ListItem disablePadding>
-            <ListItemButtonLink
-              to={"/admin/kiosks"}
-              activeProps={{ selected: true }}
-            >
-              <ListItemIcon>
-                <CropLandscapeIcon />
-              </ListItemIcon>
-              <ListItemText primary="Kiosks" />
-            </ListItemButtonLink>
-          </ListItem>
-          <ListItem disablePadding>
-            <ListItemButtonLink
-              to={"/admin/links"}
-              activeProps={{ selected: true }}
-            >
-              <ListItemIcon>
-                <LinkIcon />
-              </ListItemIcon>
-              <ListItemText primary="Links" />
-            </ListItemButtonLink>
-          </ListItem>
-          <ListItem disablePadding>
-            <ListItemButtonLink
-              to={"/admin/reports"}
-              activeProps={{ selected: true }}
-            >
-              <ListItemIcon>
-                <AssessmentIcon />
-              </ListItemIcon>
-              <ListItemText primary="Rapporter" />
-            </ListItemButtonLink>
-          </ListItem>
+          <Collapse in={advancedOpen} timeout="auto" unmountOnExit>
+            <List disablePadding>
+              <ListItem disablePadding>
+                <ListItemButtonLink
+                  to={"/admin/data"}
+                  activeProps={{ selected: true }}
+                  sx={{ pl: 4 }}
+                >
+                  <ListItemIcon>
+                    <DashboardIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Data" />
+                </ListItemButtonLink>
+              </ListItem>
+              <ListItem disablePadding>
+                <ListItemButtonLink
+                  to={"/admin/sessions"}
+                  activeProps={{ selected: true }}
+                  sx={{ pl: 4 }}
+                >
+                  <ListItemIcon>
+                    <RouteIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Sessions" />
+                </ListItemButtonLink>
+              </ListItem>
+              <ListItem disablePadding>
+                <ListItemButtonLink
+                  to={"/admin/kiosks"}
+                  activeProps={{ selected: true }}
+                  sx={{ pl: 4 }}
+                >
+                  <ListItemIcon>
+                    <CropLandscapeIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Kiosks" />
+                </ListItemButtonLink>
+              </ListItem>
+              <ListItem disablePadding>
+                <ListItemButtonLink
+                  to={"/admin/links"}
+                  activeProps={{ selected: true }}
+                  sx={{ pl: 4 }}
+                >
+                  <ListItemIcon>
+                    <LinkIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Links" />
+                </ListItemButtonLink>
+              </ListItem>
+            </List>
+          </Collapse>
         </List>
         <Divider />
       </Drawer>
