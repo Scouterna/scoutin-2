@@ -83,6 +83,7 @@ function classifyParticipant(p: {
 
 export type MemberRow = {
   id: string;
+  memberNumber: string;
   firstName: string;
   lastName: string;
   subGroup: string | null;
@@ -161,6 +162,7 @@ function splitMetadataColumns(
 
 type ParticipantRow = {
   id: string;
+  idInDataSource: string;
   dataSource: string;
   firstName: string;
   lastName: string;
@@ -188,6 +190,9 @@ function toMemberRow(
 ): MemberRow {
   return {
     id: p.id,
+    // idInDataSource holds the Scoutnet member number for the scoutnet source
+    // (see scoutnet.ts, where it's set from member_no).
+    memberNumber: p.idInDataSource,
     firstName: p.firstName,
     lastName: p.lastName,
     subGroup: p.subGroup,
@@ -258,6 +263,7 @@ export async function buildRoster(opts?: {
       where: { dataSource: { in: sourceKeys } },
       select: {
         id: true,
+        idInDataSource: true,
         dataSource: true,
         firstName: true,
         lastName: true,
@@ -582,6 +588,7 @@ export async function listParticipants(opts?: {
     : prisma.$queryRaw<RawSearchRow[]>(Prisma.sql`
       SELECT
         p.id,
+        p."idInDataSource",
         p."dataSource",
         p."firstName",
         p."lastName",
@@ -667,6 +674,7 @@ export function rosterToCsv(roster: RosterResponse): string {
     "source",
     "group",
     "subGroup",
+    "memberNumber",
     "firstName",
     "lastName",
     "status",
@@ -685,6 +693,7 @@ export function rosterToCsv(roster: RosterResponse): string {
           source.name,
           group.kind === "group" || group.kind === "subGroup" ? group.name : "",
           member.subGroupName ?? "",
+          member.memberNumber,
           member.firstName,
           member.lastName,
           member.status,

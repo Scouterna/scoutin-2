@@ -451,6 +451,7 @@ describe("rosterToCsv", () => {
               members: [
                 {
                   id: "p1",
+                  memberNumber: "12345",
                   firstName: "Anna",
                   lastName: "Andersson",
                   subGroup: null,
@@ -472,10 +473,10 @@ describe("rosterToCsv", () => {
     expect(csv.startsWith("﻿")).toBe(true);
     const lines = csv.slice(1).split("\r\n");
     expect(lines[0]).toBe(
-      "source,group,subGroup,firstName,lastName,status,confirmedCheckedInAt,preliminaryCheckedInAt,hasImportErrors,diet",
+      "source,group,subGroup,memberNumber,firstName,lastName,status,confirmedCheckedInAt,preliminaryCheckedInAt,hasImportErrors,diet",
     );
     expect(lines[1]).toBe(
-      "Ledare i din kår,Kår 1,,Anna,Andersson,confirmed,2026-07-10T10:00:00.000Z,,false,vegan",
+      "Ledare i din kår,Kår 1,,12345,Anna,Andersson,confirmed,2026-07-10T10:00:00.000Z,,false,vegan",
     );
   });
 
@@ -515,6 +516,7 @@ describe("rosterToCsv", () => {
               members: [
                 {
                   id: "p1",
+                  memberNumber: "999",
                   firstName: "Multi\nline",
                   lastName: "Person",
                   subGroup: null,
@@ -537,7 +539,7 @@ describe("rosterToCsv", () => {
     // "ungrouped" kind is not "group"/"subGroup", so the group column is
     // intentionally blank for a flat source's single node.
     expect(lines[1]).toBe(
-      '"Kår, med ""citat""",,,"Multi\nline",Person,missing,,,false',
+      '"Kår, med ""citat""",,,999,"Multi\nline",Person,missing,,,false',
     );
   });
 });
