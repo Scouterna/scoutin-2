@@ -1,7 +1,9 @@
 import { arktypeValidator } from "@hono/arktype-validator";
 import { type } from "arktype";
 import { Hono } from "hono";
+import type { AppEnv } from "../../core/websocket/types.ts";
 import { recordAudit } from "../audit/audit.service.ts";
+import { getAuthUser } from "../auth/auth.service.ts";
 import { countBlocks, createBlock, removeBlock } from "./blocklist.service.ts";
 
 const CreateBlockBody = type({
@@ -14,7 +16,7 @@ const RemoveBlockBody = type({
   identifier: "string",
 });
 
-export const blocklistAdminRouter = new Hono()
+export const blocklistAdminRouter = new Hono<AppEnv>()
   // Create a block. Response body is constant (never reveals whether the person
   // was already blocked). This is not full probing protection - the count
   // endpoint and the kiosk both leak membership - it just avoids an extra signal.
@@ -25,7 +27,7 @@ export const blocklistAdminRouter = new Hono()
 
     // Audit records only non-identifying facts - never the identifier/hash.
     await recordAudit({
-      actor: "admin",
+      actor: getAuthUser(c).username,
       action: "blocklist.add",
       details: {
         blockId: result.blockId,
@@ -44,7 +46,7 @@ export const blocklistAdminRouter = new Hono()
     const matched = await removeBlock(identifier);
 
     await recordAudit({
-      actor: "admin",
+      actor: getAuthUser(c).username,
       action: "blocklist.remove",
       details: { matched },
     });

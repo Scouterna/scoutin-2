@@ -17,6 +17,17 @@ datasource db {
 // existing sessions.
 // model CheckinStepConfig {}
 
+// Local admin account. Authenticates the admin interface (username + password);
+// `roles` gates access (the "admin" role is required today).
+model User {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  username     String   @unique
+  passwordHash String
+  roles        String[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
 model Kiosk {
   id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name       String

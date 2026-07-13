@@ -4,7 +4,7 @@ import { logger } from "../../core/logging/logger.ts";
 const log = logger.child({ module: "audit" });
 
 export type AuditEntry = {
-  /** Who performed the action. "admin" today (single shared admin password). */
+  /** Who performed the action - the authenticated user's email, or "unknown". */
   actor?: string | null;
   /** Namespaced action name, e.g. "blocklist.add". */
   action: string;

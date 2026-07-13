@@ -19,9 +19,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { api } from "@/api/api";
+import { assertAdmin } from "@/lib/user-context";
 import { AddKioskDialog } from "../../components/admin/AddKioskDialog";
 
 export const Route = createFileRoute("/admin/kiosks")({
+  beforeLoad: ({ context }) => assertAdmin(context),
   component: KiosksPage,
 });
 

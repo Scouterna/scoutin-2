@@ -3,9 +3,11 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { assertAdmin } from "@/lib/user-context";
 import { api } from "../../api/api";
 
 export const Route = createFileRoute("/admin/data")({
+  beforeLoad: ({ context }) => assertAdmin(context),
   component: RouteComponent,
 });
 

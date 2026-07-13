@@ -77,7 +77,7 @@ export const authRouter = createSocketRouter<MessageTypes>()
         return;
       }
 
-      const sessionId = token.payload["urn:scoutid:sessionId"];
+      const sessionId = token.payload["urn:scoutin:sessionId"];
 
       // TODO: I think it might be better to emit an internal "authenticated"
       // event on an internal event bus and then react to that event somewhere

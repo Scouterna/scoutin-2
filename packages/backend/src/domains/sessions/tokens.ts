@@ -6,7 +6,7 @@ import config from "../../config/config.ts";
 
 const TOKEN_SECRET = new TextEncoder().encode(config.TOKEN_SECRET);
 
-const URN_PREFIX = "urn:scoutid:";
+const URN_PREFIX = "urn:scoutin:";
 
 const ISSUER = `${URN_PREFIX}backend`;
 const AUDIENCE = ISSUER;

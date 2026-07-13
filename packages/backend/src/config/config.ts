@@ -13,8 +13,12 @@ const Config = type({
     "'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent'",
   ),
   DATABASE_URL: type("string"),
+  // Signs the admin session cookie (and the kiosk session tokens).
   TOKEN_SECRET: type("string"),
-  ADMIN_PASSWORD: type("string"),
+  // Bootstrap admin, seeded on first boot only if the user table is empty.
+  // Once at least one user exists these are ignored; manage users via the UI.
+  "BOOTSTRAP_ADMIN_USERNAME?": type("string"),
+  "BOOTSTRAP_ADMIN_PASSWORD?": type("string"),
   DATASOURCE_HASHING_SECRET: type("string"),
   DATASOURCE_HASHING_SALT: type("string"),
   BLOCKLIST_HASHING_SECRET: type("string"),

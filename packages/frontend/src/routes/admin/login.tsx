@@ -15,12 +15,13 @@ export const Route = createFileRoute("/admin/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
   const mutation = useMutation({
-    mutationFn: async (password: string) => {
-      const res = await api.admin.auth.login.$post({ json: { password } });
-      if (!res.ok) throw new Error("Invalid password");
+    mutationFn: async (credentials: { username: string; password: string }) => {
+      const res = await api.admin.auth.login.$post({ json: credentials });
+      if (!res.ok) throw new Error("Invalid credentials");
     },
     onSuccess: () => {
       navigate({ to: "/admin" });
@@ -44,22 +45,29 @@ function LoginPage() {
           component="form"
           onSubmit={(e) => {
             e.preventDefault();
-            mutation.mutate(password);
+            mutation.mutate({ username, password });
           }}
           sx={{ display: "flex", flexDirection: "column", gap: 2 }}
         >
           <TextField
+            label="Användarnamn"
+            autoFocus
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          <TextField
             label="Lösenord"
             type="password"
-            autoFocus
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          {mutation.isError && <Alert severity="error">Fel lösenord</Alert>}
+          {mutation.isError && (
+            <Alert severity="error">Fel användarnamn eller lösenord</Alert>
+          )}
           <Button
             type="submit"
             variant="contained"
-            disabled={mutation.isPending || !password}
+            disabled={mutation.isPending || !username || !password}
           >
             Logga in
           </Button>

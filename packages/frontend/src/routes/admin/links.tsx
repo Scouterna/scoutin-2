@@ -23,8 +23,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { api } from "@/api/api";
+import { assertAdmin } from "@/lib/user-context";
 
 export const Route = createFileRoute("/admin/links")({
+  beforeLoad: ({ context }) => assertAdmin(context),
   component: LinksPage,
 });
 

@@ -6,7 +6,8 @@ import { cors } from "hono/cors";
 import config from "../config/config.ts";
 import { getLogger, logger } from "../core/logging/logger.ts";
 import type { AppEnv } from "../core/websocket/types.ts";
-import { adminAuthRouter } from "../domains/admin/admin.auth.routes.ts";
+import { authRouter } from "../domains/auth/auth.routes.ts";
+import { ensureDefaultAdmin } from "../domains/auth/user.service.ts";
 import { kiosksRouter } from "../domains/kiosks/kiosks.routes.ts";
 import { sessionRouter } from "../domains/sessions/session.routes.ts";
 import { router as sessionSocketRouter } from "../domains/sessions/session.socket.ts";
@@ -17,6 +18,14 @@ import { activeWebSocketConnections, registry } from "./metrics.ts";
 
 // Load plugins before creating the app
 await loadPlugins();
+
+// Seed the bootstrap admin if no users exist yet. Logged, not fatal - a
+// transient DB hiccup here shouldn't stop the server from starting.
+try {
+  await ensureDefaultAdmin();
+} catch (err) {
+  logger.error({ err }, "Failed to ensure default admin account");
+}
 
 const app = config.BASE_PATH
   ? (new Hono<AppEnv>().basePath(config.BASE_PATH || "/") as Hono<AppEnv>)
@@ -82,7 +91,10 @@ app.get("/", (c) => {
 const routes = app
   .route("/api/session", sessionRouter)
   .route("/api/step", stepRouter)
-  .route("/api/admin/auth", adminAuthRouter)
+  // Mounted before the guarded /api/admin router so login/logout/me stay
+  // reachable without a session (the /api/admin requireAdmin middleware would
+  // otherwise catch this subpath).
+  .route("/api/admin/auth", authRouter)
   .route("/api/admin", adminRouter)
   .route("/api/kiosk", kiosksRouter)
   .get(

@@ -27,7 +27,7 @@ export async function createSession(options?: {
 
 export async function createSessionToken(sessionId: string): Promise<string> {
   return await signJWT({
-    "urn:scoutid:sessionId": sessionId,
+    "urn:scoutin:sessionId": sessionId,
   });
 }
 

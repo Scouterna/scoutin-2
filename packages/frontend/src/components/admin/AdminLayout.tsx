@@ -8,6 +8,7 @@ import {
   Group as GroupIcon,
   HowToReg as HowToRegIcon,
   Link as LinkIcon,
+  ManageAccounts as ManageAccountsIcon,
   Route as RouteIcon,
   Tune as TuneIcon,
 } from "@mui/icons-material";
@@ -27,6 +28,7 @@ import Typography from "@mui/material/Typography";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { type ReactNode, useState } from "react";
 import { api } from "@/api/api";
+import { hasRole, useUser } from "@/lib/user-context";
 import { ListItemButtonLink } from "./muiLinks";
 
 const drawerWidth = 240;
@@ -39,6 +41,7 @@ function isAdvancedPath(pathname: string): boolean {
     "/admin/kiosks",
     "/admin/links",
     "/admin/blocklist",
+    "/admin/users",
   ].some((path) => pathname.startsWith(path));
 }
 
@@ -47,8 +50,10 @@ export type Props = {
 };
 
 export function AdminLayout({ children }: Props) {
-  const navigate = useNavigate();
   const location = useLocation();
+  const navigate = useNavigate();
+  const user = useUser();
+  const isAdmin = hasRole(user, "admin");
 
   // Start expanded when the user is already on one of the advanced pages, so
   // the active item is visible on load.
@@ -70,6 +75,9 @@ export function AdminLayout({ children }: Props) {
         <Toolbar>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             Scoutin 2 Admin
+          </Typography>
+          <Typography variant="body2" noWrap sx={{ mr: 2, opacity: 0.9 }}>
+            {user.username}
           </Typography>
           <Button color="inherit" onClick={handleLogout}>
             Logga ut
@@ -136,30 +144,34 @@ export function AdminLayout({ children }: Props) {
           </ListItem>
           <Collapse in={advancedOpen} timeout="auto" unmountOnExit>
             <List disablePadding>
-              <ListItem disablePadding>
-                <ListItemButtonLink
-                  to={"/admin/blocklist"}
-                  activeProps={{ selected: true }}
-                  sx={{ pl: 4 }}
-                >
-                  <ListItemIcon>
-                    <BlockIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Blockering" />
-                </ListItemButtonLink>
-              </ListItem>
-              <ListItem disablePadding>
-                <ListItemButtonLink
-                  to={"/admin/data"}
-                  activeProps={{ selected: true }}
-                  sx={{ pl: 4 }}
-                >
-                  <ListItemIcon>
-                    <DashboardIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Data" />
-                </ListItemButtonLink>
-              </ListItem>
+              {isAdmin && (
+                <>
+                  <ListItem disablePadding>
+                    <ListItemButtonLink
+                      to={"/admin/blocklist"}
+                      activeProps={{ selected: true }}
+                      sx={{ pl: 4 }}
+                    >
+                      <ListItemIcon>
+                        <BlockIcon />
+                      </ListItemIcon>
+                      <ListItemText primary="Blockering" />
+                    </ListItemButtonLink>
+                  </ListItem>
+                  <ListItem disablePadding>
+                    <ListItemButtonLink
+                      to={"/admin/data"}
+                      activeProps={{ selected: true }}
+                      sx={{ pl: 4 }}
+                    >
+                      <ListItemIcon>
+                        <DashboardIcon />
+                      </ListItemIcon>
+                      <ListItemText primary="Data" />
+                    </ListItemButtonLink>
+                  </ListItem>
+                </>
+              )}
               <ListItem disablePadding>
                 <ListItemButtonLink
                   to={"/admin/sessions"}
@@ -172,30 +184,46 @@ export function AdminLayout({ children }: Props) {
                   <ListItemText primary="Sessions" />
                 </ListItemButtonLink>
               </ListItem>
-              <ListItem disablePadding>
-                <ListItemButtonLink
-                  to={"/admin/kiosks"}
-                  activeProps={{ selected: true }}
-                  sx={{ pl: 4 }}
-                >
-                  <ListItemIcon>
-                    <CropLandscapeIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Kiosks" />
-                </ListItemButtonLink>
-              </ListItem>
-              <ListItem disablePadding>
-                <ListItemButtonLink
-                  to={"/admin/links"}
-                  activeProps={{ selected: true }}
-                  sx={{ pl: 4 }}
-                >
-                  <ListItemIcon>
-                    <LinkIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Links" />
-                </ListItemButtonLink>
-              </ListItem>
+              {isAdmin && (
+                <>
+                  <ListItem disablePadding>
+                    <ListItemButtonLink
+                      to={"/admin/kiosks"}
+                      activeProps={{ selected: true }}
+                      sx={{ pl: 4 }}
+                    >
+                      <ListItemIcon>
+                        <CropLandscapeIcon />
+                      </ListItemIcon>
+                      <ListItemText primary="Kiosks" />
+                    </ListItemButtonLink>
+                  </ListItem>
+                  <ListItem disablePadding>
+                    <ListItemButtonLink
+                      to={"/admin/links"}
+                      activeProps={{ selected: true }}
+                      sx={{ pl: 4 }}
+                    >
+                      <ListItemIcon>
+                        <LinkIcon />
+                      </ListItemIcon>
+                      <ListItemText primary="Links" />
+                    </ListItemButtonLink>
+                  </ListItem>
+                  <ListItem disablePadding>
+                    <ListItemButtonLink
+                      to={"/admin/users"}
+                      activeProps={{ selected: true }}
+                      sx={{ pl: 4 }}
+                    >
+                      <ListItemIcon>
+                        <ManageAccountsIcon />
+                      </ListItemIcon>
+                      <ListItemText primary="Användare" />
+                    </ListItemButtonLink>
+                  </ListItem>
+                </>
+              )}
             </List>
           </Collapse>
         </List>
