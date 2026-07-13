@@ -2,6 +2,7 @@ import {
   Assessment as AssessmentIcon,
   CropLandscape as CropLandscapeIcon,
   Dashboard as DashboardIcon,
+  Group as GroupIcon,
   HowToReg as HowToRegIcon,
   Link as LinkIcon,
   Route as RouteIcon,
@@ -87,6 +88,17 @@ export function AdminLayout({ children }: Props) {
                 <HowToRegIcon />
               </ListItemIcon>
               <ListItemText primary="Incheckning" />
+            </ListItemButtonLink>
+          </ListItem>
+          <ListItem disablePadding>
+            <ListItemButtonLink
+              to={"/admin/participants"}
+              activeProps={{ selected: true }}
+            >
+              <ListItemIcon>
+                <GroupIcon />
+              </ListItemIcon>
+              <ListItemText primary="Deltagare" />
             </ListItemButtonLink>
           </ListItem>
           <ListItem disablePadding>
