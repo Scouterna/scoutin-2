@@ -299,7 +299,7 @@ export function RosterReport() {
         <StatTile
           label="Incheckade"
           value={totals.confirmed}
-          sub={`${checkedInPct}% av totalt`}
+          sub={`${checkedInPct}% av totalen`}
           accent={theme.palette.success.main}
         />
         <StatTile

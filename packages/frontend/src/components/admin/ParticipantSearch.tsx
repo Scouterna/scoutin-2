@@ -1,8 +1,16 @@
+import UndoIcon from "@mui/icons-material/Undo";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
+import CircularProgress from "@mui/material/CircularProgress";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogTitle from "@mui/material/DialogTitle";
+import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -13,7 +21,11 @@ import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/api/api";
@@ -98,6 +110,85 @@ function checkedInLabel(row: ParticipantRow): string {
 
 function buildCsvUrl(locale: string): string {
   return api.admin.reports["roster.csv"].$url({ query: { locale } }).toString();
+}
+
+// Per-row action that reverses a check-in: nulls the participant's check-in
+// timestamps and removes their step progress server-side (see undoCheckin in
+// checkin.service.ts). Only rendered for participants who are actually checked
+// in. Invalidating the ["admin","reports"] prefix refreshes both this list and
+// the Rapporter dashboard, which share that key prefix.
+function UndoCheckinAction({ row }: { row: ParticipantRow }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+
+  const undo = useMutation({
+    mutationFn: async () => {
+      const res = await api.admin.participants[":id"]["undo-checkin"].$post({
+        param: { id: row.id },
+      });
+      if (!res.ok) throw new Error("Failed to undo check-in");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "reports"] });
+      setOpen(false);
+    },
+  });
+
+  if (!row.confirmedCheckedInAt && !row.preliminaryCheckedInAt) return null;
+
+  return (
+    <>
+      <Tooltip title="Ångra incheckning">
+        <IconButton
+          size="small"
+          aria-label="Ångra incheckning"
+          onClick={() => setOpen(true)}
+        >
+          <UndoIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Dialog
+        open={open}
+        onClose={() => {
+          if (!undo.isPending) setOpen(false);
+        }}
+      >
+        <DialogTitle>Ångra incheckning</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Vill du ångra incheckningen för {row.firstName} {row.lastName}?
+            Deltagaren markeras som ej incheckad och alla slutförda steg tas
+            bort. Detta går inte att ångra.
+          </DialogContentText>
+          {undo.isError && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              Kunde inte ångra incheckningen.
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpen(false)} disabled={undo.isPending}>
+            Avbryt
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={() => undo.mutate()}
+            disabled={undo.isPending}
+            startIcon={
+              undo.isPending ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <UndoIcon />
+              )
+            }
+          >
+            Ångra incheckning
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
 }
 
 const COLUMN_COUNT = 8;
@@ -349,8 +440,9 @@ export function ParticipantSearch() {
                     <TableCell>
                       <ImportErrorsTooltip importErrors={row.importErrors} />
                     </TableCell>
-                    {/* Reserved for per-participant admin actions (e.g. undo check-in). */}
-                    <TableCell />
+                    <TableCell align="right">
+                      <UndoCheckinAction row={row} />
+                    </TableCell>
                   </TableRow>
                 );
               })}
