@@ -1,15 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { isValidInBackfill } from "./criminalRecordExtractBackfill.ts";
+import { getBackfillShownAt } from "./criminalRecordExtractBackfill.ts";
 
-describe("isValidInBackfill", () => {
-  it("returns false for a member not in the (default, mock) backfill list", () => {
-    expect(isValidInBackfill("999999")).toBe(false);
+describe("getBackfillShownAt", () => {
+  it("returns undefined for a member not in the (default, mock) backfill list", () => {
+    expect(getBackfillShownAt("999999")).toBeUndefined();
   });
 
-  it("returns true for a member present in an injected backfill set", () => {
-    const backfill = new Set(["123456"]);
+  it("returns the shown date for a member present in an injected backfill map", () => {
+    const backfill = new Map([["123456", "2025-01-15"]]);
 
-    expect(isValidInBackfill("123456", backfill)).toBe(true);
-    expect(isValidInBackfill("000000", backfill)).toBe(false);
+    expect(getBackfillShownAt("123456", backfill)).toBe("2025-01-15");
+    expect(getBackfillShownAt("000000", backfill)).toBeUndefined();
+  });
+
+  it("returns null for a member present without a known date", () => {
+    const backfill = new Map([["123456", null]]);
+
+    expect(getBackfillShownAt("123456", backfill)).toBeNull();
   });
 });

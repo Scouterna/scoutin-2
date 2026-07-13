@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const isCompletedInBackfill = vi.fn();
+const getBackfillCompletedAt = vi.fn();
 
 vi.mock("./safeFromHarmBackfill.ts", () => ({
-  isCompletedInBackfill,
+  getBackfillCompletedAt,
 }));
 
 const { safeFromHarm } = await import("./safeFromHarm.ts");
@@ -28,8 +28,8 @@ const ctx = (sourceRecord: unknown) => ({
 });
 
 beforeEach(() => {
-  isCompletedInBackfill.mockReset();
-  isCompletedInBackfill.mockReturnValue(false);
+  getBackfillCompletedAt.mockReset();
+  getBackfillCompletedAt.mockReturnValue(undefined);
 });
 
 describe("scoutnet:safeFromHarm enricher", () => {
@@ -45,11 +45,27 @@ describe("scoutnet:safeFromHarm enricher", () => {
       source: "scoutnet",
     });
     // scoutnet already satisfied the check - no need to consult the backfill.
-    expect(isCompletedInBackfill).not.toHaveBeenCalled();
+    expect(getBackfillCompletedAt).not.toHaveBeenCalled();
   });
 
-  it("falls back to the backfill list when scoutnet has no completion date", () => {
-    isCompletedInBackfill.mockReturnValue(true);
+  it("falls back to the backfill list (with its date) when scoutnet has no completion date", () => {
+    getBackfillCompletedAt.mockReturnValue("2025-01-15");
+
+    const result = safeFromHarm.enrich(
+      entity("123456"),
+      ctx({ pc_courses: { "89": null } }),
+    );
+
+    expect(result).toEqual({
+      completed: true,
+      completedAt: "2025-01-15",
+      source: "backfill",
+    });
+    expect(getBackfillCompletedAt).toHaveBeenCalledWith("123456");
+  });
+
+  it("is completed via the backfill list even when its date is unknown (null)", () => {
+    getBackfillCompletedAt.mockReturnValue(null);
 
     const result = safeFromHarm.enrich(
       entity("123456"),
@@ -61,7 +77,6 @@ describe("scoutnet:safeFromHarm enricher", () => {
       completedAt: null,
       source: "backfill",
     });
-    expect(isCompletedInBackfill).toHaveBeenCalledWith("123456");
   });
 
   it("is not completed when the course-89 entry is null and there is no backfill entry", () => {

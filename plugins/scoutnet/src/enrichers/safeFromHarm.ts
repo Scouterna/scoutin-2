@@ -1,6 +1,6 @@
 import type { ImportEnricher } from "@scouterna/scoutin-plugin-api/backend";
 import { type } from "arktype";
-import { isCompletedInBackfill } from "./safeFromHarmBackfill.ts";
+import { getBackfillCompletedAt } from "./safeFromHarmBackfill.ts";
 
 /** Scoutnet course ID for the Safe from Harm (Trygga Möten) course (see the
  * `pc_courses` map on getProjectParticipants / getProjectParticipant
@@ -18,8 +18,8 @@ export type SafeFromHarmStatus = {
   completedAt: string | null;
   /** Which source satisfied the check, or null if neither did. Purely
    * informational (e.g. for the pre-camp report) - the gate only cares about
-   * `completed`. `completedAt` is only ever populated from Scoutnet - the
-   * backfill list only records that someone completed it, not when. */
+   * `completed`. `completedAt` may be populated from either Scoutnet or the
+   * backfill list (a backfill entry may omit its date, leaving it null). */
   source: "scoutnet" | "backfill" | null;
 };
 
@@ -48,8 +48,13 @@ export const safeFromHarm: ImportEnricher = {
       return { completed: true, completedAt, source: "scoutnet" };
     }
 
-    if (isCompletedInBackfill(entity.idInDataSource)) {
-      return { completed: true, completedAt: null, source: "backfill" };
+    const backfillCompletedAt = getBackfillCompletedAt(entity.idInDataSource);
+    if (backfillCompletedAt !== undefined) {
+      return {
+        completed: true,
+        completedAt: backfillCompletedAt,
+        source: "backfill",
+      };
     }
 
     return { completed: false, completedAt: null, source: null };

@@ -43,14 +43,20 @@ export function ComplianceGateBlockedScreen({ payload }: { payload: object }) {
       </div>
 
       {!safeFromHarmOk && (
-        <ScoutCallout variant="warning" heading="Trygga Möten saknas">
+        <ScoutCallout
+          variant="warning"
+          heading="Trygga Möten saknas eller har gått ut"
+        >
           Genomför Trygga Möten på plats. När det är klart kan du checka in
           igen.
         </ScoutCallout>
       )}
 
       {!criminalRecordExtractOk && (
-        <ScoutCallout variant="warning" heading="Registerutdrag saknas">
+        <ScoutCallout
+          variant="warning"
+          heading="Registerutdrag saknas eller har gått ut"
+        >
           Se rutin för utdrag ur belastningsregistret. Uppdatera i Scoutnet när
           utdraget är klart, så kan du checka in igen.
         </ScoutCallout>
