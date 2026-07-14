@@ -8,6 +8,7 @@ import { prisma } from "../../app/prisma.ts";
 import { BaseDataSource } from "../../config/baseDataSource.ts";
 import { evaluateExpressionsInString } from "../../core/expressions/expressions.ts";
 import { type Logger, logger } from "../../core/logging/logger.ts";
+import type { Prisma } from "../../generated/prisma/client.ts";
 import type { DataSourceImportResult } from "./data.service.ts";
 import { hashIdentifier } from "./data.service.ts";
 
@@ -30,6 +31,23 @@ export const ScoutnetDataSource = BaseDataSource.and({
   },
 });
 export type ScoutnetDataSource = typeof ScoutnetDataSource.infer;
+
+// Postgres/Prisma cap a single transaction at 5s by default. Once a project's
+// participant list grew past what a few thousand upserts could finish in that
+// window, wrapping the whole import in one all-or-nothing $transaction started
+// timing out (P2028) and rolling back the ENTIRE cycle every time - so newly
+// registered participants never got committed. Commit in bounded chunks
+// instead: the import is idempotent, so per-chunk commits are safe and let
+// partial progress land even if a later chunk fails.
+const IMPORT_CHUNK_SIZE = 100;
+
+async function commitInChunks(
+  ops: Prisma.PrismaPromise<unknown>[],
+): Promise<void> {
+  for (let i = 0; i < ops.length; i += IMPORT_CHUNK_SIZE) {
+    await prisma.$transaction(ops.slice(i, i + IMPORT_CHUNK_SIZE));
+  }
+}
 
 function getClient() {
   return createClient({
@@ -83,7 +101,7 @@ export async function importScoutnetData(
     processedGroupIds = groups.map((g) => g.groupId);
     groupSourceRecords = groupRecords;
 
-    await prisma.$transaction([
+    await commitInChunks([
       ...groups.map((g) =>
         prisma.participantGroup.upsert({
           where: {
@@ -241,7 +259,7 @@ export async function importScoutnetData(
       }),
   );
 
-  await prisma.$transaction([...upsertOps, ...errorFlagOps]);
+  await commitInChunks([...upsertOps, ...errorFlagOps]);
 
   const end = performance.now();
   log.info(
