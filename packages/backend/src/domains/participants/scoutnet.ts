@@ -8,9 +8,9 @@ import { prisma } from "../../app/prisma.ts";
 import { BaseDataSource } from "../../config/baseDataSource.ts";
 import { evaluateExpressionsInString } from "../../core/expressions/expressions.ts";
 import { type Logger, logger } from "../../core/logging/logger.ts";
-import type { Prisma } from "../../generated/prisma/client.ts";
+import { Prisma } from "../../generated/prisma/client.ts";
 import type { DataSourceImportResult } from "./data.service.ts";
-import { hashIdentifier } from "./data.service.ts";
+import { hashIdentifier, mergeJsonKey } from "./data.service.ts";
 
 export const ScoutnetDataSource = BaseDataSource.and({
   provider: "'scoutnet'",
@@ -352,6 +352,373 @@ async function getQuestionChoiceLabels(
   } catch (err) {
     log.warn({ err }, "Failed to fetch Scoutnet question choice labels");
     return undefined;
+  }
+}
+
+// --- Check-in write-back -----------------------------------------------------
+//
+// Push local check-in state back to Scoutnet via the bulk `PUT /project/checkin`
+// endpoint. The endpoint takes a map of member_no -> { checked_in, attended,
+// comment } and returns per-member result lists, so one request handles many
+// participants. We push only deltas: a participant is "dirty" when the check-in
+// value we want Scoutnet to have differs from the value we last successfully
+// pushed (tracked in `syncState.scoutnet.checkin`).
+
+// How many members to send per PUT. The endpoint is bulk, but we chunk to keep
+// request bodies bounded on very large deltas (mirrors IMPORT_CHUNK_SIZE).
+const CHECKIN_WRITEBACK_CHUNK_SIZE = 500;
+
+// A member Scoutnet reports as not_found/no_member - or omits from its response
+// entirely - is retried on an exponential backoff (its project membership may
+// still be propagating, so the failure is often transient) rather than
+// abandoned. This bounds retry volume without permanently dropping the
+// check-in the way a hard suppress-forever would.
+const CHECKIN_RETRY_BASE_MS = 60_000; // first retry after ~1 min
+const CHECKIN_RETRY_MAX_MS = 60 * 60_000; // capped at 1 hour
+
+const CheckinSyncState = type({
+  // ISO string of the confirmedCheckedInAt value we last successfully pushed,
+  // or null when we last pushed a checked-out state. Absent = never synced.
+  "syncedAt?": "string | null",
+  // Last write-back error for observability.
+  "error?": "string",
+  // The desired value we last failed to push (a per-member not_found/no_member,
+  // or a member Scoutnet omitted from its response). Combined with `retryAfter`
+  // this throttles - but never permanently suppresses - retries of that value.
+  "erroredValue?": "string | null",
+  // ISO timestamp before which we won't re-attempt `erroredValue`. Once it
+  // passes the member is retried, so a transient failure (e.g. membership still
+  // propagating) recovers on its own without the desired value changing.
+  "retryAfter?": "string | null",
+  // Consecutive failed attempts for `erroredValue`, driving the exponential
+  // backoff. Reset once the desired value changes or a push succeeds.
+  "errorCount?": "number",
+});
+type CheckinSyncState = typeof CheckinSyncState.infer;
+
+// The whole `syncState` Json column: namespaced by provider then concern. Only
+// scoutnet.checkin is declared; other keys are tolerated (arktype keeps
+// undeclared keys) so future providers/concerns don't trip validation.
+const ParticipantSyncState = type({
+  "scoutnet?": {
+    "checkin?": CheckinSyncState,
+  },
+});
+
+type WriteBackParticipant = {
+  id: string;
+  idInDataSource: string;
+  confirmedCheckedInAt: Date | null;
+  deletedAt: Date | null;
+  syncState: unknown;
+};
+
+function readCheckinSyncState(syncState: unknown): CheckinSyncState {
+  // syncState is a Prisma Json field (typed `unknown`) - validate rather than
+  // trust. Anything malformed (or absent) falls back to "never synced".
+  const parsed = ParticipantSyncState(syncState ?? {});
+  if (parsed instanceof type.errors) return {};
+  return parsed.scoutnet?.checkin ?? {};
+}
+
+/**
+ * Merges a new `scoutnet.checkin` sub-object into a participant's existing
+ * `syncState`, preserving any other provider/concern keys at both levels (same
+ * never-flat-merge discipline as the enricher metadata writes). Built from the
+ * shared `mergeJsonKey` helper so the namespaced-Json encoding lives in one
+ * place.
+ */
+function mergeCheckinSyncState(
+  existing: unknown,
+  checkin: CheckinSyncState,
+): Prisma.InputJsonValue {
+  const base =
+    existing && typeof existing === "object" && !Array.isArray(existing)
+      ? (existing as Record<string, unknown>)
+      : {};
+  return mergeJsonKey(
+    base,
+    "scoutnet",
+    mergeJsonKey(base.scoutnet, "checkin", checkin),
+  );
+}
+
+/**
+ * The check-in value we want Scoutnet to reflect for this participant, as an
+ * ISO string (checked in at that time) or null (checked out). A soft-deleted
+ * participant is forced to null so a previously-synced check-in gets one final
+ * "grace pass" checkout before we go silent on them.
+ */
+function desiredCheckinValue(p: WriteBackParticipant): string | null {
+  if (p.deletedAt) return null;
+  return p.confirmedCheckedInAt ? p.confirmedCheckedInAt.toISOString() : null;
+}
+
+function isDirty(p: WriteBackParticipant, now: Date): boolean {
+  const state = readCheckinSyncState(p.syncState);
+  const desired = desiredCheckinValue(p);
+  const synced = state.syncedAt ?? null;
+  if (desired === synced) return false;
+  // A value that previously failed is retried on a backoff, not suppressed
+  // forever: the member may become valid in Scoutnet later (e.g. their project
+  // membership finishes propagating) without the desired value changing. Only
+  // skip while we're still inside the backoff window; a missing `retryAfter`
+  // (older state, or never set) falls through and retries immediately.
+  if (
+    (state.erroredValue ?? null) === desired &&
+    state.retryAfter != null &&
+    now.getTime() < new Date(state.retryAfter).getTime()
+  ) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * "YYYY-MM-DD HH:mm" in Europe/Stockholm - the form the comment is read in
+ * inside Scoutnet. sv-SE already renders short dates as ISO-style.
+ */
+const stockholmDateTime = new Intl.DateTimeFormat("sv-SE", {
+  timeZone: "Europe/Stockholm",
+  dateStyle: "short",
+  timeStyle: "short",
+});
+
+function buildComment(
+  p: WriteBackParticipant,
+  desired: string | null,
+  actorName: string | undefined,
+  now: Date,
+): string {
+  if (desired && p.confirmedCheckedInAt) {
+    const by = actorName ? ` av ${actorName}` : "";
+    return `Incheckad via Scoutin${by} ${stockholmDateTime.format(p.confirmedCheckedInAt)}`;
+  }
+  return `Utcheckad via Scoutin ${stockholmDateTime.format(now)}`;
+}
+
+/**
+ * Resolves, for each given participant id, the name of the actor (leader/kiosk
+ * operator) who most recently checked them in - for the check-in comment. Only
+ * meaningful for participants currently checked in; a checkout can't resolve an
+ * actor anyway because undo deletes the CheckinSubject link. Self-check-ins
+ * (actor == subject) resolve to undefined so the comment omits a redundant name.
+ */
+async function resolveActorNames(
+  participantIds: string[],
+): Promise<Map<string, string>> {
+  const names = new Map<string, string>();
+  if (participantIds.length === 0) return names;
+
+  // One row per participant - their most recent check-in - instead of loading
+  // every historical subject link and its nested session/actor graph only to
+  // discard all but the newest per participant in memory. `distinct` requires
+  // its column(s) to lead `orderBy`, then createdAt desc picks the newest.
+  const subjects = await prisma.checkinSubject.findMany({
+    where: { participantId: { in: participantIds } },
+    orderBy: [{ participantId: "asc" }, { createdAt: "desc" }],
+    distinct: ["participantId"],
+    select: {
+      participantId: true,
+      checkinSession: {
+        select: {
+          actor: {
+            select: {
+              participant: {
+                select: { id: true, firstName: true, lastName: true },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  for (const subject of subjects) {
+    if (names.has(subject.participantId)) continue;
+    const actor = subject.checkinSession.actor?.participant;
+    if (!actor) continue;
+    // Skip self-check-in - "av <own name>" adds nothing.
+    if (actor.id === subject.participantId) continue;
+    names.set(subject.participantId, `${actor.firstName} ${actor.lastName}`);
+  }
+
+  return names;
+}
+
+/**
+ * Pushes check-in deltas for a single Scoutnet data source back to Scoutnet.
+ * Idempotent and delta-based: safe to run on a schedule. See the block comment
+ * above for the dirty/sync-state model.
+ */
+export async function writeBackScoutnetCheckins(
+  dataSource: ScoutnetDataSource,
+  dataSourceName: string,
+): Promise<void> {
+  const log = logger.child({ dataSource: dataSourceName });
+
+  // Prefilter in SQL to skip the majority that can never be dirty: a row that
+  // was never checked in AND never synced has desired === synced === null. Any
+  // row that is checked in, or that carries sync bookkeeping (covering undo and
+  // the soft-delete grace pass), is loaded and dirty-checked in memory.
+  const candidates: WriteBackParticipant[] = await prisma.participant.findMany({
+    where: {
+      dataSource: dataSourceName,
+      OR: [
+        { confirmedCheckedInAt: { not: null } },
+        { syncState: { not: Prisma.DbNull } },
+      ],
+    },
+    select: {
+      id: true,
+      idInDataSource: true,
+      confirmedCheckedInAt: true,
+      deletedAt: true,
+      syncState: true,
+    },
+  });
+
+  const now = new Date();
+  const dirty = candidates.filter((p) => isDirty(p, now));
+  if (dirty.length === 0) return;
+
+  // Actor names only needed for participants we're checking IN.
+  const checkInIds = dirty
+    .filter((p) => desiredCheckinValue(p) !== null)
+    .map((p) => p.id);
+  const actorNames = await resolveActorNames(checkInIds);
+
+  const client = getClient();
+  const authHeader = createAuthorizationHeader({
+    resourceId: dataSource.providerOptions.projectId,
+    key: dataSource.providerOptions.keys.checkin,
+  });
+
+  log.info({ count: dirty.length }, "Writing back check-in state to Scoutnet");
+
+  for (let i = 0; i < dirty.length; i += CHECKIN_WRITEBACK_CHUNK_SIZE) {
+    const chunk = dirty.slice(i, i + CHECKIN_WRITEBACK_CHUNK_SIZE);
+
+    const body: Record<
+      string,
+      { checked_in: 0 | 1; attended: 0 | 1; comment: string }
+    > = {};
+    for (const p of chunk) {
+      const desired = desiredCheckinValue(p);
+      body[p.idInDataSource] = {
+        checked_in: desired ? 1 : 0,
+        // Mirror checked_in: on a checkout `attended` MUST be 0, otherwise
+        // Scoutnet files the member under checked_out_attended and its
+        // attendance reports count an undone check-in as having attended.
+        attended: desired ? 1 : 0,
+        comment: buildComment(p, desired, actorNames.get(p.id), now),
+      };
+    }
+
+    const res = await client.PUT("/project/checkin", {
+      headers: { Authorization: authHeader },
+      body,
+    });
+
+    if ("error" in res) {
+      // Transient failure: leave the whole chunk dirty (no syncState write) so
+      // it retries next cycle. Don't fail the other data sources.
+      log.error(
+        { status: res.response.status, chunkSize: chunk.length },
+        "Scoutnet check-in write-back request failed, will retry next cycle",
+      );
+      continue;
+    }
+
+    // `data` is typed as always-present on a 2xx, but at runtime openapi-fetch
+    // yields undefined for an empty/non-JSON body - guard so we don't deref it.
+    const { data: result, response } = res;
+    if (!result) {
+      // No per-member result lists means we can't tell what landed. Treat like
+      // a transient failure: leave the whole chunk dirty (no syncState write)
+      // and retry next cycle.
+      log.error(
+        { status: response.status, chunkSize: chunk.length },
+        "Scoutnet check-in write-back returned no body, will retry next cycle",
+      );
+      continue;
+    }
+
+    const succeeded = new Set(
+      [
+        ...(result.checked_in ?? []),
+        ...(result.checked_out_attended ?? []),
+        ...(result.checked_out_not_attended ?? []),
+        ...(result.unchanged ?? []),
+      ].map(String),
+    );
+    const perMemberError = new Map<string, string>();
+    for (const id of result.not_found ?? [])
+      perMemberError.set(String(id), "not_found");
+    for (const id of result.no_member ?? [])
+      perMemberError.set(String(id), "no_member");
+
+    const ops: Prisma.PrismaPromise<unknown>[] = [];
+    const unaccounted: string[] = [];
+    for (const p of chunk) {
+      const desired = desiredCheckinValue(p);
+      if (succeeded.has(p.idInDataSource)) {
+        // Success clears any prior error/backoff and records the value now in
+        // Scoutnet.
+        ops.push(
+          prisma.participant.update({
+            where: { id: p.id },
+            data: {
+              syncState: mergeCheckinSyncState(p.syncState, {
+                syncedAt: desired,
+              }),
+            },
+          }),
+        );
+        continue;
+      }
+
+      // Not confirmed by Scoutnet: either a per-member error it reported, or a
+      // member it omitted from every result list (shouldn't happen). Both are
+      // retried on an exponential backoff so they neither hammer the endpoint
+      // every cycle (re-sending a fresh checkout comment each time) nor get
+      // abandoned permanently.
+      const reason = perMemberError.get(p.idInDataSource) ?? "no_result";
+      if (reason === "no_result") unaccounted.push(p.idInDataSource);
+
+      const existing = readCheckinSyncState(p.syncState);
+      const sameValue = (existing.erroredValue ?? null) === desired;
+      const errorCount = (sameValue ? (existing.errorCount ?? 0) : 0) + 1;
+      const backoffMs = Math.min(
+        CHECKIN_RETRY_BASE_MS * 2 ** (errorCount - 1),
+        CHECKIN_RETRY_MAX_MS,
+      );
+      ops.push(
+        prisma.participant.update({
+          where: { id: p.id },
+          data: {
+            syncState: mergeCheckinSyncState(p.syncState, {
+              // Keep the last good synced value; only record the failure + when
+              // to next retry.
+              syncedAt: existing.syncedAt ?? null,
+              error: reason,
+              erroredValue: desired,
+              errorCount,
+              retryAfter: new Date(now.getTime() + backoffMs).toISOString(),
+            }),
+          },
+        }),
+      );
+    }
+
+    if (unaccounted.length > 0) {
+      log.warn(
+        { members: unaccounted },
+        "Scoutnet response omitted these members from all result lists; backing off before retry",
+      );
+    }
+
+    await commitInChunks(ops);
   }
 }
 

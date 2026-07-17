@@ -179,6 +179,14 @@ model Participant {
   // Each writer only ever touches its own key, so multiple simultaneous
   // failures are recorded and cleared independently.
   importErrors Json?
+  // Write-back sync bookkeeping, namespaced by provider then concern (same
+  // never-flat-merge discipline as `metadata`). Currently only
+  // `scoutnet.checkin` is written, by the check-in write-back job: it records
+  // the last check-in value successfully pushed back to the provider so the
+  // job can push only deltas. Deliberately separate from `importErrors` - a
+  // write-back failure must NOT flag the row (that would exclude it from kiosk
+  // lookups via NO_IMPORT_ERROR_WHERE). See writeBackScoutnetCheckins.
+  syncState    Json?
   // Set when this participant was cancelled/removed from the data source
   // after a previous successful import. Cleared automatically if they
   // reappear in a later import. Row is kept (not hard-deleted) to preserve

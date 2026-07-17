@@ -22,6 +22,11 @@ const Config = type({
   DATASOURCE_HASHING_SECRET: type("string"),
   DATASOURCE_HASHING_SALT: type("string"),
   BLOCKLIST_HASHING_SECRET: type("string"),
+  // How often (ms) the check-in write-back job pushes check-in deltas back to
+  // data-source providers (e.g. Scoutnet). Set to 0 to disable the job.
+  CHECKIN_SYNC_INTERVAL_MS: type("string.integer>=0")
+    .pipe((value) => Number.parseInt(value, 10))
+    .default("120000"),
 });
 type Config = typeof Config.infer;
 

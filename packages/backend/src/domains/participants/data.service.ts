@@ -10,7 +10,7 @@ import { logger } from "../../core/logging/logger.ts";
 import { Prisma } from "../../generated/prisma/client.ts";
 import { enricherRegistry } from "../workflows/steps.ts";
 import { importGoogleSheetsData } from "./googlesheets.ts";
-import { importScoutnetData } from "./scoutnet.ts";
+import { importScoutnetData, writeBackScoutnetCheckins } from "./scoutnet.ts";
 
 /**
  * Normalizes an `enrichWith` entry to its two parts: the enricher name to look
@@ -47,6 +47,28 @@ export function hasImportErrors(importErrors: unknown): boolean {
     typeof importErrors === "object" &&
     Object.keys(importErrors as object).length > 0
   );
+}
+
+/**
+ * Merges `value` into a Json object under a single top-level `key`, preserving
+ * every sibling key (never a flat merge of the whole object), then round-trips
+ * through JSON to produce a value that satisfies Prisma's `InputJsonValue`
+ * typing. This is the one encoding of the "namespaced Json column" write
+ * discipline shared by `metadata`, `importErrors`, and `syncState` writes - use
+ * it instead of re-implementing the spread + `JSON.parse(JSON.stringify())`
+ * round-trip, so a fix to that discipline lives in exactly one place.
+ */
+export function mergeJsonKey(
+  existing: unknown,
+  key: string,
+  value: unknown,
+): Prisma.InputJsonValue {
+  const base =
+    existing && typeof existing === "object" && !Array.isArray(existing)
+      ? { ...(existing as Record<string, unknown>) }
+      : {};
+  base[key] = value;
+  return JSON.parse(JSON.stringify(base));
 }
 
 // TODO: Don't just load it from an arbitrary file, but have it configurable
@@ -224,6 +246,41 @@ export async function loadAllDataSourcesIntoDatabase() {
 }
 
 /**
+ * Pushes local state back to a data source's provider (the reverse of import).
+ * Generic dispatch mirroring `loadDataSourceIntoDatabase`: each provider opts in
+ * by implementing a write-back. Only Scoutnet does today (check-in state);
+ * providers without write-back support (e.g. Google Sheets) are a no-op.
+ */
+export async function writeBackDataSource(
+  dataSource: DataSource,
+  dataSourceName: string,
+) {
+  if (dataSource.provider === "scoutnet") {
+    await writeBackScoutnetCheckins(dataSource, dataSourceName);
+  }
+  // googlesheets: no write-back support.
+}
+
+/**
+ * Runs write-back for every configured data source. Intended to be called on a
+ * schedule. A failure in one source is isolated so the others still run.
+ */
+export async function writeBackAllDataSources() {
+  for (const [dataSourceName, dataSource] of Object.entries(
+    dataSourceConfig.dataSources,
+  )) {
+    try {
+      await writeBackDataSource(dataSource, dataSourceName);
+    } catch (err) {
+      logger.error(
+        { err, dataSource: dataSourceName },
+        "Data source write-back failed",
+      );
+    }
+  }
+}
+
+/**
  * Runs after a provider's import completes successfully. Recomputed fully
  * every cycle (never accumulating):
  *  - soft-deletes participants for this data source that weren't part of
@@ -327,14 +384,7 @@ export async function reconcileDataSource(
           continue;
         }
 
-        const existingMetadata =
-          (entity.metadata as Record<string, unknown> | null) ?? {};
-        // Making sure that what we try to store in the database is actually
-        // serializable, and to satisfy Prisma's InputJsonValue typing (same
-        // pattern as step.service.ts's completeStep).
-        const metadata = JSON.parse(
-          JSON.stringify({ ...existingMetadata, [metadataKey]: value }),
-        );
+        const metadata = mergeJsonKey(entity.metadata, metadataKey, value);
         const importErrors = JSON.parse(JSON.stringify(remainingErrors));
 
         if (enricher.target === "group") {
@@ -355,8 +405,10 @@ export async function reconcileDataSource(
         );
 
         const reason = err instanceof Error ? err.message : String(err);
-        const importErrors = JSON.parse(
-          JSON.stringify({ ...existingErrors, [enricherName]: reason }),
+        const importErrors = mergeJsonKey(
+          entity.importErrors,
+          enricherName,
+          reason,
         );
 
         if (enricher.target === "group") {
