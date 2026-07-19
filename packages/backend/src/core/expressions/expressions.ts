@@ -51,12 +51,49 @@ export function evaluateExpressionsInString(
   });
 }
 
+/**
+ * Strips `#`-to-end-of-line comments, ignoring `#` that appears inside string
+ * literals. Tracks single- and double-quoted strings so an expression like
+ * `name == 'Team #1'` is left intact instead of being truncated.
+ */
+function stripLineComments(expression: string): string {
+  let result = "";
+  let quote: string | null = null;
+
+  for (let i = 0; i < expression.length; i++) {
+    const char = expression[i];
+
+    if (quote) {
+      result += char;
+      if (char === quote) quote = null;
+      continue;
+    }
+
+    if (char === '"' || char === "'") {
+      quote = char;
+      result += char;
+      continue;
+    }
+
+    if (char === "#") {
+      const newline = expression.indexOf("\n", i);
+      if (newline === -1) break; // comment runs to the end of the expression
+      i = newline - 1; // resume at the newline (preserved next iteration)
+      continue;
+    }
+
+    result += char;
+  }
+
+  return result;
+}
+
 export function evaluateExpression(
   expression: string,
   context: Record<string, unknown>,
 ) {
   // Strip line comments before lexing (# through end of line, not inside strings)
-  expression = expression.replace(/\s*#[^\n"]*/g, "");
+  expression = stripLineComments(expression);
   const lexer = new Lexer(expression);
   const lr = lexer.lex();
 

@@ -10,7 +10,8 @@ steps:
   - if: |
       ${{
         steps.identify.outputs.dataSource == 'groups' &&
-        steps.identify.outputs.participant.subGroup != 'leader'
+        steps.identify.outputs.participant.subGroup != 'leader' &&
+        steps.identify.outputs.participant.subGroup != 'leaderstaff'
       }}
     uses: base:block
     with:
@@ -22,6 +23,16 @@ steps:
       force: resume
 
   - uses: base:selectSubjects
+
+  # Lists the selected subjects that are "ledarfunktionärer" (a distinct fee,
+  # mapped to the `leaderstaff` subGroup in dataSourceConfig.yml) with an
+  # informational message. `filter` is a bare expression (no ${{ }}) evaluated
+  # per subject against `{ participant }`.
+  - uses: base:filterSubjects
+    with:
+      filter: "participant.subGroup == 'leaderstaff'"
+      title: "Ledarfunktionärer"
+      message: "Följande personer är ledarfunktionärer."
 
   - uses: base:markPreliminaryCheckedIn
     required: true

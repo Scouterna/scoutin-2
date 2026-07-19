@@ -9,6 +9,7 @@
  */
 
 export { prisma } from "./app/prisma.ts";
+export { evaluateExpression } from "./core/expressions/expressions.ts";
 export { isBlocked } from "./domains/blocklist/blocklist.service.ts";
 export {
   dataSourceConfig,

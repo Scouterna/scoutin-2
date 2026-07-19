@@ -9,18 +9,39 @@ dataSources:
         name:
           sv: Ledare
           en: Leader
+      leaderstaff:
+        name:
+          sv: Ledarfunktionär
+          en: Leader functionary
     providerOptions:
       projectId: 56032
       includeIndividuals: false
       includeGroups: true
+      # Actual real prod values:
+      # subGroupConditions:
+      #   leader:
+      #     condition: |
+      #       ${{
+      #         participant.fee_id == 32341 || # Ledare
+      #         participant.fee_id == 32349    # Ledare kortvecka (ons-lör)
+      #       }}
+      #   leaderstaff:
+      #     condition: |
+      #       ${{
+      #         participant.fee_id == 32348 # Ledarfunktionär
+      #       }}
+      # Dev values:
       subGroupConditions:
         leader:
           condition: |
             ${{
-              participant.fee_id == 32006 || # Ledaravgift
-              participant.fee_id == 32007 || # Ledaravgift kortvecka
-              participant.fee_id == 31997 || # Ledaravgift efteranmälan
-              participant.fee_id == 31988    # Ledaravgift kortvecka efteranmälan
+              participant.fee_id == 31997 || # Ledare
+              participant.fee_id == 32349    # Ledare kortvecka (ons-lör)
+            }}
+        leaderstaff:
+          condition: |
+            ${{
+              participant.fee_id == 32012 # Ledarfunktionär
             }}
       keys:
         groups: ${SCOUTNET_GROUPS_GROUPS_KEY}
