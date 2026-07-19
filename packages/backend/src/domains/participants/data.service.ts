@@ -255,6 +255,18 @@ export async function writeBackDataSource(
   dataSource: DataSource,
   dataSourceName: string,
 ) {
+  // Dry run: block every provider's write-back at the single dispatch point so
+  // no external mutation can slip through (scheduled job or manual trigger).
+  // Returns cleanly — local state and syncState are left untouched, so the next
+  // real run picks up exactly the same deltas.
+  if (config.DRY_RUN) {
+    logger.info(
+      { dataSource: dataSourceName, provider: dataSource.provider },
+      "Dry run enabled — skipping data source write-back",
+    );
+    return;
+  }
+
   if (dataSource.provider === "scoutnet") {
     await writeBackScoutnetCheckins(dataSource, dataSourceName);
   }

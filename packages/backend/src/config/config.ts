@@ -22,6 +22,13 @@ const Config = type({
   DATASOURCE_HASHING_SECRET: type("string"),
   DATASOURCE_HASHING_SALT: type("string"),
   BLOCKLIST_HASHING_SECRET: type("string"),
+  // When enabled, all write-backs to external providers (e.g. pushing check-in
+  // state to Scoutnet) are blocked and logged instead of performed. Everything
+  // else — imports, the kiosk flow, delta computation — runs normally, so this
+  // is a safe way to run against real credentials without mutating source data.
+  DRY_RUN: type("'true' | 'false'")
+    .pipe((value) => value === "true")
+    .default("false"),
   // How often (ms) the check-in write-back job pushes check-in deltas back to
   // data-source providers (e.g. Scoutnet). Set to 0 to disable the job.
   CHECKIN_SYNC_INTERVAL_MS: type("string.integer>=0")

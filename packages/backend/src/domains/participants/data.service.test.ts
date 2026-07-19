@@ -22,13 +22,28 @@ vi.mock("../../app/prisma.ts", () => ({
 
 // data.service.ts reads DATASOURCE_HASHING_* at module scope (for
 // hashLookupValue) - avoid depending on real env vars or loadConfig().
+// Kept mutable so individual tests can flip flags like DRY_RUN; reset in
+// beforeEach.
+const mockConfig = vi.hoisted(() => ({
+  DATASOURCE_HASHING_SECRET: "test-secret",
+  DATASOURCE_HASHING_SALT: "test-salt",
+  BLOCKLIST_HASHING_SECRET: "test-blocklist-secret",
+  NODE_ENV: "test",
+  DRY_RUN: false,
+}));
 vi.mock("../../config/config.ts", () => ({
-  default: {
-    DATASOURCE_HASHING_SECRET: "test-secret",
-    DATASOURCE_HASHING_SALT: "test-salt",
-    BLOCKLIST_HASHING_SECRET: "test-blocklist-secret",
-    NODE_ENV: "test",
-  },
+  default: mockConfig,
+}));
+
+// writeBackDataSource dispatches to the real Scoutnet write-back. Stub it so we
+// can assert whether a write was attempted without touching the network; keep
+// the module's other exports (e.g. ScoutnetDataSource) real.
+const { writeBackScoutnetCheckinsMock } = vi.hoisted(() => ({
+  writeBackScoutnetCheckinsMock: vi.fn(),
+}));
+vi.mock("./scoutnet.ts", async (importActual) => ({
+  ...(await importActual<typeof import("./scoutnet.ts")>()),
+  writeBackScoutnetCheckins: writeBackScoutnetCheckinsMock,
 }));
 
 // Sidesteps needing real env-var substitution for dataSourceConfig.yml -
@@ -58,10 +73,12 @@ vi.mock("../../core/logging/logger.ts", () => ({
 
 const {
   reconcileDataSource,
+  writeBackDataSource,
   hashIdentifier,
   hashLookupValue,
   normalizeIdentifier,
 } = await import("./data.service.ts");
+type DataSource = import("../../config/dataSourceConfig.ts").DataSource;
 const { enricherRegistry } = await import("../workflows/steps.ts");
 
 enricherRegistry.register({
@@ -97,6 +114,7 @@ enricherRegistry.register({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockConfig.DRY_RUN = false;
 });
 
 describe("normalizeIdentifier / hashIdentifier", () => {
@@ -486,5 +504,49 @@ describe("reconcileDataSource", () => {
         importErrors: {},
       },
     });
+  });
+});
+
+describe("writeBackDataSource (dry run)", () => {
+  const scoutnetSource: DataSource = {
+    name: { sv: "Test source" },
+    provider: "scoutnet",
+    providerOptions: {
+      projectId: "1",
+      includeIndividuals: true,
+      includeGroups: true,
+      keys: {
+        groups: "g-key",
+        participants: "p-key",
+        checkin: "c-key",
+        questions: "q-key",
+      },
+    },
+  };
+
+  it("performs the provider write-back when DRY_RUN is disabled", async () => {
+    mockConfig.DRY_RUN = false;
+
+    await writeBackDataSource(scoutnetSource, "groups");
+
+    expect(writeBackScoutnetCheckinsMock).toHaveBeenCalledWith(
+      scoutnetSource,
+      "groups",
+    );
+  });
+
+  it("blocks the provider write-back and logs when DRY_RUN is enabled", async () => {
+    mockConfig.DRY_RUN = true;
+
+    // Must resolve, not throw: dry run blocks graciously.
+    await expect(
+      writeBackDataSource(scoutnetSource, "groups"),
+    ).resolves.toBeUndefined();
+
+    expect(writeBackScoutnetCheckinsMock).not.toHaveBeenCalled();
+    expect(logStub.info).toHaveBeenCalledWith(
+      { dataSource: "groups", provider: "scoutnet" },
+      expect.stringContaining("Dry run"),
+    );
   });
 });
