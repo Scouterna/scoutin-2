@@ -29,13 +29,11 @@ steps:
   # old session is deleted. If the user chooses to pick up where they left off,
   # the current flow is aborted and the old session is resumed.
   - uses: base:deduplicateSession
-    with:
-      force: ${{ steps.identify.outputs.dataSource == 'stormote6_ordinary' && 'new' || null }}
 
   - if: |
       ${{
         steps.identify.outputs.dataSource == 'staff' ||
-        steps.identify.outputs.dataSource == 'stormote6_ordinary'
+        steps.identify.outputs.dataSource == 'staffChildren'
       }}
     # setActorAsSubject sets the session.subjects to the actorId from the session.
     uses: base:setActorAsSubject
@@ -43,7 +41,7 @@ steps:
   - if: |
       ${{
         steps.identify.outputs.dataSource == 'staff' ||
-        steps.identify.outputs.dataSource == 'stormote6_ordinary'
+        steps.identify.outputs.dataSource == 'staffChildren'
       }}
     # Self-checkin only: warns and asks for confirmation if this person is
     # already checked in. Not used for the groups flow, where a leader
@@ -78,6 +76,19 @@ steps:
     # registered. Placed after the compliance gate so a blocked person never
     # reaches it.
     uses: jamboree26:specialNeeds
+    id: specialNeedsStaff
+
+  - if: ${{ steps.identify.outputs.dataSource == 'staffChildren' }}
+    # Same informational special-needs screen for staff children. No compliance
+    # gate precedes it (children never face one - see the gate step above).
+    # Diet and medical are shown identically to staff; only attendance differs
+    # (a single positive attend-list), selected via `variant: child`. The child
+    # form's differing question IDs are mapped onto the shared field names in
+    # dataSourceConfig.yml (staffChildren.enrichWith.specialNeeds).
+    uses: jamboree26:specialNeeds
+    id: specialNeedsChild
+    with:
+      variant: child
 
   - if: ${{ steps.identify.outputs.dataSource == 'groups' }}
     # selectSubjects will automatically use the actorId from the session to
@@ -94,24 +105,7 @@ steps:
     with:
       filter: "participant.subGroup == 'leaderstaff'"
       title: "Ledarfunktionärer"
-      message: "Följande personer är ledarfunktionärer."
-
-  # # verifySafeFromHarm will check that all selected subjects for which it
-  # # applies have a valid Safe From Harm status in Scoutnet.
-  # - uses: scoutnet:verifySafeFromHarm
-
-  # - uses: base:message
-  #   required: true
-  #   with:
-  #     title: Dummy safe from harm step
-  #     message: This will eventually be replaced by the real deal
-
-  # - uses: printer:print
-  #   with:
-  #     template: badge
-  #     # For every item in the values array a new print job will be created with
-  #     # those values passed to it.
-  #     values: ${{ session.subjects }}
+      message: "Följande personer är anmälda som ledarfunktionärer. Ledarfunktionärer bor och äter med er kår, men arbetar som funktionärer på lägret och deltar alltså inte på programpass med kåren. Kontrollera noggrant att alla personer i listan är medvetna om detta, och att ingen ledarfunktionär saknas i listan."
 
   - uses: base:markConfirmedCheckedIn
     required: true

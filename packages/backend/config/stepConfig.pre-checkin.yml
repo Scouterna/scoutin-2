@@ -32,7 +32,7 @@ steps:
     with:
       filter: "participant.subGroup == 'leaderstaff'"
       title: "Ledarfunktionärer"
-      message: "Följande personer är ledarfunktionärer."
+      message: "Följande personer är anmälda som ledarfunktionärer. Ledarfunktionärer bor och äter med er kår, men arbetar som funktionärer på lägret och deltar alltså inte på programpass med kåren. Kontrollera noggrant att alla personer i listan är medvetna om detta, och att ingen ledarfunktionär saknas i listan."
 
   - uses: base:markPreliminaryCheckedIn
     required: true

@@ -17,31 +17,17 @@ dataSources:
       projectId: 56032
       includeIndividuals: false
       includeGroups: true
-      # Actual real prod values:
-      # subGroupConditions:
-      #   leader:
-      #     condition: |
-      #       ${{
-      #         participant.fee_id == 32341 || # Ledare
-      #         participant.fee_id == 32349    # Ledare kortvecka (ons-lör)
-      #       }}
-      #   leaderstaff:
-      #     condition: |
-      #       ${{
-      #         participant.fee_id == 32348 # Ledarfunktionär
-      #       }}
-      # Dev values:
       subGroupConditions:
         leader:
           condition: |
             ${{
-              participant.fee_id == 31997 || # Ledare
+              participant.fee_id == 32341 || # Ledare
               participant.fee_id == 32349    # Ledare kortvecka (ons-lör)
             }}
         leaderstaff:
           condition: |
             ${{
-              participant.fee_id == 32012 # Ledarfunktionär
+              participant.fee_id == 32348 # Ledarfunktionär
             }}
       keys:
         groups: ${SCOUTNET_GROUPS_GROUPS_KEY}
@@ -49,110 +35,123 @@ dataSources:
         checkin: ${SCOUTNET_GROUPS_CHECKIN_KEY}
         questions: ${SCOUTNET_GROUPS_QUESTIONS_KEY}
 
-  # staff:
-  #   name:
-  #     sv: funktionär
-  #     en: staff (IST)
-  #   provider: scoutnet
-  #   enrichWith:
-  #     safeFromHarm: scoutnet:safeFromHarm
-  #     criminalRecordExtract: scoutnet:criminalRecordExtract
-  #     # Question IDs are specific to this project's registration form (see
-  #     # plugins/jamboree26/question-ids.md for the source list from the
-  #     # Scoutnet project admin). Field names are a code contract with
-  #     # plugins/jamboree26/src/specialNeeds (grouping logic there matches
-  #     # these names, not the numeric IDs).
-  #     specialNeeds:
-  #       name: jamboree26:specialNeeds
-  #       options:
-  #         questions:
-  #           # Vilka hela perioder personen önskar delta i (multiselect: Förläger/Lägerperiod/Efterläger) - se plugins/jamboree26/src/specialNeeds
-  #           periodsAttending: "90174"
-  #           # Frånvaro: kan inte delta alla dagar (checkbox) + vilka dagar (multiselect), per period
-  #           absenceForlagerLimited: "90175"
-  #           absenceForlagerDays: "90176"
-  #           absenceLagerperiodLimited: "90179"
-  #           absenceLagerperiodDays: "90180"
-  #           absenceEfterlagerLimited: "90181"
-  #           absenceEfterlagerDays: "90183"
-  #           # Medicinskt behov av el vid boplatsen
-  #           medicalElectricity: "88329"
-  #           # Specialkost: en checkbox per allergen/behov, plus fritext
-  #           dietGluten: "88306"
-  #           dietLaktos: "88285"
-  #           dietMjolkprotein: "88287"
-  #           dietAgg: "88279"
-  #           dietSoja: "88300"
-  #           dietFisk: "88271"
-  #           dietKraftdjur: "88308"
-  #           dietBlotdjur: "88305"
-  #           dietNotter: "89332"
-  #           dietSesam: "89333"
-  #           dietSelleri: "89334"
-  #           dietSenap: "89335"
-  #           dietSulfit: "89336"
-  #           dietNotkott: "89337"
-  #           dietFlaskkott: "89340"
-  #           dietHalal: "89341"
-  #           dietVegan: "89342"
-  #           dietLaktoOvoVegetarian: "89343"
-  #           dietPescetarian: "89344"
-  #           dietOther: "88286"
-  #   providerOptions:
-  #     projectId: 52716
-  #     feeIds:
-  #       - 32207
-  #     includeIndividuals: true
-  #     includeGroups: false
-  #     keys:
-  #       groups: ${SCOUTNET_STAFF_GROUPS_KEY}
-  #       participants: ${SCOUTNET_STAFF_PARTICIPANTS_KEY}
-  #       checkin: ${SCOUTNET_STAFF_CHECKIN_KEY}
-  #       questions: ${SCOUTNET_STAFF_QUESTIONS_KEY}
+  staff:
+    name:
+      sv: funktionär
+      en: staff (IST)
+    provider: scoutnet
+    enrichWith:
+      safeFromHarm: scoutnet:safeFromHarm
+      criminalRecordExtract: scoutnet:criminalRecordExtract
+      # Question IDs are specific to this project's registration form (see
+      # plugins/jamboree26/question-ids.md for the source list from the
+      # Scoutnet project admin). Field names are a code contract with
+      # plugins/jamboree26/src/specialNeeds (grouping logic there matches
+      # these names, not the numeric IDs).
+      specialNeeds:
+        name: jamboree26:specialNeeds
+        options:
+          questions:
+            # Vilka hela perioder personen önskar delta i (multiselect: Förläger/Lägerperiod/Efterläger) - se plugins/jamboree26/src/specialNeeds
+            periodsAttending: "90174"
+            # Frånvaro: kan inte delta alla dagar (checkbox) + vilka dagar (multiselect), per period
+            absenceForlagerLimited: "90175"
+            absenceForlagerDays: "90176"
+            absenceLagerperiodLimited: "90179"
+            absenceLagerperiodDays: "90180"
+            absenceEfterlagerLimited: "90181"
+            absenceEfterlagerDays: "90183"
+            # Medicinskt behov av el vid boplatsen
+            medicalElectricity: "88329"
+            # Specialkost: en checkbox per allergen/behov, plus fritext
+            dietGluten: "88306"
+            dietLaktos: "88285"
+            dietMjolkprotein: "88287"
+            dietAgg: "88279"
+            dietSoja: "88300"
+            dietFisk: "88271"
+            dietKraftdjur: "88308"
+            dietBlotdjur: "88305"
+            dietNotter: "89332"
+            dietSesam: "89333"
+            dietSelleri: "89334"
+            dietSenap: "89335"
+            dietSulfit: "89336"
+            dietNotkott: "89337"
+            dietFlaskkott: "89340"
+            dietHalal: "89341"
+            dietVegan: "89342"
+            dietLaktoOvoVegetarian: "89343"
+            dietPescetarian: "89344"
+            dietOther: "88286"
+    providerOptions:
+      projectId: 52716
+      feeIds:
+        - 32207
+      includeIndividuals: true
+      includeGroups: false
+      keys:
+        groups: ${SCOUTNET_STAFF_GROUPS_KEY}
+        participants: ${SCOUTNET_STAFF_PARTICIPANTS_KEY}
+        checkin: ${SCOUTNET_STAFF_CHECKIN_KEY}
+        questions: ${SCOUTNET_STAFF_QUESTIONS_KEY}
 
-  # stormote6_ordinary:
-  #   name:
-  #     sv: deltagare på Stormöte 6
-  #     en: deltagare på Stormöte 6
-  #   provider: scoutnet
-  #   providerOptions:
-  #     projectId: 72237
-  #     includeIndividuals: true
-  #     includeGroups: false
-  #     keys:
-  #       groups: ${SCOUTNET_STORMOTE6_ORDINARY_GROUPS_KEY}
-  #       participants: ${SCOUTNET_STORMOTE6_ORDINARY_PARTICIPANTS_KEY}
-  #       checkin: ${SCOUTNET_STORMOTE6_ORDINARY_CHECKIN_KEY}
-  #       questions: ${SCOUTNET_STORMOTE6_ORDINARY_QUESTIONS_KEY}
-
-  # stormote6_late:
-  #   name:
-  #     sv: deltagare på Stormöte 6 (efteranmälan)
-  #     en: participant at Stormöte 6 (late registration)
-  #   provider: scoutnet
-  #   providerOptions:
-  #     projectId: 76074
-  #     includeIndividuals: true
-  #     includeGroups: false
-  #     keys:
-  #       groups: ${SCOUTNET_STORMOTE6_LATE_GROUPS_KEY}
-  #       participants: ${SCOUTNET_STORMOTE6_LATE_PARTICIPANTS_KEY}
-  #       checkin: ${SCOUTNET_STORMOTE6_LATE_CHECKIN_KEY}
-  #       questions: ${SCOUTNET_STORMOTE6_LATE_QUESTIONS_KEY}
-
-  # groups:
-  #   name:
-  #     sv: ledare i din kår
-  #     en: leader in your scout group
-  #   provider: googlesheets
-  #   subGroups:
-  #     leader:
-  #       name:
-  #         sv: Ledare
-  #         en: Leader
-  #   # activeFrom: 2026-05-13T17:36:00+02:00
-  #   # activeTo: 2026-05-13T17:39:00+02:00
-  #   providerOptions:
-  #     spreadsheetId: ${GOOGLE_SPREADSHEET_ID}
-  #     sheetName: People
-  #     serviceAccountKey: ${GOOGLE_SA_KEY}
+  # Staff children ("medföljande barn till funktionär"): same Scoutnet project
+  # as staff (52716) but a different registration form (43854) and fee (32359),
+  # so a separate data source rather than an extra feeId on `staff`. This keeps
+  # enrichment declarative and per-form: children deliberately do NOT run the
+  # safeFromHarm/criminalRecordExtract enrichers (they never face the compliance
+  # gate - see stepConfig.yml), and their special-needs question IDs differ from
+  # the staff form's while mapping onto the exact same field names (the code
+  # contract with plugins/jamboree26/src/specialNeeds). The child form's diet
+  # and medical concepts are identical to staff's, just different question IDs;
+  # only the attendance model differs (a single positive attend-list, handled by
+  # the specialNeeds step's `variant: child`, see stepConfig.yml).
+  staffChildren:
+    name:
+      sv: medföljande barn
+      en: staff children
+    provider: scoutnet
+    enrichWith:
+      specialNeeds:
+        name: jamboree26:specialNeeds
+        options:
+          questions:
+            # Attendance: single positive multiselect - vilka dagar barnet
+            # deltar (inverse of the staff absence model, se variant: child)
+            attendanceDays: "91058"
+            # Medicinskt behov av el vid boplatsen (barnform)
+            medicalElectricity: "88252"
+            # Specialkost: en checkbox per allergen/behov, plus fritext.
+            # Samma begrepp som funktionärsformuläret men andra fråge-ID:n.
+            dietGluten: "88338"
+            dietLaktos: "88262"
+            dietMjolkprotein: "88261"
+            dietAgg: "88264"
+            dietSoja: "88288"
+            dietFisk: "88331"
+            dietKraftdjur: "88330"
+            dietBlotdjur: "88313"
+            dietNotter: "89346"
+            dietSesam: "89347"
+            dietSelleri: "89348"
+            dietSenap: "89349"
+            dietSulfit: "89350"
+            dietNotkott: "89351"
+            dietFlaskkott: "89352"
+            dietHalal: "89353"
+            dietVegan: "89354"
+            dietLaktoOvoVegetarian: "89355"
+            dietPescetarian: "89356"
+            dietOther: "88270"
+    providerOptions:
+      projectId: 52716
+      feeIds:
+        - 32359
+      includeIndividuals: true
+      includeGroups: false
+      keys:
+        groups: ${SCOUTNET_STAFF_GROUPS_KEY}
+        participants: ${SCOUTNET_STAFF_PARTICIPANTS_KEY}
+        checkin: ${SCOUTNET_STAFF_CHECKIN_KEY}
+        questions: ${SCOUTNET_STAFF_QUESTIONS_KEY}
