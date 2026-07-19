@@ -22,11 +22,14 @@ const actor = {
 
 function makeCtx({
   getActor = vi.fn().mockResolvedValue(actor),
+  variant,
 }: {
   getActor?: ReturnType<typeof vi.fn>;
+  variant?: "adult" | "child";
 } = {}) {
   return {
     getActor,
+    getInputs: vi.fn().mockReturnValue(variant ? { variant } : {}),
     setCompleted: vi.fn(),
     showScreen: vi.fn(),
     // biome-ignore lint/suspicious/noExplicitAny: minimal fake StepMethodContext for this test
@@ -94,6 +97,16 @@ const NOT_ATTENDING_ANYTHING = [
 const ATTENDING_ALL_PERIODS = ["61759", "61760", "61761"];
 
 const DEFAULT_DIET = { allergens: [], other: null };
+
+// Child variant: one table over the whole camp range (11 juli - 7 augusti),
+// present only on the days explicitly listed in the positive attend-list.
+const CHILD_FULL_RANGE = allPresent([7, 11], [8, 7]);
+function childPresentOn(dates: string[]): { date: string; present: boolean }[] {
+  return CHILD_FULL_RANGE.map((d) => ({
+    ...d,
+    present: dates.includes(d.date),
+  }));
+}
 
 beforeEach(() => {
   findUniqueOrThrow.mockReset();
@@ -442,5 +455,85 @@ describe("jamboree26:specialNeeds step", () => {
     await expect(specialNeedsStep.hooks?.onStepStart?.(ctx)).rejects.toThrow(
       /No actor found/,
     );
+  });
+
+  describe("child variant", () => {
+    it("marks present only the days explicitly listed in the positive attend-list", async () => {
+      withMetadata({ attendanceDays: ["Torsdag 23 juli", "Fredag 24 juli"] });
+      const ctx = makeCtx({ variant: "child" });
+
+      await specialNeedsStep.hooks?.onStepStart?.(ctx);
+
+      expect(ctx.showScreen).toHaveBeenCalledWith(
+        "jamboree26:specialNeeds:info",
+        {
+          diet: DEFAULT_DIET,
+          medicalElectricityNeeded: false,
+          absence: [
+            {
+              label: "Deltar på lägret",
+              days: childPresentOn(["23/7", "24/7"]),
+            },
+          ],
+        },
+      );
+    });
+
+    it("parses attend-list labels that carry an '(inget lägis)' suffix", async () => {
+      withMetadata({ attendanceDays: ["Onsdag 5 augusti (inget lägis)"] });
+      const ctx = makeCtx({ variant: "child" });
+
+      await specialNeedsStep.hooks?.onStepStart?.(ctx);
+
+      expect(ctx.showScreen).toHaveBeenCalledWith(
+        "jamboree26:specialNeeds:info",
+        {
+          diet: DEFAULT_DIET,
+          medicalElectricityNeeded: false,
+          absence: [
+            { label: "Deltar på lägret", days: childPresentOn(["5/8"]) },
+          ],
+        },
+      );
+    });
+
+    it("defaults to absent on every day when no attend-list answer is present", async () => {
+      withMetadata(null);
+      const ctx = makeCtx({ variant: "child" });
+
+      await specialNeedsStep.hooks?.onStepStart?.(ctx);
+
+      expect(ctx.showScreen).toHaveBeenCalledWith(
+        "jamboree26:specialNeeds:info",
+        {
+          diet: DEFAULT_DIET,
+          medicalElectricityNeeded: false,
+          absence: [{ label: "Deltar på lägret", days: childPresentOn([]) }],
+        },
+      );
+    });
+
+    it("renders diet and medical identically to the adult variant (shared field names)", async () => {
+      withMetadata({
+        dietGluten: "1",
+        dietOther: "extrem selektiv ätstörning",
+        medicalElectricity: "1",
+        attendanceDays: ["Lördag 18 juli"],
+      });
+      const ctx = makeCtx({ variant: "child" });
+
+      await specialNeedsStep.hooks?.onStepStart?.(ctx);
+
+      expect(ctx.showScreen).toHaveBeenCalledWith(
+        "jamboree26:specialNeeds:info",
+        {
+          diet: { allergens: ["Gluten"], other: "extrem selektiv ätstörning" },
+          medicalElectricityNeeded: true,
+          absence: [
+            { label: "Deltar på lägret", days: childPresentOn(["18/7"]) },
+          ],
+        },
+      );
+    });
   });
 });

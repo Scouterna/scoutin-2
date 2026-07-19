@@ -17,6 +17,19 @@ const Metadata = type({
   "specialNeeds?": type.Record("string", "string | string[] | null"),
 });
 
+// `with` config for the step. `variant` selects how attendance is computed and
+// which fields it reads - diet and medical are identical across variants (the
+// data source's enrichWith maps each form's question IDs onto the same field
+// names, see dataSourceConfig.yml), so only the attendance model differs:
+// - `adult` (default): the funktionär form's period-gate (periodsAttending) +
+//   per-period *absence* multiselects. Absent by default; see ABSENCE_PERIODS.
+// - `child`: the "medföljande barn" form's single positive attend-list
+//   multiselect (attendanceDays). Present only on explicitly selected days;
+//   see CHILD_ATTENDANCE.
+const Inputs = type({
+  "variant?": "'adult' | 'child'",
+});
+
 // Field-name convention this step groups by - a code contract with whatever
 // field names a data source's `enrichWith.specialNeeds.options.questions`
 // entry uses (see dataSourceConfig.yml). Reusing this step for a future
@@ -108,6 +121,23 @@ const ABSENCE_PERIODS: {
   },
 ];
 
+// Child variant (fee 32359, "medföljande barn" form) attendance model. Unlike
+// the adult form's three period-gated *absence* sub-questions, the child form
+// asks a single positive multiselect - "Barnet deltar på lägret följande
+// dagar" (question 91058) - listing every camp day the child attends. So the
+// default is the inverse of the adult model: a day is present only if it's
+// explicitly in that answer, absent otherwise. The full camp range is given
+// here directly (same rationale as ABSENCE_PERIODS: don't depend on Scoutnet's
+// opaque numeric choice IDs), spanning the form's own earliest-to-latest choice
+// (11 juli - 7 augusti 2026, some days marked "(inget lägis)" in Scoutnet but
+// still valid attend days on-site).
+const CHILD_ATTENDANCE_FIELD = "attendanceDays";
+const CHILD_ATTENDANCE = {
+  label: "Deltar på lägret",
+  start: { month: 7, day: 11 },
+  end: { month: 8, day: 7 },
+};
+
 // True only when this period's identifier is actually present in the
 // periodsAttending answer. Missing/null (never answered) is treated exactly
 // like "answered but didn't select this period" - not attending - per the
@@ -189,6 +219,35 @@ function buildDayTable(
   }));
 }
 
+// Child variant: one table over the whole camp range, present only on the days
+// explicitly listed in the positive attend-list answer (see CHILD_ATTENDANCE).
+// The enricher resolves that multiselect to Scoutnet's own choice labels, e.g.
+// "Torsdag 23 juli" / "Onsdag 5 augusti (inget lägis)"; parseDayMonth pulls the
+// day/month out of either shape and ignores anything it can't parse (e.g. a raw
+// untranslated choice ID when the label lookup failed that import cycle - that
+// day then just renders as absent, the safe default here).
+function buildChildAttendance(
+  specialNeeds: Record<string, string | string[] | null>,
+): SpecialNeedsPayload["absence"] {
+  const raw = specialNeeds[CHILD_ATTENDANCE_FIELD];
+  const attendLabels = Array.isArray(raw) ? raw : [];
+  const attendDayMonths = new Set(
+    attendLabels
+      .map(parseDayMonth)
+      .filter((x): x is { day: number; month: number } => x != null)
+      .map((x) => `${x.month}-${x.day}`),
+  );
+
+  const days = dateRange(CHILD_ATTENDANCE.start, CHILD_ATTENDANCE.end).map(
+    (date) => ({
+      date: formatShortDate(date),
+      present: attendDayMonths.has(`${date.getMonth() + 1}-${date.getDate()}`),
+    }),
+  );
+
+  return [{ label: CHILD_ATTENDANCE.label, days }];
+}
+
 // Confirmed empirically against a real project (see stormote6-followup.md):
 // checkbox answers are always plain strings ("0"/"1"), never arrays. Still
 // guards against an array here defensively (a field misconfigured against
@@ -214,6 +273,7 @@ type SpecialNeedsPayload = {
 
 function buildPayload(
   specialNeeds: Record<string, string | string[] | null>,
+  variant: "adult" | "child",
 ): SpecialNeedsPayload {
   const allergens = DIET_ALLERGEN_FIELDS.filter((f) =>
     isChecked(specialNeeds[f.field]),
@@ -225,19 +285,27 @@ function buildPayload(
     specialNeeds[MEDICAL_ELECTRICITY_FIELD],
   );
 
-  // Always all three periods. Not attending a period at all (see
-  // isAttendingPeriod) overrides the per-day table entirely - every day
-  // shows absent, regardless of whatever the day-level sub-answer contains.
-  // Only when the period is actually attended does the per-day breakdown
-  // apply, and an unmarked day within it renders as present.
-  const absence = ABSENCE_PERIODS.map((p) => {
-    const days = buildDayTable(p, specialNeeds[p.daysField]);
-    const attending = isAttendingPeriod(p, specialNeeds);
-    return {
-      label: p.label,
-      days: attending ? days : days.map((d) => ({ ...d, present: false })),
-    };
-  });
+  // Attendance is the one part that differs by variant (diet/medical above are
+  // identical - same field names, per-form question IDs handled in config).
+  // Child: a single positive attend-list table. Adult: always all three
+  // periods, where not attending a period at all (see isAttendingPeriod)
+  // overrides the per-day table entirely - every day shows absent, regardless
+  // of whatever the day-level sub-answer contains. Only when the period is
+  // actually attended does the per-day breakdown apply, and an unmarked day
+  // within it renders as present.
+  const absence =
+    variant === "child"
+      ? buildChildAttendance(specialNeeds)
+      : ABSENCE_PERIODS.map((p) => {
+          const days = buildDayTable(p, specialNeeds[p.daysField]);
+          const attending = isAttendingPeriod(p, specialNeeds);
+          return {
+            label: p.label,
+            days: attending
+              ? days
+              : days.map((d) => ({ ...d, present: false })),
+          };
+        });
 
   return {
     diet: { allergens, other: isBlankString(otherText) ? null : otherText },
@@ -259,9 +327,15 @@ function buildPayload(
  * having answered that question) renders as absent every day, since the
  * form's own logic only asks about specific missed days *within* a period
  * someone already said they're attending (see isAttendingPeriod).
+ *
+ * Two variants via the `variant` input (default `adult`): the child variant
+ * (fee 32359, "medföljande barn") shares the diet/medical display entirely and
+ * differs only in attendance - a single positive attend-list rather than the
+ * adult period-gate/absence model (see Inputs and buildChildAttendance).
  */
 export const specialNeedsStep: StepImplementation = {
   id: "jamboree26:specialNeeds",
+  inputs: Inputs,
   hooks: {
     async onStepStart(ctx) {
       const actor = await ctx.getActor();
@@ -272,6 +346,9 @@ export const specialNeedsStep: StepImplementation = {
         );
       }
 
+      const inputs = ctx.getInputs() as typeof Inputs.infer;
+      const variant = inputs.variant ?? "adult";
+
       const participant = await prisma.participant.findUniqueOrThrow({
         where: { id: actor.participant.id },
         select: { metadata: true },
@@ -281,7 +358,7 @@ export const specialNeedsStep: StepImplementation = {
       const specialNeeds =
         parsed instanceof type.errors ? undefined : parsed.specialNeeds;
 
-      const payload = buildPayload(specialNeeds ?? {});
+      const payload = buildPayload(specialNeeds ?? {}, variant);
 
       await ctx.showScreen("jamboree26:specialNeeds:info", payload);
     },
