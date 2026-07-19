@@ -37,13 +37,18 @@ export function SelectSubjectScreen({ payload }: { payload: object }) {
 
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<
     string[]
-  >(
-    validPayload instanceof type.errors
-      ? []
-      : validPayload.participants
-          .filter((p) => p.preCheckedIn)
-          .map((p) => p.id),
-  );
+  >(() => {
+    if (validPayload instanceof type.errors) return [];
+
+    // If any subject was pre-checked-in, default to exactly that set.
+    // Otherwise (no pre-check-in happened) default to selecting everyone.
+    const preCheckedIn = validPayload.participants.filter(
+      (p) => p.preCheckedIn,
+    );
+    return (
+      preCheckedIn.length > 0 ? preCheckedIn : validPayload.participants
+    ).map((p) => p.id);
+  });
 
   if (validPayload instanceof type.errors) {
     return <ValidationError errors={validPayload} />;
