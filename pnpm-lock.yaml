@@ -7,11 +7,11 @@ settings:
 catalogs:
   default:
     '@scouterna/ui-react':
-      specifier: 4.3.2
-      version: 4.3.2
+      specifier: 4.5.1
+      version: 4.5.1
     '@scouterna/ui-webc':
-      specifier: 4.3.2
-      version: 4.3.2
+      specifier: 4.5.1
+      version: 4.5.1
 
 importers:
 
@@ -149,10 +149,10 @@ importers:
         version: link:../../plugins/scoutnet
       '@scouterna/ui-react':
         specifier: 'catalog:'
-        version: 4.3.2(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+        version: 4.5.1(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@scouterna/ui-webc':
         specifier: 'catalog:'
-        version: 4.3.2(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+        version: 4.5.1(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@tabler/icons':
         specifier: ^3.41.1
         version: 3.41.1
@@ -317,7 +317,7 @@ importers:
         version: link:../../packages/backend
       '@scouterna/ui-react':
         specifier: 'catalog:'
-        version: 4.3.2(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+        version: 4.5.1(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@types/react':
         specifier: ^19.2.14
         version: 19.2.14
@@ -345,7 +345,7 @@ importers:
         version: link:../../packages/backend
       '@scouterna/ui-react':
         specifier: 'catalog:'
-        version: 4.3.2(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+        version: 4.5.1(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@types/react':
         specifier: ^19.2.14
         version: 19.2.14
@@ -370,7 +370,7 @@ importers:
         version: link:../../packages/backend
       '@scouterna/ui-react':
         specifier: 'catalog:'
-        version: 4.3.2(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+        version: 4.5.1(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@types/react':
         specifier: ^19.2.14
         version: 19.2.14
@@ -395,7 +395,7 @@ importers:
         version: link:../../packages/backend
       '@scouterna/ui-react':
         specifier: 'catalog:'
-        version: 4.3.2(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+        version: 4.5.1(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@types/react':
         specifier: ^19.2.14
         version: 19.2.14
@@ -1540,17 +1540,20 @@ packages:
   '@scouterna/design-tokens@0.0.6':
     resolution: {integrity: sha512-wgqjEkTiSv+mfnpYBHkIpArRuZotZMJles+F4vhgBxsFO3p6t++jbIrp7IHh4BzsF9Du4HdTnzmqlFsCirSXag==}
 
+  '@scouterna/design-tokens@0.0.7':
+    resolution: {integrity: sha512-7HT8/ltcczFmQVxYyU+fHZ8LsMa1KvDe80wshIOdilqS0hBTzaZtatnLwwRYytayfMMVX0oyP1HNfC46tkpDbQ==}
+
   '@scouterna/scoutnet@0.3.26':
     resolution: {integrity: sha512-ecmN5qpl85qQa1oqBxMzkGCP5ubpEvw5sgYJb6pYqlXBycrAnpGIzDFsc5utXihP0MJVW987HECf5Xb7IqbGHA==}
 
   '@scouterna/tailwind-theme@0.0.5':
     resolution: {integrity: sha512-4zh2xpvNuAlBRv5SzIgbm9h4KyQ+QOtpbbLapLyWAMtCLIXM6dsGBvQeQ52s1Q6uzrqO25KLD43+L/FBV10Obw==}
 
-  '@scouterna/ui-react@4.3.2':
-    resolution: {integrity: sha512-z87LV2xRxsGTKVw99H/pLApXKH3drFgxunQsbNkxrFv73R+C48FQXSwz4TJdyYT2TEriK39S5dWpkUltmbg+rQ==}
+  '@scouterna/ui-react@4.5.1':
+    resolution: {integrity: sha512-zBqxgBb3PdmWG87QDB2xSOC6bIgzinMbnbigg+d4FNxNMWsPTYHObRthRZE6a0uZ+R4PvNULFzIQdkiRV/X27w==}
 
-  '@scouterna/ui-webc@4.3.2':
-    resolution: {integrity: sha512-B4fPytNgIwzFGBcZT1btsYYJvwWwEYhssWTHkVWB1jECI82pNt2SemXOhHQRv7/NobUxwgas6sGwyLKJMAHyGw==}
+  '@scouterna/ui-webc@4.5.1':
+    resolution: {integrity: sha512-2jGTOhFIANTbDIXSRrOyXNcTaVZ4P72/omL6kxAxz/tsJ+vkRJRUmErKUnWgyT4kuKnsDseCdgunqORa7EX+Jw==}
 
   '@solid-primitives/event-listener@2.4.5':
     resolution: {integrity: sha512-nwRV558mIabl4yVAhZKY8cb6G+O1F0M6Z75ttTu5hk+SxdOnKSGj+eetDIu7Oax1P138ZdUU01qnBPR8rnxaEA==}
@@ -4614,6 +4617,10 @@ snapshots:
     dependencies:
       glob: 13.0.6
 
+  '@scouterna/design-tokens@0.0.7':
+    dependencies:
+      glob: 13.0.6
+
   '@scouterna/scoutnet@0.3.26':
     dependencies:
       openapi-fetch: 0.17.0
@@ -4622,9 +4629,9 @@ snapshots:
     dependencies:
       '@scouterna/design-tokens': 0.0.6
 
-  '@scouterna/ui-react@4.3.2(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
+  '@scouterna/ui-react@4.5.1(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
     dependencies:
-      '@scouterna/ui-webc': 4.3.2(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@scouterna/ui-webc': 4.5.1(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@stencil/react-output-target': 1.5.2(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
     transitivePeerDependencies:
       - '@stencil/core'
@@ -4632,9 +4639,9 @@ snapshots:
       - react
       - react-dom
 
-  '@scouterna/ui-webc@4.3.2(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
+  '@scouterna/ui-webc@4.5.1(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
     dependencies:
-      '@scouterna/design-tokens': 0.0.6
+      '@scouterna/design-tokens': 0.0.7
       '@stencil/react-output-target': 1.5.2(@stencil/core@4.43.4)(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@tabler/icons': 3.41.1
       class-variance-authority: 0.7.1

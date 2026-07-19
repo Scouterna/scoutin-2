@@ -2,5 +2,5 @@ packages:
   - packages/*
   - plugins/*
 catalog:
-  '@scouterna/ui-react': 4.3.2
-  '@scouterna/ui-webc': 4.3.2
+  '@scouterna/ui-react': 4.5.1
+  '@scouterna/ui-webc': 4.5.1
