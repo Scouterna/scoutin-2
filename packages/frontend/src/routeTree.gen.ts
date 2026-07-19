@@ -22,7 +22,7 @@ import { Route as AdminParticipantsRouteImport } from './routes/admin/participan
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as AdminLinksRouteImport } from './routes/admin/links'
 import { Route as AdminKiosksRouteImport } from './routes/admin/kiosks'
-import { Route as AdminDataRouteImport } from './routes/admin/data'
+import { Route as AdminJobsRouteImport } from './routes/admin/jobs'
 import { Route as AdminCheckinRouteImport } from './routes/admin/checkin'
 import { Route as AdminBlocklistRouteImport } from './routes/admin/blocklist'
 import { Route as KioskTestRouteImport } from './routes/_kiosk/test'
@@ -93,9 +93,9 @@ const AdminKiosksRoute = AdminKiosksRouteImport.update({
   path: '/kiosks',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminDataRoute = AdminDataRouteImport.update({
-  id: '/data',
-  path: '/data',
+const AdminJobsRoute = AdminJobsRouteImport.update({
+  id: '/jobs',
+  path: '/jobs',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminCheckinRoute = AdminCheckinRouteImport.update({
@@ -132,7 +132,7 @@ export interface FileRoutesByFullPath {
   '/test': typeof KioskTestRoute
   '/admin/blocklist': typeof AdminBlocklistRoute
   '/admin/checkin': typeof AdminCheckinRoute
-  '/admin/data': typeof AdminDataRoute
+  '/admin/jobs': typeof AdminJobsRoute
   '/admin/kiosks': typeof AdminKiosksRoute
   '/admin/links': typeof AdminLinksRoute
   '/admin/login': typeof AdminLoginRoute
@@ -150,7 +150,7 @@ export interface FileRoutesByTo {
   '/test': typeof KioskTestRoute
   '/admin/blocklist': typeof AdminBlocklistRoute
   '/admin/checkin': typeof AdminCheckinRoute
-  '/admin/data': typeof AdminDataRoute
+  '/admin/jobs': typeof AdminJobsRoute
   '/admin/kiosks': typeof AdminKiosksRoute
   '/admin/links': typeof AdminLinksRoute
   '/admin/login': typeof AdminLoginRoute
@@ -171,7 +171,7 @@ export interface FileRoutesById {
   '/_kiosk/test': typeof KioskTestRoute
   '/admin/blocklist': typeof AdminBlocklistRoute
   '/admin/checkin': typeof AdminCheckinRoute
-  '/admin/data': typeof AdminDataRoute
+  '/admin/jobs': typeof AdminJobsRoute
   '/admin/kiosks': typeof AdminKiosksRoute
   '/admin/links': typeof AdminLinksRoute
   '/admin/login': typeof AdminLoginRoute
@@ -194,7 +194,7 @@ export interface FileRouteTypes {
     | '/test'
     | '/admin/blocklist'
     | '/admin/checkin'
-    | '/admin/data'
+    | '/admin/jobs'
     | '/admin/kiosks'
     | '/admin/links'
     | '/admin/login'
@@ -212,7 +212,7 @@ export interface FileRouteTypes {
     | '/test'
     | '/admin/blocklist'
     | '/admin/checkin'
-    | '/admin/data'
+    | '/admin/jobs'
     | '/admin/kiosks'
     | '/admin/links'
     | '/admin/login'
@@ -232,7 +232,7 @@ export interface FileRouteTypes {
     | '/_kiosk/test'
     | '/admin/blocklist'
     | '/admin/checkin'
-    | '/admin/data'
+    | '/admin/jobs'
     | '/admin/kiosks'
     | '/admin/links'
     | '/admin/login'
@@ -347,11 +347,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminKiosksRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/admin/data': {
-      id: '/admin/data'
-      path: '/data'
-      fullPath: '/admin/data'
-      preLoaderRoute: typeof AdminDataRouteImport
+    '/admin/jobs': {
+      id: '/admin/jobs'
+      path: '/jobs'
+      fullPath: '/admin/jobs'
+      preLoaderRoute: typeof AdminJobsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/checkin': {
@@ -421,7 +421,7 @@ const AdminSessionsRouteWithChildren = AdminSessionsRoute._addFileChildren(
 interface AdminRouteChildren {
   AdminBlocklistRoute: typeof AdminBlocklistRoute
   AdminCheckinRoute: typeof AdminCheckinRoute
-  AdminDataRoute: typeof AdminDataRoute
+  AdminJobsRoute: typeof AdminJobsRoute
   AdminKiosksRoute: typeof AdminKiosksRoute
   AdminLinksRoute: typeof AdminLinksRoute
   AdminLoginRoute: typeof AdminLoginRoute
@@ -434,7 +434,7 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminBlocklistRoute: AdminBlocklistRoute,
   AdminCheckinRoute: AdminCheckinRoute,
-  AdminDataRoute: AdminDataRoute,
+  AdminJobsRoute: AdminJobsRoute,
   AdminKiosksRoute: AdminKiosksRoute,
   AdminLinksRoute: AdminLinksRoute,
   AdminLoginRoute: AdminLoginRoute,

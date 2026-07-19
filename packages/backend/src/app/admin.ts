@@ -3,6 +3,7 @@ import type { AppEnv } from "../core/websocket/types.ts";
 import { requireAdmin, requireStaff } from "../domains/auth/auth.service.ts";
 import { usersAdminRouter } from "../domains/auth/users.admin.routes.ts";
 import { blocklistAdminRouter } from "../domains/blocklist/blocklist.admin.routes.ts";
+import { jobsAdminRouter } from "../domains/jobs/jobs.admin.routes.ts";
 import { kiosksAdminRouter } from "../domains/kiosks/kiosks.admin.routes.ts";
 import { participantsAdminRouter } from "../domains/participants/participants.admin.routes.ts";
 import { reportsAdminRouter } from "../domains/participants/reports.admin.routes.ts";
@@ -21,6 +22,7 @@ export const adminRouter = new Hono<AppEnv>()
   .use("/kiosks/*", requireAdmin)
   .use("/links/*", requireAdmin)
   .use("/blocklist/*", requireAdmin)
+  .use("/jobs/*", requireAdmin)
   .use("/participants/reimport", requireAdmin)
   .get("/me", (c) => c.json({ authenticated: true, user: c.get("user") }))
   .route("/users", usersAdminRouter)
@@ -28,5 +30,6 @@ export const adminRouter = new Hono<AppEnv>()
   .route("/kiosks", kiosksAdminRouter)
   .route("/links", linksAdminRouter)
   .route("/participants", participantsAdminRouter)
+  .route("/jobs", jobsAdminRouter)
   .route("/reports", reportsAdminRouter)
   .route("/blocklist", blocklistAdminRouter);

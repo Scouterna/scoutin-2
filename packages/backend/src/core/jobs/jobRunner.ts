@@ -29,6 +29,25 @@ export interface StopOptions {
   deadlineMs: number;
 }
 
+export interface JobLastRun {
+  /** When the run finished, epoch ms. */
+  finishedAt: number;
+  durationMs: number;
+  ok: boolean;
+  /** Present only when `ok` is false. */
+  error?: string;
+}
+
+/** Serializable status snapshot for one job (exposed by the admin API). */
+export interface JobStatus {
+  name: string;
+  intervalMs: number;
+  running: boolean;
+  /** A fresh follow-up run is queued behind the current one. */
+  queued: boolean;
+  lastRun: JobLastRun | null;
+}
+
 /**
  * A tiny in-process scheduler for the app's recurring jobs (data import,
  * check-in write-back). It exists to centralize three cross-cutting concerns
@@ -48,6 +67,7 @@ export class JobRunner {
   private timers = new Map<string, ReturnType<typeof setInterval>>();
   private inFlight = new Map<string, Promise<void>>();
   private queued = new Map<string, Promise<void>>();
+  private lastRun = new Map<string, JobLastRun>();
   private shuttingDown = false;
 
   register(job: JobDefinition) {
@@ -126,15 +146,30 @@ export class JobRunner {
       logger.info({ job: name }, "Job started");
       try {
         await job.handler();
+        const durationMs = Math.round(performance.now() - start);
+        this.lastRun.set(name, {
+          finishedAt: Date.now(),
+          durationMs,
+          ok: true,
+        });
         logger.info(
           {
             job: name,
-            durationSeconds: Number(
-              ((performance.now() - start) / 1000).toFixed(2),
-            ),
+            durationSeconds: Number((durationMs / 1000).toFixed(2)),
           },
           "Job finished",
         );
+      } catch (err) {
+        const durationMs = Math.round(performance.now() - start);
+        const message = err instanceof Error ? err.message : String(err);
+        this.lastRun.set(name, {
+          finishedAt: Date.now(),
+          durationMs,
+          ok: false,
+          error: message,
+        });
+        logger.error({ err, job: name }, "Job run failed");
+        throw err;
       } finally {
         this.inFlight.delete(name);
       }
@@ -142,6 +177,17 @@ export class JobRunner {
 
     this.inFlight.set(name, run);
     return run;
+  }
+
+  /** Serializable status of every registered job, in registration order. */
+  list(): JobStatus[] {
+    return [...this.jobs.values()].map((job) => ({
+      name: job.name,
+      intervalMs: job.intervalMs,
+      running: this.inFlight.has(job.name),
+      queued: this.queued.has(job.name),
+      lastRun: this.lastRun.get(job.name) ?? null,
+    }));
   }
 
   /**
@@ -161,9 +207,9 @@ export class JobRunner {
 
       const timer = setInterval(() => {
         if (this.shuttingDown) return;
-        this.runNow(job.name).catch((err) => {
-          logger.error({ err, job: job.name }, "Scheduled job run failed");
-        });
+        // Failures are recorded (lastRun) and logged inside the run; swallow
+        // here so a failed run never kills the schedule.
+        this.runNow(job.name).catch(() => {});
       }, job.intervalMs);
 
       this.timers.set(job.name, timer);

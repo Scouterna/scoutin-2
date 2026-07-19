@@ -2,7 +2,6 @@ import {
   Assessment as AssessmentIcon,
   Block as BlockIcon,
   CropLandscape as CropLandscapeIcon,
-  Dashboard as DashboardIcon,
   ExpandLess as ExpandLessIcon,
   ExpandMore as ExpandMoreIcon,
   Group as GroupIcon,
@@ -10,6 +9,7 @@ import {
   Link as LinkIcon,
   ManageAccounts as ManageAccountsIcon,
   Route as RouteIcon,
+  Schedule as ScheduleIcon,
   Tune as TuneIcon,
 } from "@mui/icons-material";
 import AppBar from "@mui/material/AppBar";
@@ -36,7 +36,7 @@ const drawerWidth = 240;
 // Pages living under the collapsible "Avancerat" section.
 function isAdvancedPath(pathname: string): boolean {
   return [
-    "/admin/data",
+    "/admin/jobs",
     "/admin/sessions",
     "/admin/kiosks",
     "/admin/links",
@@ -160,14 +160,14 @@ export function AdminLayout({ children }: Props) {
                   </ListItem>
                   <ListItem disablePadding>
                     <ListItemButtonLink
-                      to={"/admin/data"}
+                      to={"/admin/jobs"}
                       activeProps={{ selected: true }}
                       sx={{ pl: 4 }}
                     >
                       <ListItemIcon>
-                        <DashboardIcon />
+                        <ScheduleIcon />
                       </ListItemIcon>
-                      <ListItemText primary="Data" />
+                      <ListItemText primary="Jobb" />
                     </ListItemButtonLink>
                   </ListItem>
                 </>

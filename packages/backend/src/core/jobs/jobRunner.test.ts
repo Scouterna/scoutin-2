@@ -132,6 +132,52 @@ describe("JobRunner", () => {
     expect(handler).toHaveBeenCalledTimes(2);
   });
 
+  it("reports status and records last-run outcome via list()", async () => {
+    const runner = new JobRunner();
+    let outcome: "ok" | "fail" = "ok";
+    const gate = deferred();
+    const handler = vi.fn(async () => {
+      if (outcome === "fail") throw new Error("kaboom");
+      await gate.promise;
+    });
+    runner.register({ name: "j", intervalMs: 5000, handler });
+
+    // The single registered job's status.
+    const status = () => {
+      const [job] = runner.list();
+      if (!job) throw new Error("expected one job");
+      return job;
+    };
+
+    // Idle, never run.
+    expect(runner.list()).toHaveLength(1);
+    expect(status()).toMatchObject({
+      name: "j",
+      intervalMs: 5000,
+      running: false,
+      queued: false,
+      lastRun: null,
+    });
+
+    // Running.
+    const run = runner.runNow("j");
+    await Promise.resolve();
+    expect(status().running).toBe(true);
+
+    // Finished successfully -> lastRun records ok + a duration.
+    gate.resolve();
+    await run;
+    expect(status().running).toBe(false);
+    expect(status().lastRun).toMatchObject({ ok: true });
+    expect(status().lastRun?.error).toBeUndefined();
+    expect(typeof status().lastRun?.durationMs).toBe("number");
+
+    // A failing run records ok:false with the error message.
+    outcome = "fail";
+    await expect(runner.runNow("j")).rejects.toThrow("kaboom");
+    expect(status().lastRun).toMatchObject({ ok: false, error: "kaboom" });
+  });
+
   it("rejects runNow once shutting down (no untracked run)", async () => {
     const runner = new JobRunner();
     const handler = vi.fn(async () => {});
