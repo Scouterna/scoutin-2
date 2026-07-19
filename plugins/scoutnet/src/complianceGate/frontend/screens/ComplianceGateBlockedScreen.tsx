@@ -4,6 +4,7 @@ import {
 } from "@scouterna/scoutin-plugin-api/frontend";
 import { ScoutButton, ScoutCallout } from "@scouterna/ui-react";
 import { type } from "arktype";
+import { useState } from "react";
 
 const Payload = type({
   safeFromHarmOk: "boolean",
@@ -12,6 +13,11 @@ const Payload = type({
 
 export function ComplianceGateBlockedScreen({ payload }: { payload: object }) {
   const socket = usePluginSocket();
+
+  // Once bypass is sent the step advances; a second send would land on the
+  // next step (which has no `bypass` method) and surface as a spurious error.
+  // Guard the button so it can only fire once while this screen is shown.
+  const [submitting, setSubmitting] = useState(false);
 
   const validPayload = Payload(payload);
   if (validPayload instanceof type.errors) {
@@ -25,11 +31,13 @@ export function ComplianceGateBlockedScreen({ payload }: { payload: object }) {
   };
 
   const handleBypass = () => {
+    if (submitting) return;
     if (
       window.confirm(
         "Är du säker på att du vill checka in personen ändå, trots att kraven inte är uppfyllda?",
       )
     ) {
+      setSubmitting(true);
       socket?.send({ name: "step:callMethod", data: { name: "bypass" } });
     }
   };
@@ -66,7 +74,11 @@ export function ComplianceGateBlockedScreen({ payload }: { payload: object }) {
         <ScoutButton variant="primary" onScoutClick={handleAbort}>
           Avbryt
         </ScoutButton>
-        <ScoutButton variant="outlined" onScoutClick={handleBypass}>
+        <ScoutButton
+          variant="outlined"
+          onScoutClick={handleBypass}
+          disabled={submitting}
+        >
           Fortsätt ändå
         </ScoutButton>
       </div>

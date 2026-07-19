@@ -55,7 +55,18 @@ const routes = router
 
       const method = step.publicMethods?.[evt.data.name];
       if (!method) {
-        throw new Error(`Method ${evt.data.name} not found on step ${step.id}`);
+        // A method call inherently races step advancement: e.g. an operator
+        // double-clicks a button whose first click already completed the step,
+        // so the second call arrives after the session has moved on to a step
+        // that doesn't define this method. That's an expected race, not a
+        // server fault, so we log and ignore it rather than throwing — which
+        // would surface to the kiosk as a spurious "Internal server error" +
+        // reload toast (the first call already did the real work).
+        getLogger(c).warn(
+          { method: evt.data.name, stepId: step.id },
+          "Ignoring method call not defined on the current step (likely a stale or duplicate call after step advancement)",
+        );
+        return;
       }
 
       let validatedInputs: unknown;
