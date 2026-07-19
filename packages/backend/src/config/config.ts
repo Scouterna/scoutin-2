@@ -27,6 +27,16 @@ const Config = type({
   CHECKIN_SYNC_INTERVAL_MS: type("string.integer>=0")
     .pipe((value) => Number.parseInt(value, 10))
     .default("120000"),
+  // How often (ms) provider data (participants, groups) is imported into the
+  // database. Set to 0 to disable scheduled imports (manual reimport only).
+  DATA_IMPORT_INTERVAL_MS: type("string.integer>=0")
+    .pipe((value) => Number.parseInt(value, 10))
+    .default("1800000"),
+  // Max time (ms) to wait for in-flight jobs to finish on shutdown before
+  // exiting anyway. Safe to exceed: the jobs are idempotent and heal next run.
+  SHUTDOWN_GRACE_MS: type("string.integer>=0")
+    .pipe((value) => Number.parseInt(value, 10))
+    .default("30000"),
 });
 type Config = typeof Config.infer;
 
