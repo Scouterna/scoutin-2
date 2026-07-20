@@ -4,6 +4,13 @@ dataSources:
       sv: ledare i din kår
       en: leader in your scout group
     provider: scoutnet
+    # Compliance data for the groups complianceGate report (see stepConfig.yml /
+    # stepConfig.pre-checkin.yml). Reads pc_courses (Trygga Möten) and pc_details
+    # (registerutdrag) off the raw Scoutnet participant record; without these the
+    # gate has no metadata to read and every leader is reported as non-compliant.
+    enrichWith:
+      safeFromHarm: scoutnet:safeFromHarm
+      criminalRecordExtract: scoutnet:criminalRecordExtract
     subGroups:
       leader:
         name:
@@ -14,7 +21,7 @@ dataSources:
           sv: Ledarfunktionär
           en: Leader functionary
     providerOptions:
-      projectId: 56032
+      projectId: 52710
       includeIndividuals: false
       includeGroups: true
       subGroupConditions:

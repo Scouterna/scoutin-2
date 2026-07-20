@@ -57,6 +57,7 @@ steps:
     # the staff check-in flow design - a failure should abort cheaply, not
     # after collecting/showing other info.
     uses: scoutnet:complianceGate
+    id: complianceGateStaff
     with:
       # Trygga Möten is valid for 3 years from completion. Set to null to
       # disable the expiry check.
@@ -105,7 +106,30 @@ steps:
     with:
       filter: "participant.subGroup == 'leaderstaff'"
       title: "Ledarfunktionärer"
-      message: "Följande personer är anmälda som ledarfunktionärer. Ledarfunktionärer bor och äter med er kår, men arbetar som funktionärer på lägret och deltar alltså inte på programpass med kåren. Kontrollera noggrant att alla personer i listan är medvetna om detta, och att ingen ledarfunktionär saknas i listan."
+      message: "Följande personer är anmälda som ledarfunktionärer. Ledarfunktionärer bor och äter med er kår, men arbetar som funktionärer på lägret och deltar alltså inte på programpass med kåren. Kontrollera noggrant att alla personer i listan är medvetna om detta, och att ingen ledarfunktionär saknas i listan. Om något inte stämmer fortsätter ni med incheckningen och meddelar oss när ni checkar in på plats."
+
+  - if: ${{ steps.identify.outputs.dataSource == 'groups' }}
+    # Informational (never blocks): shows the checking-in leader which of the
+    # selected leaders have not completed Safe from Harm (Trygga Möten) or shown
+    # a criminal record extract (registerutdrag). `mode: multiple` renders the
+    # per-person report; `block: false` lets them continue regardless. Only
+    # leaders are checked (`subGroups`), not the scouts a leader also selects -
+    # subjects outside these subgroups are ignored entirely. Validity settings
+    # mirror the staff complianceGate above so "compliant" means the same thing
+    # across flows.
+    uses: scoutnet:complianceGate
+    id: complianceGateGroups
+    with:
+      mode: multiple
+      block: false
+      subGroups:
+        - leader
+        - leaderstaff
+      safeFromHarmValidYears: 3
+      criminalRecordExtractValidYears: 3
+      checkDate: "2026-08-01"
+      title: "Ledare som saknar krav"
+      message: "Följande ledare har inte giltigt Trygga Möten och/eller registerutdrag registrerat i Scoutnet."
 
   - uses: base:markConfirmedCheckedIn
     required: true

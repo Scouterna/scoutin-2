@@ -9,6 +9,10 @@ import { useState } from "react";
 const Payload = type({
   safeFromHarmOk: "boolean",
   criminalRecordExtractOk: "boolean",
+  // Whether a failure blocks the flow. Defaults to true (the classic staff
+  // gate: abort/bypass). When false, the screen is informational and offers a
+  // single "continue" button instead.
+  "block?": "boolean",
 });
 
 export function ComplianceGateBlockedScreen({ payload }: { payload: object }) {
@@ -24,7 +28,11 @@ export function ComplianceGateBlockedScreen({ payload }: { payload: object }) {
     return <ValidationError errors={validPayload} />;
   }
 
-  const { safeFromHarmOk, criminalRecordExtractOk } = validPayload;
+  const {
+    safeFromHarmOk,
+    criminalRecordExtractOk,
+    block = true,
+  } = validPayload;
 
   const handleAbort = () => {
     socket?.send({ name: "session:abort" });
@@ -42,11 +50,17 @@ export function ComplianceGateBlockedScreen({ payload }: { payload: object }) {
     }
   };
 
+  const handleContinue = () => {
+    if (submitting) return;
+    setSubmitting(true);
+    socket?.send({ name: "step:callMethod", data: { name: "confirm" } });
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-heading-base font-semibold">
-          Kan inte checka in ännu
+          {block ? "Kan inte checka in ännu" : "Obs – krav saknas"}
         </h1>
       </div>
 
@@ -55,8 +69,9 @@ export function ComplianceGateBlockedScreen({ payload }: { payload: object }) {
           variant="warning"
           heading="Trygga Möten saknas eller har gått ut"
         >
-          Genomför Trygga Möten på plats. När det är klart kan du checka in
-          igen.
+          {block
+            ? "Genomför Trygga Möten på plats. När det är klart kan du checka in igen."
+            : "Genomför Trygga Möten så snart som möjligt."}
         </ScoutCallout>
       )}
 
@@ -65,23 +80,36 @@ export function ComplianceGateBlockedScreen({ payload }: { payload: object }) {
           variant="warning"
           heading="Registerutdrag saknas eller har gått ut"
         >
-          Se rutin för utdrag ur belastningsregistret. Uppdatera i Scoutnet när
-          utdraget är klart, så kan du checka in igen.
+          {block
+            ? "Se rutin för utdrag ur belastningsregistret. Uppdatera i Scoutnet när utdraget är klart, så kan du checka in igen."
+            : "Se rutin för utdrag ur belastningsregistret och uppdatera i Scoutnet."}
         </ScoutCallout>
       )}
 
-      <div className="flex gap-4">
-        <ScoutButton variant="primary" onScoutClick={handleAbort}>
-          Avbryt
-        </ScoutButton>
-        <ScoutButton
-          variant="outlined"
-          onScoutClick={handleBypass}
-          disabled={submitting}
-        >
-          Fortsätt ändå
-        </ScoutButton>
-      </div>
+      {block ? (
+        <div className="flex gap-4">
+          <ScoutButton variant="primary" onScoutClick={handleAbort}>
+            Avbryt
+          </ScoutButton>
+          <ScoutButton
+            variant="outlined"
+            onScoutClick={handleBypass}
+            disabled={submitting}
+          >
+            Fortsätt ändå
+          </ScoutButton>
+        </div>
+      ) : (
+        <div className="flex justify-end">
+          <ScoutButton
+            variant="primary"
+            onScoutClick={handleContinue}
+            disabled={submitting}
+          >
+            Fortsätt
+          </ScoutButton>
+        </div>
+      )}
     </div>
   );
 }
