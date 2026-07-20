@@ -146,6 +146,9 @@ export function StaffCheckin() {
               Tillbaka
             </Button>
           )}
+          <Button size="small" variant="outlined" onClick={startNewSession}>
+            Ny incheckning
+          </Button>
         </Box>
 
         <Box
