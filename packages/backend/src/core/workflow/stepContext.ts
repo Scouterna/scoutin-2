@@ -14,9 +14,11 @@ import { getLogger, logger } from "../logging/logger.ts";
 import type { MessageTypes } from "../websocket/messageTypes.ts";
 import {
   clearStepState,
+  createBroadcastWs,
   getStepMeta,
   getStepState,
   markScreenShown,
+  registerConnection,
   setStepStateKey,
   wasScreenShown,
 } from "../websocket/sessionRegistry.ts";
@@ -83,13 +85,25 @@ export function createStepContext(
         !wasScreenShown(sessionId),
       );
 
+      // The incoming `ws` is a broadcaster bound to the session id captured
+      // when this step method started. If the step called overrideSession()
+      // (e.g. resuming a previous check-in), that handle now targets the wrong
+      // session and its messages would reach no one. Rebuild the broadcaster
+      // for the effective session so screen updates actually reach the kiosk.
+      const effectiveWs =
+        effectiveSessionId === sessionId
+          ? ws
+          : (createBroadcastWs(
+              effectiveSessionId,
+            ) as unknown as TypedWSContext<MessageTypes>);
+
       const currentStep = await getCurrentStep(effectiveSessionId);
       if (currentStep === null) {
         await finalizeSession(effectiveSessionId);
-        ws.send({ name: "session:completed" });
+        effectiveWs.send({ name: "session:completed" });
         return;
       }
-      await startStep(c, ws, currentStep);
+      await startStep(c, effectiveWs, currentStep);
     },
     getInputs() {
       const stepMeta = getStepMeta(sessionId);
@@ -207,6 +221,22 @@ export function createStepContext(
       });
     },
     async overrideSession(newSessionId) {
+      const oldSessionId = c.get("wsSessionId");
+
+      // Move this live WebSocket connection to the new session in the
+      // registry. Connections are keyed by session id, and all screen updates
+      // are broadcast per session id — without re-registering here, every
+      // message for the new session (goBack, step advancement, showScreen)
+      // would be broadcast to a session that has no connections and silently
+      // dropped, freezing the kiosk. See sessionRegistry / step.ts.
+      if (oldSessionId && oldSessionId !== newSessionId) {
+        const send = c.get("wsSend");
+        if (send) {
+          c.get("wsUnregister")?.();
+          c.set("wsUnregister", registerConnection(newSessionId, send));
+        }
+      }
+
       c.set("wsSessionId", newSessionId);
       c.set(
         "logger",

@@ -117,8 +117,12 @@ export const authRouter = createSocketRouter<MessageTypes>()
       // Register this connection. Dead connections are cleaned up lazily when
       // broadcastToSession catches a failed send, but we also unregister eagerly
       // via wsUnregister when the WebSocket closes (see app.ts onClose).
-      const unregister = registerConnection(sessionId, (msg) => ws.send(msg));
+      const send = (msg: MessageTypes) => ws.send(msg);
+      const unregister = registerConnection(sessionId, send);
       c.set("wsUnregister", unregister);
+      // Kept so overrideSession() can migrate this live connection to another
+      // session id (e.g. when resuming a previous check-in).
+      c.set("wsSend", send);
 
       authAttempts.inc({ outcome: "success" });
       ws.send({
