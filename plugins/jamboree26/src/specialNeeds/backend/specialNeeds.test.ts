@@ -123,6 +123,7 @@ describe("jamboree26:specialNeeds step", () => {
     expect(ctx.showScreen).toHaveBeenCalledWith(
       "jamboree26:specialNeeds:info",
       {
+        assignment: [],
         diet: DEFAULT_DIET,
         medicalElectricityNeeded: false,
         absence: NOT_ATTENDING_ANYTHING,
@@ -143,6 +144,7 @@ describe("jamboree26:specialNeeds step", () => {
     expect(ctx.showScreen).toHaveBeenCalledWith(
       "jamboree26:specialNeeds:info",
       {
+        assignment: [],
         diet: DEFAULT_DIET,
         medicalElectricityNeeded: false,
         absence: NOT_ATTENDING_ANYTHING,
@@ -163,6 +165,7 @@ describe("jamboree26:specialNeeds step", () => {
     expect(ctx.showScreen).toHaveBeenCalledWith(
       "jamboree26:specialNeeds:info",
       {
+        assignment: [],
         diet: DEFAULT_DIET,
         medicalElectricityNeeded: false,
         absence: [
@@ -188,6 +191,7 @@ describe("jamboree26:specialNeeds step", () => {
     expect(ctx.showScreen).toHaveBeenCalledWith(
       "jamboree26:specialNeeds:info",
       {
+        assignment: [],
         diet: { allergens: ["Gluten", "Nötter och jordnötter"], other: null },
         medicalElectricityNeeded: false,
         absence: NOT_ATTENDING_ANYTHING,
@@ -208,6 +212,7 @@ describe("jamboree26:specialNeeds step", () => {
     expect(ctx.showScreen).toHaveBeenCalledWith(
       "jamboree26:specialNeeds:info",
       {
+        assignment: [],
         diet: {
           allergens: [
             "Halal",
@@ -230,7 +235,32 @@ describe("jamboree26:specialNeeds step", () => {
     expect(ctx.showScreen).toHaveBeenCalledWith(
       "jamboree26:specialNeeds:info",
       {
+        assignment: [],
         diet: { allergens: [], other: "Extra allergisk mot kiwi" },
+        medicalElectricityNeeded: false,
+        absence: NOT_ATTENDING_ANYTHING,
+      },
+    );
+  });
+
+  it("includes the assignment fields (funktion/sektion/avdelning) when set, skipping any that are blank", async () => {
+    withMetadata({
+      assignmentFunction: "Programfunktionär",
+      assignmentSection: "Program",
+      assignmentAvdelning: null,
+    });
+    const ctx = makeCtx();
+
+    await specialNeedsStep.hooks?.onStepStart?.(ctx);
+
+    expect(ctx.showScreen).toHaveBeenCalledWith(
+      "jamboree26:specialNeeds:info",
+      {
+        assignment: [
+          { label: "Funktion", value: "Programfunktionär" },
+          { label: "Sektion", value: "Program" },
+        ],
+        diet: DEFAULT_DIET,
         medicalElectricityNeeded: false,
         absence: NOT_ATTENDING_ANYTHING,
       },
@@ -246,6 +276,7 @@ describe("jamboree26:specialNeeds step", () => {
     expect(ctx.showScreen).toHaveBeenCalledWith(
       "jamboree26:specialNeeds:info",
       {
+        assignment: [],
         diet: DEFAULT_DIET,
         medicalElectricityNeeded: true,
         absence: NOT_ATTENDING_ANYTHING,
@@ -265,6 +296,7 @@ describe("jamboree26:specialNeeds step", () => {
     expect(ctx.showScreen).toHaveBeenCalledWith(
       "jamboree26:specialNeeds:info",
       {
+        assignment: [],
         diet: DEFAULT_DIET,
         medicalElectricityNeeded: false,
         absence: [
@@ -292,6 +324,7 @@ describe("jamboree26:specialNeeds step", () => {
     expect(ctx.showScreen).toHaveBeenCalledWith(
       "jamboree26:specialNeeds:info",
       {
+        assignment: [],
         diet: DEFAULT_DIET,
         medicalElectricityNeeded: false,
         absence: [
@@ -321,6 +354,7 @@ describe("jamboree26:specialNeeds step", () => {
     expect(ctx.showScreen).toHaveBeenCalledWith(
       "jamboree26:specialNeeds:info",
       {
+        assignment: [],
         diet: DEFAULT_DIET,
         medicalElectricityNeeded: false,
         absence: [
@@ -349,6 +383,7 @@ describe("jamboree26:specialNeeds step", () => {
     expect(ctx.showScreen).toHaveBeenCalledWith(
       "jamboree26:specialNeeds:info",
       {
+        assignment: [],
         diet: DEFAULT_DIET,
         medicalElectricityNeeded: false,
         absence: [
@@ -372,6 +407,7 @@ describe("jamboree26:specialNeeds step", () => {
     expect(ctx.showScreen).toHaveBeenCalledWith(
       "jamboree26:specialNeeds:info",
       {
+        assignment: [],
         diet: DEFAULT_DIET,
         medicalElectricityNeeded: false,
         absence: [
@@ -395,6 +431,7 @@ describe("jamboree26:specialNeeds step", () => {
     expect(ctx.showScreen).toHaveBeenCalledWith(
       "jamboree26:specialNeeds:info",
       {
+        assignment: [],
         diet: DEFAULT_DIET,
         medicalElectricityNeeded: false,
         absence: [
@@ -415,6 +452,7 @@ describe("jamboree26:specialNeeds step", () => {
     expect(ctx.showScreen).toHaveBeenCalledWith(
       "jamboree26:specialNeeds:info",
       {
+        assignment: [],
         diet: DEFAULT_DIET,
         medicalElectricityNeeded: false,
         absence: NOT_ATTENDING_ANYTHING,
@@ -434,6 +472,7 @@ describe("jamboree26:specialNeeds step", () => {
     expect(ctx.showScreen).toHaveBeenCalledWith(
       "jamboree26:specialNeeds:info",
       {
+        assignment: [],
         diet: DEFAULT_DIET,
         medicalElectricityNeeded: false,
         absence: NOT_ATTENDING_ANYTHING,
@@ -467,7 +506,8 @@ describe("jamboree26:specialNeeds step", () => {
       expect(ctx.showScreen).toHaveBeenCalledWith(
         "jamboree26:specialNeeds:info",
         {
-          diet: DEFAULT_DIET,
+          assignment: [],
+        diet: DEFAULT_DIET,
           medicalElectricityNeeded: false,
           absence: [
             {
@@ -488,7 +528,8 @@ describe("jamboree26:specialNeeds step", () => {
       expect(ctx.showScreen).toHaveBeenCalledWith(
         "jamboree26:specialNeeds:info",
         {
-          diet: DEFAULT_DIET,
+          assignment: [],
+        diet: DEFAULT_DIET,
           medicalElectricityNeeded: false,
           absence: [
             { label: "Deltar på lägret", days: childPresentOn(["5/8"]) },
@@ -506,7 +547,8 @@ describe("jamboree26:specialNeeds step", () => {
       expect(ctx.showScreen).toHaveBeenCalledWith(
         "jamboree26:specialNeeds:info",
         {
-          diet: DEFAULT_DIET,
+          assignment: [],
+        diet: DEFAULT_DIET,
           medicalElectricityNeeded: false,
           absence: [{ label: "Deltar på lägret", days: childPresentOn([]) }],
         },
@@ -527,6 +569,7 @@ describe("jamboree26:specialNeeds step", () => {
       expect(ctx.showScreen).toHaveBeenCalledWith(
         "jamboree26:specialNeeds:info",
         {
+          assignment: [],
           diet: { allergens: ["Gluten"], other: "extrem selektiv ätstörning" },
           medicalElectricityNeeded: true,
           absence: [

@@ -65,11 +65,17 @@ export const specialNeeds: ImportEnricher = {
     const result: Record<string, string | string[] | null> = {};
     for (const [fieldName, questionId] of Object.entries(questionMap)) {
       const rawAnswer = answers?.[questionId] ?? null;
+      const choiceLabels = choiceLabelsByQuestion?.[questionId];
       if (Array.isArray(rawAnswer)) {
-        const choiceLabels = choiceLabelsByQuestion?.[questionId];
         result[fieldName] = rawAnswer.map(
           (choiceId) => choiceLabels?.[choiceId] ?? choiceId,
         );
+      } else if (rawAnswer != null && choiceLabels?.[rawAnswer] != null) {
+        // Dropdown / single-choice: providerContext only has entries for real
+        // choice questions, so a match here means this is a choice ID worth
+        // translating. Checkbox/text answers have no providerContext entry
+        // and fall through to the raw value.
+        result[fieldName] = choiceLabels[rawAnswer];
       } else {
         result[fieldName] = rawAnswer;
       }

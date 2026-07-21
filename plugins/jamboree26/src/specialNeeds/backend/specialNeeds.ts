@@ -69,6 +69,15 @@ const DIET_ALLERGEN_FIELDS: { field: string; label: string }[] = [
 const DIET_OTHER_FIELD = "dietOther";
 const MEDICAL_ELECTRICITY_FIELD = "medicalElectricity";
 
+// Uppdrag: which function/section/unit this person is assigned to on-site.
+// Populated only from the funktionär (staff) form - the child form has no
+// equivalent - so any of these may legitimately be blank/missing.
+const ASSIGNMENT_FIELDS: { field: string; label: string }[] = [
+  { field: "assignmentFunction", label: "Funktion" },
+  { field: "assignmentSection", label: "Sektion" },
+  { field: "assignmentAvdelning", label: "Avdelning" },
+];
+
 // Event-specific date ranges (jamboree26, 2026) - each period's full,
 // inclusive day range, used to render a day-by-day presence table
 // regardless of whether the person marked any absence at all. Matches the
@@ -266,6 +275,7 @@ function isBlankString(
 }
 
 type SpecialNeedsPayload = {
+  assignment: { label: string; value: string }[];
   diet: { allergens: string[]; other: string | null };
   medicalElectricityNeeded: boolean;
   absence: { label: string; days: { date: string; present: boolean }[] }[];
@@ -307,7 +317,14 @@ function buildPayload(
           };
         });
 
+  const assignment = ASSIGNMENT_FIELDS.flatMap(({ field, label }) => {
+    const raw = specialNeeds[field];
+    const value = Array.isArray(raw) ? null : raw;
+    return isBlankString(value) ? [] : [{ label, value }];
+  });
+
   return {
+    assignment,
     diet: { allergens, other: isBlankString(otherText) ? null : otherText },
     medicalElectricityNeeded,
     absence,

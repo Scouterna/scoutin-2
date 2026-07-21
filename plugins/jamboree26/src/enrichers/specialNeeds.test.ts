@@ -192,17 +192,45 @@ describe("jamboree26:specialNeeds enricher", () => {
     });
   });
 
-  it("does not attempt to translate plain string answers (checkbox/text), even with provider context present", () => {
+  it("does not translate plain string answers (checkbox/text) when there is no provider-context entry for that question", () => {
     const result = specialNeeds.enrich(
       entity(),
       ctx(
         { questions: { dietGluten: "88306" } },
         { questions: { "88306": "1" } },
-        { "88306": { "0": "unchecked", "1": "checked" } },
+        // Provider context populated for an unrelated multiselect only -
+        // nothing for the checkbox's question, so no translation happens.
+        { "90176": { "61760": "Lördag 11 juli" } },
       ),
     );
 
     expect(result).toEqual({ dietGluten: "1" });
+  });
+
+  it("translates a dropdown (single-choice) answer's raw choice ID to its label via provider context", () => {
+    const result = specialNeeds.enrich(
+      entity(),
+      ctx(
+        { questions: { assignmentFunction: "88227" } },
+        { questions: { "88227": "12345" } },
+        { "88227": { "12345": "Programfunktionär", "12346": "Byggfunktionär" } },
+      ),
+    );
+
+    expect(result).toEqual({ assignmentFunction: "Programfunktionär" });
+  });
+
+  it("falls back to the raw choice ID for a dropdown when no matching label is in provider context (data drift)", () => {
+    const result = specialNeeds.enrich(
+      entity(),
+      ctx(
+        { questions: { assignmentFunction: "88227" } },
+        { questions: { "88227": "99999" } },
+        { "88227": { "12345": "Programfunktionär" } },
+      ),
+    );
+
+    expect(result).toEqual({ assignmentFunction: "99999" });
   });
 
   it("is fail-safe (falls back to raw IDs) when provider context doesn't match the expected shape", () => {

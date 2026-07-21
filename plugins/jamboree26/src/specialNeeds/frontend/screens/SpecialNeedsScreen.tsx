@@ -6,6 +6,10 @@ import { ScoutButton, ScoutCallout } from "@scouterna/ui-react";
 import { type } from "arktype";
 
 const Payload = type({
+  assignment: type({
+    label: "string",
+    value: "string",
+  }).array(),
   diet: type({
     allergens: "string[]",
     other: "string | null",
@@ -69,7 +73,7 @@ export function SpecialNeedsScreen({ payload }: { payload: object }) {
     return <ValidationError errors={validPayload} />;
   }
 
-  const { diet, medicalElectricityNeeded, absence } = validPayload;
+  const { assignment, diet, medicalElectricityNeeded, absence } = validPayload;
 
   const handleConfirm = () => {
     socket?.send({
@@ -89,6 +93,19 @@ export function SpecialNeedsScreen({ payload }: { payload: object }) {
           stäm av om funktionären behöver tillgång till medicinsk el.
         </p>
       </div>
+
+      {assignment.length > 0 && (
+        <ScoutCallout variant="info" heading="Allokering">
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+            {assignment.map((entry) => (
+              <div key={entry.label} className="contents">
+                <dt className="font-semibold">{entry.label}</dt>
+                <dd>{entry.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </ScoutCallout>
+      )}
 
       <ScoutCallout variant="info" heading="Specialkost">
         {diet.allergens.length === 0 && !diet.other && <p>Inga registrerade</p>}
