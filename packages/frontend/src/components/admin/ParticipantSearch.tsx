@@ -1,3 +1,5 @@
+import CheckIcon from "@mui/icons-material/Check";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import UndoIcon from "@mui/icons-material/Undo";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import Alert from "@mui/material/Alert";
@@ -44,6 +46,7 @@ import {
 // it via infinite scroll instead.
 type ParticipantRow = {
   id: string;
+  memberNumber: string;
   firstName: string;
   lastName: string;
   subGroupName: string | null;
@@ -94,6 +97,37 @@ function ImportErrorsTooltip({ importErrors }: { importErrors: unknown }) {
   return (
     <Tooltip title={reasons} sx={{ whiteSpace: "pre-line" }}>
       <WarningAmberIcon color="warning" fontSize="small" />
+    </Tooltip>
+  );
+}
+
+function CopyMemberNumberButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard write can fail without a secure context or user gesture; the
+      // user can always select the text manually, so we don't surface an error.
+    }
+  };
+
+  return (
+    <Tooltip title={copied ? "Kopierat" : "Kopiera medlemsnummer"}>
+      <IconButton
+        size="small"
+        aria-label="Kopiera medlemsnummer"
+        onClick={copy}
+      >
+        {copied ? (
+          <CheckIcon fontSize="inherit" />
+        ) : (
+          <ContentCopyIcon fontSize="inherit" />
+        )}
+      </IconButton>
     </Tooltip>
   );
 }
@@ -191,7 +225,7 @@ function UndoCheckinAction({ row }: { row: ParticipantRow }) {
   );
 }
 
-const COLUMN_COUNT = 8;
+const COLUMN_COUNT = 9;
 
 export function ParticipantSearch() {
   const locale = "sv";
@@ -390,6 +424,7 @@ export function ParticipantSearch() {
             <TableHead>
               <TableRow>
                 <TableCell>Namn</TableCell>
+                <TableCell>Medlemsnr</TableCell>
                 <TableCell>Källa</TableCell>
                 <TableCell>Grupp</TableCell>
                 <TableCell>Undergrupp</TableCell>
@@ -429,6 +464,18 @@ export function ParticipantSearch() {
                   >
                     <TableCell>
                       {row.firstName} {row.lastName}
+                    </TableCell>
+                    <TableCell>
+                      <Box
+                        sx={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 0.5,
+                        }}
+                      >
+                        {row.memberNumber}
+                        <CopyMemberNumberButton value={row.memberNumber} />
+                      </Box>
                     </TableCell>
                     <TableCell>{row.sourceName}</TableCell>
                     <TableCell>{row.groupName ?? "—"}</TableCell>
