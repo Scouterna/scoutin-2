@@ -4,6 +4,7 @@ import type {
 } from "@scouterna/scoutin-plugin-api/backend";
 import { stepCompletions } from "../../app/metrics.ts";
 import { prisma } from "../../app/prisma.ts";
+import { mergeJsonKey } from "../../domains/participants/data.service.ts";
 import { sendSessionInfo } from "../../domains/sessions/session.service.ts";
 import {
   completeStep,
@@ -218,6 +219,25 @@ export function createStepContext(
 
       await prisma.checkinSubject.deleteMany({
         where: { checkinSessionId: sessionId },
+      });
+    },
+    async writeResultData(participantId, value) {
+      // Namespace under this step's id and merge that single key, preserving
+      // every other step's resultData and the import-owned `metadata` column.
+      const participant = await prisma.participant.findUniqueOrThrow({
+        where: { id: participantId },
+        select: { resultData: true },
+      });
+
+      await prisma.participant.update({
+        where: { id: participantId },
+        data: {
+          resultData: mergeJsonKey(
+            participant.resultData,
+            stepImplementation.id,
+            value,
+          ),
+        },
       });
     },
     async overrideSession(newSessionId) {

@@ -54,6 +54,20 @@ export type StepMethodContext<TState = Record<string, unknown>> = {
   >;
   setSubjects(options: SetSubjectsOptions): Promise<void>;
   clearSubjects(): Promise<void>;
+  /**
+   * Persists durable, step-produced data onto a participant, namespaced under
+   * this step's `id` in the participant's `resultData` store. The output-side
+   * counterpart to import `metadata`: use it to write results a step computes
+   * during a session (e.g. a handed-out RFID tag) back onto the person, so the
+   * participant row stays the single source of truth rather than duplicating
+   * into session/step state.
+   *
+   * Each step owns exactly one key (its own id); the write merges that key
+   * without touching any other step's data (or the import `metadata`). Reading
+   * back / querying across participants is a plain Prisma read against
+   * `resultData` - this only encapsulates the namespaced-merge write discipline.
+   */
+  writeResultData(participantId: string, value: unknown): Promise<void>;
   overrideSession(newSessionId: string): void;
   restartStep(): Promise<void>;
 };

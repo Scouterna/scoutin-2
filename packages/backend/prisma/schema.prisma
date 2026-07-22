@@ -171,6 +171,13 @@ model Participant {
   // Arbitrary per-key data written by import enrichers (never flat-merged;
   // each enricher owns its own key). See registerImportEnricher.
   metadata     Json?
+  // Arbitrary per-key data produced by check-in steps during a session (never
+  // flat-merged; each step owns its own namespaced key, e.g. "jamboree26:rfid").
+  // The output-side counterpart to `metadata`: `metadata` is written by the
+  // import pipeline (input), `resultData` by steps writing durable results back
+  // onto the person. Deliberately separate so the import upsert never clobbers
+  // step results and vice versa. Write via the shared `mergeJsonKey` helper.
+  resultData   Json?
   // Per-source import failure reasons, keyed by failure source: "provider"
   // for raw import/validation failures, or the enricher's registry name for
   // enricher failures. The single source of truth for "does this row have an
