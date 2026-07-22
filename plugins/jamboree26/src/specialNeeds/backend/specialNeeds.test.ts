@@ -199,6 +199,31 @@ describe("jamboree26:specialNeeds step", () => {
     );
   });
 
+  it('defense: treats the localized checkbox labels "checked"/"unchecked" correctly (only "checked" counts)', async () => {
+    // Guards against the enricher leaking a translated checkbox label instead of
+    // "0"/"1" (see enrichers/specialNeeds.ts). "unchecked" must NOT render as a
+    // ticked box - the bug that showed a person with every allergen + medical
+    // electricity when they had ticked almost none.
+    withMetadata({
+      dietGluten: "unchecked",
+      dietNotter: "checked",
+      medicalElectricity: "unchecked",
+    });
+    const ctx = makeCtx();
+
+    await specialNeedsStep.hooks?.onStepStart?.(ctx);
+
+    expect(ctx.showScreen).toHaveBeenCalledWith(
+      "jamboree26:specialNeeds:info",
+      {
+        assignment: [],
+        diet: { allergens: ["Nötter och jordnötter"], other: null },
+        medicalElectricityNeeded: false,
+        absence: NOT_ATTENDING_ANYTHING,
+      },
+    );
+  });
+
   it("shows checked diet preferences (not just allergens) alongside allergens", async () => {
     withMetadata({
       dietVegan: "1",
@@ -507,7 +532,7 @@ describe("jamboree26:specialNeeds step", () => {
         "jamboree26:specialNeeds:info",
         {
           assignment: [],
-        diet: DEFAULT_DIET,
+          diet: DEFAULT_DIET,
           medicalElectricityNeeded: false,
           absence: [
             {
@@ -529,7 +554,7 @@ describe("jamboree26:specialNeeds step", () => {
         "jamboree26:specialNeeds:info",
         {
           assignment: [],
-        diet: DEFAULT_DIET,
+          diet: DEFAULT_DIET,
           medicalElectricityNeeded: false,
           absence: [
             { label: "Deltar på lägret", days: childPresentOn(["5/8"]) },
@@ -548,7 +573,7 @@ describe("jamboree26:specialNeeds step", () => {
         "jamboree26:specialNeeds:info",
         {
           assignment: [],
-        diet: DEFAULT_DIET,
+          diet: DEFAULT_DIET,
           medicalElectricityNeeded: false,
           absence: [{ label: "Deltar på lägret", days: childPresentOn([]) }],
         },

@@ -262,10 +262,21 @@ function buildChildAttendance(
 // guards against an array here defensively (a field misconfigured against
 // the wrong question type shouldn't crash the step) by treating it as
 // "not checked".
+//
+// Allow-list (fail-CLOSED), not a deny-list: only known "checked" tokens count
+// as checked; anything else - including "0", "false", "", null, an array, or an
+// unexpected label - is treated as unchecked. A prior deny-list version returned
+// true for any non-"0"/"false" string, so when the enricher leaked the localized
+// checkbox label "unchecked" (see enrichers/specialNeeds.ts) every unticked box
+// rendered as checked. The enricher now keeps raw "0"/"1", so "1"/"true" already
+// suffice; "checked" is kept as belt-and-suspenders so a genuine tick still shows
+// if a label ever leaks again, while "unchecked" fails closed.
 function isChecked(value: string | string[] | null | undefined): boolean {
-  if (value == null || value === "" || Array.isArray(value)) return false;
+  if (value == null || Array.isArray(value)) return false;
   const normalized = value.trim().toLowerCase();
-  return normalized !== "0" && normalized !== "false";
+  return (
+    normalized === "1" || normalized === "true" || normalized === "checked"
+  );
 }
 
 function isBlankString(

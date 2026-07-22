@@ -213,11 +213,33 @@ describe("jamboree26:specialNeeds enricher", () => {
       ctx(
         { questions: { assignmentFunction: "88227" } },
         { questions: { "88227": "12345" } },
-        { "88227": { "12345": "Programfunktionär", "12346": "Byggfunktionär" } },
+        {
+          "88227": { "12345": "Programfunktionär", "12346": "Byggfunktionär" },
+        },
       ),
     );
 
     expect(result).toEqual({ assignmentFunction: "Programfunktionär" });
+  });
+
+  it("regression: does NOT translate a checkbox answer even when its question has a boolean ('0'/'1') choices map in provider context", () => {
+    // Scoutnet returns a choices map for checkbox questions too, keyed "0"/"1"
+    // with localized labels. Translating those to "unchecked"/"checked" made the
+    // consuming step read every unticked box as checked. The enricher must keep
+    // the raw "0"/"1" for a boolean-shaped choice map.
+    const result = specialNeeds.enrich(
+      entity(),
+      ctx(
+        { questions: { dietGluten: "88306", medicalElectricity: "88329" } },
+        { questions: { "88306": "0", "88329": "1" } },
+        {
+          "88306": { "0": "unchecked", "1": "checked" },
+          "88329": { "0": "unchecked", "1": "checked" },
+        },
+      ),
+    );
+
+    expect(result).toEqual({ dietGluten: "0", medicalElectricity: "1" });
   });
 
   it("falls back to the raw choice ID for a dropdown when no matching label is in provider context (data drift)", () => {

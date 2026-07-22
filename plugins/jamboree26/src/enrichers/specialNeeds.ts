@@ -66,17 +66,34 @@ export const specialNeeds: ImportEnricher = {
     for (const [fieldName, questionId] of Object.entries(questionMap)) {
       const rawAnswer = answers?.[questionId] ?? null;
       const choiceLabels = choiceLabelsByQuestion?.[questionId];
+      // Checkbox questions ALSO carry a `choices` map in providerContext, keyed
+      // "0"/"1" with localized labels ("unchecked"/"checked", "ej ikryssad"/...
+      // depending on the registrant's form locale). Translating those would turn
+      // a raw "0"/"1" into a word, and the consuming step's isChecked() would then
+      // read "unchecked" as truthy - rendering every answered box as checked (real
+      // bug). So a boolean-shaped choice map (keys only "0"/"1") means "checkbox":
+      // keep the raw "0"/"1". Real single-choice/multiselect questions use large
+      // numeric choice IDs, never "0"/"1", so this never suppresses a genuine
+      // dropdown/multiselect translation.
+      const isBooleanChoiceMap =
+        choiceLabels != null &&
+        Object.keys(choiceLabels).length > 0 &&
+        Object.keys(choiceLabels).every((k) => k === "0" || k === "1");
       if (Array.isArray(rawAnswer)) {
         result[fieldName] = rawAnswer.map(
           (choiceId) => choiceLabels?.[choiceId] ?? choiceId,
         );
-      } else if (rawAnswer != null && choiceLabels?.[rawAnswer] != null) {
-        // Dropdown / single-choice: providerContext only has entries for real
-        // choice questions, so a match here means this is a choice ID worth
-        // translating. Checkbox/text answers have no providerContext entry
-        // and fall through to the raw value.
+      } else if (
+        rawAnswer != null &&
+        choiceLabels?.[rawAnswer] != null &&
+        !isBooleanChoiceMap
+      ) {
+        // Dropdown / single-choice: a real choice ID worth translating to the
+        // label the person actually saw (e.g. "60173" -> "Programfunktionär").
         result[fieldName] = choiceLabels[rawAnswer];
       } else {
+        // Checkbox ("0"/"1"), free text, or a value with no matching label:
+        // store the raw answer unchanged.
         result[fieldName] = rawAnswer;
       }
     }
