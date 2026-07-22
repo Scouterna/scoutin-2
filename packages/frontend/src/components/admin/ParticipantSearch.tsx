@@ -31,6 +31,7 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/api/api";
+import { showErrorToast } from "@/lib/errors";
 import {
   STATUS_COLORS,
   STATUS_LABELS,
@@ -142,8 +143,57 @@ function checkedInLabel(row: ParticipantRow): string {
   return "—";
 }
 
-function buildCsvUrl(locale: string): string {
-  return api.admin.reports["roster.csv"].$url({ query: { locale } }).toString();
+// Pulls the server-provided download name out of Content-Disposition (the
+// export endpoints set `filename="roster-YYYY-MM-DD.xlsx"`), falling back to a
+// static name if the header is missing.
+function filenameFromResponse(res: Response, fallback: string): string {
+  const disposition = res.headers.get("Content-Disposition");
+  const match = disposition?.match(/filename="?([^"]+)"?/i);
+  return match?.[1] ?? fallback;
+}
+
+// The exports are generated on demand and can take a few seconds to start, so
+// we can't use a plain <a download> (no feedback until the download appears).
+// Instead we fetch the file through the typed client - which sends the admin
+// session cookie and handles auth redirects - and show a spinner on the button
+// until the blob is ready, then trigger the save client-side.
+function ExportButton({
+  request,
+  fallbackFilename,
+  children,
+}: {
+  request: () => Promise<Response>;
+  fallbackFilename: string;
+  children: React.ReactNode;
+}) {
+  const [loading, setLoading] = useState(false);
+
+  const handleClick = async () => {
+    setLoading(true);
+    try {
+      const res = await request();
+      if (!res.ok) throw new Error("Kunde inte exportera listan.");
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = filenameFromResponse(res, fallbackFilename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      showErrorToast(error, "Kunde inte exportera listan.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button variant="outlined" onClick={handleClick} loading={loading}>
+      {children}
+    </Button>
+  );
 }
 
 // Per-row action that reverses a check-in: nulls the participant's check-in
@@ -343,14 +393,22 @@ export function ParticipantSearch() {
         <Typography variant="h5" sx={{ flex: 1 }}>
           Deltagare
         </Typography>
-        <Button
-          variant="outlined"
-          component="a"
-          href={buildCsvUrl(locale)}
-          download
+        <ExportButton
+          request={() =>
+            api.admin.reports["roster.csv"].$get({ query: { locale } })
+          }
+          fallbackFilename="roster.csv"
         >
           Exportera CSV
-        </Button>
+        </ExportButton>
+        <ExportButton
+          request={() =>
+            api.admin.reports["roster.xlsx"].$get({ query: { locale } })
+          }
+          fallbackFilename="roster.xlsx"
+        >
+          Exportera Excel
+        </ExportButton>
       </Box>
 
       <Box

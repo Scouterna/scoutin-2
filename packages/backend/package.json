@@ -31,6 +31,7 @@
     "@scouterna/scoutnet": "^0.3.26",
     "arktype": "^2.2.0",
     "dotenv": "^17.4.2",
+    "exceljs": "^4.4.0",
     "hono": "^4.12.16",
     "jose": "^6.2.3",
     "pino": "^10.3.1",

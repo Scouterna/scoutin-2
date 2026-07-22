@@ -1,3 +1,4 @@
+import ExcelJS from "exceljs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const participantFindMany = vi.fn();
@@ -68,6 +69,7 @@ const {
   listParticipants,
   pickLocalizedName,
   rosterToCsv,
+  rosterToXlsx,
 } = await import("./reports.service.ts");
 const { enricherRegistry } = await import("../workflows/steps.ts");
 
@@ -540,6 +542,187 @@ describe("rosterToCsv", () => {
     // intentionally blank for a flat source's single node.
     expect(lines[1]).toBe(
       '"Kår, med ""citat""",,,999,"Multi\nline",Person,missing,,,false',
+    );
+  });
+
+  // A minimal single-member roster whose member carries the given metadata.
+  // Used to exercise metadata flattening independent of grouping modes.
+  const rosterWithMetadata = (
+    metadataColumns: string[],
+    metadata: Record<string, unknown>,
+  ) =>
+    baseRoster([
+      {
+        key: "groups",
+        name: "Ledare i din kår",
+        hierarchical: true,
+        memberMetadataColumns: metadataColumns,
+        groupMetadataColumns: [],
+        counts: {
+          confirmed: 1,
+          preliminaryOnly: 0,
+          missing: 0,
+          importError: 0,
+          cancelled: 0,
+          total: 1,
+        },
+        groups: [
+          {
+            id: "g1",
+            name: "Kår 1",
+            kind: "group",
+            counts: {
+              confirmed: 1,
+              preliminaryOnly: 0,
+              missing: 0,
+              importError: 0,
+              cancelled: 0,
+              total: 1,
+            },
+            hasImportErrors: false,
+            importErrors: null,
+            groupMetadata: {},
+            members: [
+              {
+                id: "p1",
+                memberNumber: "12345",
+                firstName: "Anna",
+                lastName: "Andersson",
+                subGroup: null,
+                subGroupName: null,
+                status: "confirmed",
+                confirmedCheckedInAt: null,
+                preliminaryCheckedInAt: null,
+                hasImportErrors: false,
+                importErrors: null,
+                metadata,
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+
+  it("expands an object metadata value into one column per leaf key", () => {
+    const csv = rosterToCsv(
+      rosterWithMetadata(["safeFromHarm"], {
+        safeFromHarm: {
+          completed: true,
+          completedAt: "2026-01-05",
+          source: "scoutnet",
+        },
+      }),
+    );
+
+    expect(csv).not.toContain("[object Object]");
+    const lines = csv.slice(1).split("\r\n");
+    // Leaf columns are sorted; the single object key expands to three columns.
+    expect(lines[0]).toBe(
+      "source,group,subGroup,memberNumber,firstName,lastName,status,confirmedCheckedInAt,preliminaryCheckedInAt,hasImportErrors,safeFromHarm.completed,safeFromHarm.completedAt,safeFromHarm.source",
+    );
+    expect(lines[1]).toBe(
+      "Ledare i din kår,Kår 1,,12345,Anna,Andersson,confirmed,,,false,true,2026-01-05,scoutnet",
+    );
+  });
+
+  it("joins an array metadata value into a single cell", () => {
+    const csv = rosterToCsv(
+      rosterWithMetadata(["days"], { days: ["Lördag", "Söndag"] }),
+    );
+
+    const lines = csv.slice(1).split("\r\n");
+    expect(lines[0]).toBe(
+      "source,group,subGroup,memberNumber,firstName,lastName,status,confirmedCheckedInAt,preliminaryCheckedInAt,hasImportErrors,days",
+    );
+    expect(lines[1]).toBe(
+      "Ledare i din kår,Kår 1,,12345,Anna,Andersson,confirmed,,,false,Lördag; Söndag",
+    );
+  });
+});
+
+describe("rosterToXlsx", () => {
+  const baseRoster = (
+    sources: Awaited<ReturnType<typeof buildRoster>>["sources"],
+  ) => ({
+    generatedAt: "2026-07-10T10:00:00.000Z",
+    locale: "sv",
+    sources,
+  });
+
+  it("produces a workbook whose header + rows match the flattened metadata", async () => {
+    const buffer = await rosterToXlsx(
+      baseRoster([
+        {
+          key: "groups",
+          name: "Ledare i din kår",
+          hierarchical: true,
+          memberMetadataColumns: ["safeFromHarm"],
+          groupMetadataColumns: [],
+          counts: {
+            confirmed: 1,
+            preliminaryOnly: 0,
+            missing: 0,
+            importError: 0,
+            cancelled: 0,
+            total: 1,
+          },
+          groups: [
+            {
+              id: "g1",
+              name: "Kår 1",
+              kind: "group",
+              counts: {
+                confirmed: 1,
+                preliminaryOnly: 0,
+                missing: 0,
+                importError: 0,
+                cancelled: 0,
+                total: 1,
+              },
+              hasImportErrors: false,
+              importErrors: null,
+              groupMetadata: {},
+              members: [
+                {
+                  id: "p1",
+                  memberNumber: "12345",
+                  firstName: "Anna",
+                  lastName: "Andersson",
+                  subGroup: null,
+                  subGroupName: null,
+                  status: "confirmed",
+                  confirmedCheckedInAt: null,
+                  preliminaryCheckedInAt: null,
+                  hasImportErrors: false,
+                  importErrors: null,
+                  metadata: {
+                    safeFromHarm: { completed: true, source: "scoutnet" },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ]),
+    );
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+    const sheet = workbook.getWorksheet("Roster");
+    if (!sheet) throw new Error("expected a Roster worksheet");
+
+    // Header row includes the two expanded leaf columns (sorted).
+    const header = (sheet.getRow(1).values as unknown[]).slice(1);
+    expect(header).toContain("safeFromHarm.completed");
+    expect(header).toContain("safeFromHarm.source");
+
+    const dataRow = (sheet.getRow(2).values as unknown[]).slice(1);
+    expect(dataRow).toContain("Anna");
+    // Object leaves are serialized as strings, never "[object Object]".
+    expect(dataRow).toContain("true");
+    expect(dataRow).toContain("scoutnet");
+    expect(dataRow.some((v) => String(v).includes("[object Object]"))).toBe(
+      false,
     );
   });
 });

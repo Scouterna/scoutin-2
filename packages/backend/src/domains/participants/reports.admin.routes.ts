@@ -6,6 +6,7 @@ import {
   buildRosterSummary,
   listParticipants,
   rosterToCsv,
+  rosterToXlsx,
   STATUS_BUCKETS,
   type StatusBucket,
 } from "./reports.service.ts";
@@ -69,4 +70,19 @@ export const reportsAdminRouter = new Hono()
       `attachment; filename="roster-${new Date().toISOString().slice(0, 10)}.csv"`,
     );
     return c.body(csv);
+  })
+  .get("/roster.xlsx", arktypeValidator("query", CsvQuery), async (c) => {
+    const { locale, source } = c.req.valid("query");
+    const roster = await buildRoster({ locale, sourceKey: source });
+    const buffer = await rosterToXlsx(roster);
+
+    c.header(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    c.header(
+      "Content-Disposition",
+      `attachment; filename="roster-${new Date().toISOString().slice(0, 10)}.xlsx"`,
+    );
+    return c.body(buffer);
   });

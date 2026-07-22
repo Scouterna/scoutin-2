@@ -1,3 +1,4 @@
+import ExcelJS from "exceljs";
 import { prisma } from "../../app/prisma.ts";
 import type { EnrichWithEntry } from "../../config/baseDataSource.ts";
 import { Prisma } from "../../generated/prisma/client.ts";
@@ -666,17 +667,65 @@ function csvEscape(value: string): string {
 }
 
 /**
- * Flattens a roster into RFC-4180 CSV: one row per member, fixed columns plus
- * a dynamic union of every source's member-level metadata columns (blank when
- * a given member's source doesn't declare that key). Prefixed with a UTF-8
- * BOM so Excel renders non-ASCII (Swedish) characters correctly.
+ * Turns a single metadata value into a flat map of column path -> cell string.
+ * Metadata values are arbitrary JSON: enrichers write plain strings, multiselect
+ * arrays (jamboree26:specialNeeds), and nested objects (scoutnet:safeFromHarm
+ * writes `{ completed, completedAt, source }`). Without flattening, an object
+ * value stringifies to the useless "[object Object]".
+ *
+ * - primitive/null -> a single cell keyed by `prefix`
+ * - array -> a single cell, elements scalarized and joined with "; " (multiselect
+ *   answers are string[], so this reads naturally in one column)
+ * - plain object -> recurse, expanding each entry into its own `prefix.key`
+ *   column (so `safeFromHarm` becomes `safeFromHarm.completed`, etc.)
  */
-export function rosterToCsv(roster: RosterResponse): string {
-  const metadataColumns = Array.from(
-    new Set(roster.sources.flatMap((s) => s.memberMetadataColumns)),
-  ).sort();
+function flattenMetadataValue(
+  value: unknown,
+  prefix: string,
+): Record<string, string> {
+  if (value === null || value === undefined) {
+    return { [prefix]: "" };
+  }
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return { [prefix]: String(value) };
+  }
+  if (Array.isArray(value)) {
+    const joined = value
+      .map((el) =>
+        el === null || el === undefined || typeof el === "object"
+          ? // Nested objects/arrays inside a list have no sensible column
+            // expansion; JSON keeps them lossless rather than "[object Object]".
+            el == null
+            ? ""
+            : JSON.stringify(el)
+          : String(el),
+      )
+      .join("; ");
+    return { [prefix]: joined };
+  }
+  // Plain object: expand each entry into its own leaf column.
+  const out: Record<string, string> = {};
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    Object.assign(out, flattenMetadataValue(child, `${prefix}.${key}`));
+  }
+  return out;
+}
 
-  const headers = [
+/**
+ * Flattens a roster into a header row plus one row per member. Fixed columns
+ * come first, followed by a dynamic, sorted union of every member's flattened
+ * metadata leaf columns (blank when a given member lacks that column). Shared by
+ * both the CSV and XLSX exporters so they always agree on columns and values.
+ */
+export function rosterToRows(roster: RosterResponse): {
+  headers: string[];
+  rows: string[][];
+} {
+  const fixedColumns = [
     "source",
     "group",
     "subGroup",
@@ -687,14 +736,46 @@ export function rosterToCsv(roster: RosterResponse): string {
     "confirmedCheckedInAt",
     "preliminaryCheckedInAt",
     "hasImportErrors",
-    ...metadataColumns,
   ];
 
-  const rows: string[][] = [headers];
+  // The candidate metadata keys per source (the enrichWith-declared columns).
+  const metadataKeys = Array.from(
+    new Set(roster.sources.flatMap((s) => s.memberMetadataColumns)),
+  );
+
+  // Pass 1: flatten every member's metadata to discover the full set of leaf
+  // columns (an object value expands into several), then sort for stable output.
+  const flattenedByMember: Record<string, string>[] = [];
+  const metadataColumnSet = new Set<string>();
 
   for (const source of roster.sources) {
     for (const group of source.groups) {
       for (const member of group.members) {
+        const flat: Record<string, string> = {};
+        for (const key of metadataKeys) {
+          if (key in member.metadata) {
+            Object.assign(
+              flat,
+              flattenMetadataValue(member.metadata[key], key),
+            );
+          }
+        }
+        flattenedByMember.push(flat);
+        for (const col of Object.keys(flat)) metadataColumnSet.add(col);
+      }
+    }
+  }
+
+  const metadataColumns = Array.from(metadataColumnSet).sort();
+  const headers = [...fixedColumns, ...metadataColumns];
+
+  // Pass 2: emit fixed cells + one cell per sorted leaf column.
+  const rows: string[][] = [];
+  let memberIndex = 0;
+  for (const source of roster.sources) {
+    for (const group of source.groups) {
+      for (const member of group.members) {
+        const flat = flattenedByMember[memberIndex++] ?? {};
         rows.push([
           source.name,
           group.kind === "group" || group.kind === "subGroup" ? group.name : "",
@@ -706,14 +787,45 @@ export function rosterToCsv(roster: RosterResponse): string {
           member.confirmedCheckedInAt ?? "",
           member.preliminaryCheckedInAt ?? "",
           String(member.hasImportErrors),
-          ...metadataColumns.map((key) =>
-            key in member.metadata ? String(member.metadata[key]) : "",
-          ),
+          ...metadataColumns.map((col) => flat[col] ?? ""),
         ]);
       }
     }
   }
 
-  const body = rows.map((row) => row.map(csvEscape).join(",")).join("\r\n");
+  return { headers, rows };
+}
+
+/**
+ * Flattens a roster into RFC-4180 CSV: one row per member, fixed columns plus
+ * a dynamic union of every source's member-level metadata columns (blank when
+ * a given member's source doesn't declare that column). Prefixed with a UTF-8
+ * BOM so Excel renders non-ASCII (Swedish) characters correctly.
+ */
+export function rosterToCsv(roster: RosterResponse): string {
+  const { headers, rows } = rosterToRows(roster);
+  const body = [headers, ...rows]
+    .map((row) => row.map(csvEscape).join(","))
+    .join("\r\n");
   return `﻿${body}`;
+}
+
+/**
+ * Renders a roster as a real .xlsx workbook (single "Roster" sheet) with a bold
+ * header row. Same columns/rows as rosterToCsv via the shared rosterToRows.
+ */
+export async function rosterToXlsx(
+  roster: RosterResponse,
+): Promise<ArrayBuffer> {
+  const { headers, rows } = rosterToRows(roster);
+
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("Roster");
+  const headerRow = sheet.addRow(headers);
+  headerRow.font = { bold: true };
+  sheet.addRows(rows);
+
+  // exceljs's writeBuffer resolves to its own Buffer type (extends ArrayBuffer);
+  // return it directly so Hono's c.body accepts it without a Node Buffer copy.
+  return workbook.xlsx.writeBuffer();
 }
