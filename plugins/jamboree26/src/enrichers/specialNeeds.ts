@@ -1,17 +1,29 @@
 import type { ImportEnricher } from "@scouterna/scoutin-plugin-api/backend";
 import { type } from "arktype";
+import { firstAttendingDate } from "../specialNeeds/attendance.ts";
 
 // Static per-event config passed via the data source's `enrichWith` entry
 // (object form): a flat map of metadata field name -> Scoutnet registration
 // question ID. Question IDs (and which questions exist at all) are specific
 // to a project's registration form, so they're configured per event rather
-// than hardcoded here. This enricher has no domain knowledge of what the
-// fields mean (diet vs medical vs absence, checkbox vs multiselect vs text) -
-// it just copies each configured question's raw answer under its field name.
-// Grouping/interpreting by field name happens in the jamboree26:specialNeeds
-// step, which is the code contract these field names must match.
+// than hardcoded here. Beyond the single computed `firstAttendingDay` field
+// (below), this enricher has no domain knowledge of what the fields mean (diet
+// vs medical vs absence, checkbox vs multiselect vs text) - it just copies each
+// configured question's raw answer under its field name. Grouping/interpreting
+// by field name happens in the jamboree26:specialNeeds step, which is the code
+// contract these field names must match.
+//
+// `variant` is the one bit of domain config this enricher takes: it selects the
+// attendance model (see ../specialNeeds/attendance.ts) used to derive the single
+// computed `firstAttendingDay` field (an ISO yyyy-mm-dd string). It mirrors the
+// jamboree26:specialNeeds step's own `variant` input - `adult` for the funktionär
+// form's period-gate/absence model, `child` for the "medföljande barn" form's
+// positive attend-list. Omit it and no firstAttendingDay is written (the raw
+// answer fields are still copied as before), so sources with no attendance data
+// (e.g. groups) stay unaffected.
 const Options = type({
   "questions?": type.Record("string", "string"),
+  "variant?": "'adult' | 'child'",
 });
 
 // Structural subset of the raw Scoutnet member record this enricher reads.
@@ -42,6 +54,8 @@ export const specialNeeds: ImportEnricher = {
     const options = Options(ctx.options ?? {});
     const questionMap =
       options instanceof type.errors ? undefined : options.questions;
+    const variant =
+      options instanceof type.errors ? undefined : options.variant;
 
     if (!questionMap || Object.keys(questionMap).length === 0) {
       // No question IDs configured for this event - nothing to enrich, and
@@ -97,6 +111,20 @@ export const specialNeeds: ImportEnricher = {
         result[fieldName] = rawAnswer;
       }
     }
+
+    // Derive the single computed convenience field: the first day this person is
+    // actually attending, as an ISO yyyy-mm-dd string, for the roster export's
+    // "first attending day" column. Uses the just-resolved labels in `result`
+    // (periodsAttending/absence* for adults, attendanceDays for children) so it
+    // needs no separate question config or provider lookup. Only written when a
+    // `variant` is configured and a first day can be determined - otherwise the
+    // key is omitted rather than set to null, keeping it out of the export for
+    // sources with no attendance data.
+    if (variant) {
+      const firstDay = firstAttendingDate(result, variant);
+      if (firstDay != null) result.firstAttendingDay = firstDay;
+    }
+
     return result;
   },
 };

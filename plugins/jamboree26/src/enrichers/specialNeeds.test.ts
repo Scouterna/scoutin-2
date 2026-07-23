@@ -280,6 +280,86 @@ describe("jamboree26:specialNeeds enricher", () => {
     expect(result).toEqual({ absenceForlagerDays: [] });
   });
 
+  it("computes firstAttendingDay (yyyy-mm-dd) for the adult variant from the resolved period/absence labels", () => {
+    const result = specialNeeds.enrich(
+      entity(),
+      ctx(
+        {
+          variant: "adult",
+          questions: {
+            periodsAttending: "90174",
+            absenceForlagerDays: "90176",
+          },
+        },
+        {
+          questions: {
+            "90174": ["61759"],
+            "90176": ["61760"],
+          },
+        },
+        {
+          "90174": { "61759": "Förlägret (före 22 juli)" },
+          "90176": { "61760": "Lördag 11 juli" },
+        },
+      ),
+    );
+
+    expect(result).toEqual({
+      periodsAttending: ["Förlägret (före 22 juli)"],
+      absenceForlagerDays: ["Lördag 11 juli"],
+      // 11 juli is absent, so the first attending day is 12 juli.
+      firstAttendingDay: "2026-07-12",
+    });
+  });
+
+  it("computes firstAttendingDay for the child variant from the positive attend-list", () => {
+    const result = specialNeeds.enrich(
+      entity(),
+      ctx(
+        { variant: "child", questions: { attendanceDays: "91058" } },
+        { questions: { "91058": ["61001", "61002"] } },
+        {
+          "91058": {
+            "61001": "Fredag 24 juli",
+            "61002": "Torsdag 23 juli",
+          },
+        },
+      ),
+    );
+
+    expect(result).toEqual({
+      attendanceDays: ["Fredag 24 juli", "Torsdag 23 juli"],
+      firstAttendingDay: "2026-07-23",
+    });
+  });
+
+  it("omits firstAttendingDay when no variant is configured", () => {
+    const result = specialNeeds.enrich(
+      entity(),
+      ctx(
+        { questions: { periodsAttending: "90174" } },
+        { questions: { "90174": ["61759"] } },
+        { "90174": { "61759": "Förlägret (före 22 juli)" } },
+      ),
+    );
+
+    expect(result).toEqual({
+      periodsAttending: ["Förlägret (före 22 juli)"],
+    });
+  });
+
+  it("omits firstAttendingDay when a variant is set but the person attends no day", () => {
+    const result = specialNeeds.enrich(
+      entity(),
+      ctx(
+        { variant: "adult", questions: { periodsAttending: "90174" } },
+        { questions: { "90174": [] } },
+      ),
+    );
+
+    expect(result).toEqual({ periodsAttending: [] });
+  });
+
   it("regression: an unrelated multiselect answer elsewhere in the participant's form must not null out every configured field (real bug - 93% of a real project's participants hit this)", () => {
     const result = specialNeeds.enrich(
       entity(),
