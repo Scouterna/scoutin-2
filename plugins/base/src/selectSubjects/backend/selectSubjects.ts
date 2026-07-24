@@ -12,15 +12,21 @@ type ConfirmSubjectsInputs = typeof ConfirmSubjectsInputs.infer;
 
 export const selectSubjects: StepImplementation = {
   id: "base:selectSubjects",
-  // inputs: type({
-  //   "scannerSide?": "'top' | 'bottom' | 'left' | 'right'",
-  // }),
+  inputs: type({
+    "title?": "string",
+    "description?": "string",
+  }),
   // outputs: type({
   //   dataSource: type("string"),
   //   actorId: type("string"),
   // }),
   hooks: {
     async onStepStart(ctx) {
+      const { title, description } = ctx.getInputs() as {
+        title?: string;
+        description?: string;
+      };
+
       const actor = await ctx.getActor();
 
       if (!actor) {
@@ -42,6 +48,8 @@ export const selectSubjects: StepImplementation = {
       );
 
       await ctx.showScreen("base:selectSubjects:selectSubjects", {
+        title,
+        description,
         actorParticipantId: actor.participant.id,
         participants: participants.map((p) => ({
           id: p.id,

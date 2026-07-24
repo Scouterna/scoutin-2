@@ -21,7 +21,13 @@ const Participant = type({
 });
 // type Participant = typeof Participant.infer;
 
+const DEFAULT_TITLE = "Checka in";
+const DEFAULT_DESCRIPTION =
+  "Välj vilka du vill checka in. Avmarkera de som inte är på plats.";
+
 const Payload = type({
+  "title?": "string | undefined",
+  "description?": "string | undefined",
   actorParticipantId: "string",
   participants: Participant.array(),
   subGroups: type({
@@ -104,8 +110,12 @@ export function SelectSubjectScreen({ payload }: { payload: object }) {
   return (
     <div className="h-full flex flex-col gap-6">
       <div>
-        <h1 className="text-heading-base font-semibold">Checka in</h1>
-        <p className="text-body-base">Välj vilka du vill checka in.</p>
+        <h1 className="text-heading-base font-semibold">
+          {validPayload.title ?? DEFAULT_TITLE}
+        </h1>
+        <p className="text-body-base">
+          {validPayload.description ?? DEFAULT_DESCRIPTION}
+        </p>
       </div>
 
       <div className="flex flex-col flex-1 overflow-y-hidden">
