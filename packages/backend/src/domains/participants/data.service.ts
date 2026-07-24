@@ -237,11 +237,35 @@ export async function loadDataSourceIntoDatabase(
   await reconcileDataSource(dataSourceName, processed, dataSource.enrichWith);
 }
 
+/**
+ * Imports every configured data source. A failure in one source is isolated so
+ * the others still run (mirroring `writeBackAllDataSources`) - otherwise one
+ * source's transient failure leaves every source declared after it unimported
+ * for the whole cycle. The aggregate error is still thrown once at the end so
+ * the caller (the data-import job, or the manual reimport route) reports the
+ * failure rather than silently succeeding.
+ */
 export async function loadAllDataSourcesIntoDatabase() {
+  const failed: string[] = [];
+
   for (const [dataSourceName, dataSource] of Object.entries(
     dataSourceConfig.dataSources,
   )) {
-    await loadDataSourceIntoDatabase(dataSource, dataSourceName);
+    try {
+      await loadDataSourceIntoDatabase(dataSource, dataSourceName);
+    } catch (err) {
+      failed.push(dataSourceName);
+      logger.error(
+        { err, dataSource: dataSourceName },
+        "Data source import failed",
+      );
+    }
+  }
+
+  if (failed.length > 0) {
+    throw new Error(
+      `Import failed for data source(s): ${failed.join(", ")} (see preceding logs)`,
+    );
   }
 }
 

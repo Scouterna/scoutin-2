@@ -32,21 +32,92 @@ export const ScoutnetDataSource = BaseDataSource.and({
 });
 export type ScoutnetDataSource = typeof ScoutnetDataSource.infer;
 
-// Postgres/Prisma cap a single transaction at 5s by default. Once a project's
-// participant list grew past what a few thousand upserts could finish in that
-// window, wrapping the whole import in one all-or-nothing $transaction started
-// timing out (P2028) and rolling back the ENTIRE cycle every time - so newly
-// registered participants never got committed. Commit in bounded chunks
-// instead: the import is idempotent, so per-chunk commits are safe and let
-// partial progress land even if a later chunk fails.
-const IMPORT_CHUNK_SIZE = 100;
+// The import write phase is deliberately NOT wrapped in a transaction. Every
+// upsert here is independent and idempotent, so a shared transaction bought
+// nothing except a shared deadline (Prisma caps one at 5s by default) that a
+// single slow row could blow - taking every healthy row batched with it down
+// too. That failed twice as the roster grew: first as one all-or-nothing
+// $transaction around the whole import, then as chunks of 100 (both P2028).
+//
+// Concurrency is as much the point as the removed deadline: this phase is
+// latency-bound rather than CPU- or lock-bound, so keeping a handful of upserts
+// in flight cuts wall-clock roughly proportionally. Capped well below the pg
+// pool (10 by default) so kiosk lookups sharing this process aren't starved of
+// connections mid-import.
+const IMPORT_CONCURRENCY = 5;
 
-async function commitInChunks(
-  ops: Prisma.PrismaPromise<unknown>[],
-): Promise<void> {
-  for (let i = 0; i < ops.length; i += IMPORT_CHUNK_SIZE) {
-    await prisma.$transaction(ops.slice(i, i + IMPORT_CHUNK_SIZE));
+interface ImportOp {
+  /** `idInDataSource` of the row this op writes, for failure logging. */
+  id: string;
+  op: Prisma.PrismaPromise<unknown>;
+}
+
+/**
+ * Runs every op with bounded concurrency, attempting all of them even when some
+ * fail, then throws once at the end if any did.
+ *
+ * Failures are per-row instead of per-batch, so one bad row no longer costs the
+ * rest of the roster. The final throw is deliberate even though partial
+ * progress has already landed: on the import path it aborts the cycle before
+ * `reconcileDataSource`, whose soft-delete pass acts on the *absence* of a
+ * participant from this cycle's processed set and so must never run on a
+ * partially written import. The next cycle heals it - both the import and the
+ * write-back are idempotent.
+ *
+ * Also used by the check-in write-back for its `syncState` bookkeeping, where
+ * per-row isolation matters for a second reason: a row already pushed to
+ * Scoutnet must get its `syncedAt` recorded even if a sibling row's write
+ * fails, or it gets re-pushed (and re-commented) next cycle.
+ */
+async function commitAll(ops: ImportOp[], log: Logger): Promise<void> {
+  const failures: { id: string; err: unknown }[] = [];
+  let next = 0;
+
+  const worker = async () => {
+    while (next < ops.length) {
+      const entry = ops[next++];
+      if (!entry) return;
+      try {
+        await entry.op;
+      } catch (err) {
+        failures.push({ id: entry.id, err });
+      }
+    }
+  };
+
+  await Promise.all(
+    Array.from({ length: Math.min(IMPORT_CONCURRENCY, ops.length) }, worker),
+  );
+
+  if (failures.length === 0) return;
+
+  for (const { id, err } of failures) {
+    log.error({ err, idInDataSource: id }, "Database write failed");
   }
+
+  throw new Error(
+    `${failures.length} of ${ops.length} database writes failed (see preceding logs)`,
+  );
+}
+
+/**
+ * Primary keys of this data source's groups, keyed by `idInDataSource`.
+ *
+ * Read after the group upserts so participants can set the `participantGroupId`
+ * scalar directly instead of going through a nested `connect`. A nested write
+ * disqualifies Prisma's single-statement `INSERT ... ON CONFLICT DO UPDATE`
+ * path, turning every participant upsert into several sequential round trips -
+ * the bulk of what made the old transactional write phase time out.
+ */
+async function loadGroupIdsByIdInDataSource(
+  dataSourceName: string,
+): Promise<Map<string, string>> {
+  const groups = await prisma.participantGroup.findMany({
+    where: { dataSource: dataSourceName },
+    select: { id: true, idInDataSource: true },
+  });
+
+  return new Map(groups.map((g) => [g.idInDataSource, g.id]));
 }
 
 function getClient() {
@@ -101,41 +172,46 @@ export async function importScoutnetData(
     processedGroupIds = groups.map((g) => g.groupId);
     groupSourceRecords = groupRecords;
 
-    await commitInChunks([
-      ...groups.map((g) =>
-        prisma.participantGroup.upsert({
-          where: {
-            dataSource_idInDataSource: {
+    await commitAll(
+      [
+        ...groups.map((g) => ({
+          id: g.groupId,
+          op: prisma.participantGroup.upsert({
+            where: {
+              dataSource_idInDataSource: {
+                dataSource: dataSourceName,
+                idInDataSource: g.groupId,
+              },
+            },
+            create: {
               dataSource: dataSourceName,
               idInDataSource: g.groupId,
+              name: g.name,
             },
-          },
-          create: {
-            dataSource: dataSourceName,
-            idInDataSource: g.groupId,
-            name: g.name,
-          },
-          update: {
-            name: g.name,
-            // Self-heal: a group that imports successfully again is no
-            // longer in an error state.
-            importErrors: {},
-          },
-        }),
-      ),
-      // Flag rows that already exist but failed validation this cycle. A
-      // no-op for groups that were never successfully imported before. Flat
-      // overwrite of importErrors.provider is safe here: this row still gets
-      // revisited by reconcileDataSource's enrich pass moments later in the
-      // same cycle, which only ever touches its own enricher key and never
-      // this "provider" key.
-      ...invalidGroups.map(({ id, reason }) =>
-        prisma.participantGroup.updateMany({
-          where: { dataSource: dataSourceName, idInDataSource: id },
-          data: { importErrors: { provider: reason } },
-        }),
-      ),
-    ]);
+            update: {
+              name: g.name,
+              // Self-heal: a group that imports successfully again is no
+              // longer in an error state.
+              importErrors: {},
+            },
+          }),
+        })),
+        // Flag rows that already exist but failed validation this cycle. A
+        // no-op for groups that were never successfully imported before. Flat
+        // overwrite of importErrors.provider is safe here: this row still gets
+        // revisited by reconcileDataSource's enrich pass moments later in the
+        // same cycle, which only ever touches its own enricher key and never
+        // this "provider" key.
+        ...invalidGroups.map(({ id, reason }) => ({
+          id,
+          op: prisma.participantGroup.updateMany({
+            where: { dataSource: dataSourceName, idInDataSource: id },
+            data: { importErrors: { provider: reason } },
+          }),
+        })),
+      ],
+      log,
+    );
   }
 
   const {
@@ -175,6 +251,15 @@ export async function importScoutnetData(
   const processedParticipantIds: string[] = [];
   const skippedMissingGroups: { id: string; reason: string }[] = [];
 
+  // Only consulted when this data source imports groups. Sources with
+  // `includeGroups: false` (individual registrations) have no ParticipantGroup
+  // rows to link to, so any `group_id` on their raw records is ignored - as it
+  // effectively was before, when the equivalent `connect` could only ever have
+  // failed for them.
+  const groupIdsByIdInDataSource = dataSource.providerOptions.includeGroups
+    ? await loadGroupIdsByIdInDataSource(dataSourceName)
+    : new Map<string, string>();
+
   const upsertOps = participants.flatMap((p) => {
     const lookupValues = lookupValuesByParticipantId.get(p.member_no);
 
@@ -182,65 +267,79 @@ export async function importScoutnetData(
       throw new Error(`No lookup values found for participant ${p.member_no}`);
     }
 
-    const groupId = p.group_registration_info?.group_id;
+    const sourceGroupId = p.group_registration_info?.group_id;
+    let participantGroupId: string | undefined;
 
-    if (dataSource.providerOptions.includeGroups && !groupId) {
-      log.warn(
-        { memberNo: p.member_no },
-        "Participant is missing group information, but groups are included in the data source. This participant will be skipped.",
-      );
-      skippedMissingGroups.push({
-        id: p.member_no,
-        reason:
-          "Missing group information (group_id absent while includeGroups is enabled)",
-      });
-      return [];
+    if (dataSource.providerOptions.includeGroups) {
+      if (!sourceGroupId) {
+        log.warn(
+          { memberNo: p.member_no },
+          "Participant is missing group information, but groups are included in the data source. This participant will be skipped.",
+        );
+        skippedMissingGroups.push({
+          id: p.member_no,
+          reason:
+            "Missing group information (group_id absent while includeGroups is enabled)",
+        });
+        return [];
+      }
+
+      participantGroupId = groupIdsByIdInDataSource.get(String(sourceGroupId));
+
+      // The group exists at the source but has no row here - its own upsert
+      // failed this cycle, or the group list and the participant list
+      // disagree. Flagged and skipped rather than written with a dangling
+      // reference; the previous `connect` raised on this case, which failed the
+      // whole import.
+      if (!participantGroupId) {
+        log.warn(
+          { memberNo: p.member_no, groupId: String(sourceGroupId) },
+          "Participant references a group that was not imported, skipping participant.",
+        );
+        skippedMissingGroups.push({
+          id: p.member_no,
+          reason: `References group ${sourceGroupId}, which is not present in this data source`,
+        });
+        return [];
+      }
     }
-
-    const participantGroup = groupId
-      ? {
-          connect: {
-            dataSource_idInDataSource: {
-              dataSource: dataSourceName,
-              idInDataSource: String(groupId),
-            },
-          },
-        }
-      : undefined;
 
     const subGroup = resolveSubGroup(dataSource, p, log);
 
     processedParticipantIds.push(p.member_no);
 
     return [
-      prisma.participant.upsert({
-        where: {
-          dataSource_idInDataSource: {
+      {
+        id: p.member_no,
+        op: prisma.participant.upsert({
+          where: {
+            dataSource_idInDataSource: {
+              dataSource: dataSourceName,
+              idInDataSource: p.member_no,
+            },
+          },
+          create: {
             dataSource: dataSourceName,
             idInDataSource: p.member_no,
+            firstName: p.first_name,
+            lastName: p.last_name,
+            lookupValues,
+            participantGroupId,
+            subGroup,
           },
-        },
-        create: {
-          dataSource: dataSourceName,
-          idInDataSource: p.member_no,
-          firstName: p.first_name,
-          lastName: p.last_name,
-          lookupValues,
-          participantGroup,
-          subGroup,
-        },
-        update: {
-          firstName: p.first_name,
-          lastName: p.last_name,
-          lookupValues,
-          participantGroup,
-          subGroup,
-          // Self-heal: a participant that imports successfully again is no
-          // longer in an error state or (formerly) soft-deleted.
-          importErrors: {},
-          deletedAt: null,
-        },
-      }),
+          update: {
+            firstName: p.first_name,
+            lastName: p.last_name,
+            lookupValues,
+            participantGroupId,
+            subGroup,
+            // Self-heal: a participant that imports successfully again is no
+            // longer in an error state or (formerly) soft-deleted.
+            importErrors: {},
+            deletedAt: null,
+          },
+        }),
+      },
     ];
   });
 
@@ -252,14 +351,16 @@ export async function importScoutnetData(
   // deletedAt on it this same cycle, and the enrich pass only visits
   // deletedAt: null rows - no enricher key gets re-added onto it regardless.
   const errorFlagOps = [...invalidParticipants, ...skippedMissingGroups].map(
-    ({ id, reason }) =>
-      prisma.participant.updateMany({
+    ({ id, reason }) => ({
+      id,
+      op: prisma.participant.updateMany({
         where: { dataSource: dataSourceName, idInDataSource: id },
         data: { importErrors: { provider: reason } },
       }),
+    }),
   );
 
-  await commitInChunks([...upsertOps, ...errorFlagOps]);
+  await commitAll([...upsertOps, ...errorFlagOps], log);
 
   const end = performance.now();
   log.info(
@@ -365,7 +466,8 @@ async function getQuestionChoiceLabels(
 // pushed (tracked in `syncState.scoutnet.checkin`).
 
 // How many members to send per PUT. The endpoint is bulk, but we chunk to keep
-// request bodies bounded on very large deltas (mirrors IMPORT_CHUNK_SIZE).
+// request bodies bounded on very large deltas. Unrelated to IMPORT_CONCURRENCY:
+// this bounds one HTTP request, not database writes.
 const CHECKIN_WRITEBACK_CHUNK_SIZE = 500;
 
 // A member Scoutnet reports as not_found/no_member - or omits from its response
@@ -658,15 +760,16 @@ export async function writeBackScoutnetCheckins(
     for (const id of result.no_member ?? [])
       perMemberError.set(String(id), "no_member");
 
-    const ops: Prisma.PrismaPromise<unknown>[] = [];
+    const ops: ImportOp[] = [];
     const unaccounted: string[] = [];
     for (const p of chunk) {
       const desired = desiredCheckinValue(p);
       if (succeeded.has(p.idInDataSource)) {
         // Success clears any prior error/backoff and records the value now in
         // Scoutnet.
-        ops.push(
-          prisma.participant.update({
+        ops.push({
+          id: p.idInDataSource,
+          op: prisma.participant.update({
             where: { id: p.id },
             data: {
               syncState: mergeCheckinSyncState(p.syncState, {
@@ -674,7 +777,7 @@ export async function writeBackScoutnetCheckins(
               }),
             },
           }),
-        );
+        });
         continue;
       }
 
@@ -693,8 +796,9 @@ export async function writeBackScoutnetCheckins(
         CHECKIN_RETRY_BASE_MS * 2 ** (errorCount - 1),
         CHECKIN_RETRY_MAX_MS,
       );
-      ops.push(
-        prisma.participant.update({
+      ops.push({
+        id: p.idInDataSource,
+        op: prisma.participant.update({
           where: { id: p.id },
           data: {
             syncState: mergeCheckinSyncState(p.syncState, {
@@ -708,7 +812,7 @@ export async function writeBackScoutnetCheckins(
             }),
           },
         }),
-      );
+      });
     }
 
     if (unaccounted.length > 0) {
@@ -718,7 +822,7 @@ export async function writeBackScoutnetCheckins(
       );
     }
 
-    await commitInChunks(ops);
+    await commitAll(ops, log);
   }
 }
 
