@@ -6,6 +6,15 @@ steps:
       skipConfirmation: true
       dataSources:
         - groups
+      # Pre-checkin runs in a browser without a card reader, so the start screen
+      # must not mention scanning. Manual entry is the only path here, hence the
+      # larger button and the hidden scanner callout/arrow.
+      title: Identifiera dig
+      description: Ange ditt person- eller medlemsnummer för att komma igång.
+      hideCallout: true
+      hideScannerArrow: true
+      manualEntryLabel: Ange person- eller medlemsnummer
+      largeManualEntryButton: true
 
   - if: |
       ${{

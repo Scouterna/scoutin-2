@@ -47,8 +47,19 @@ const arrowRotations = {
   right: "270deg",
 } as const;
 
+const DEFAULT_TITLE = "Skanna ditt kort";
+const DEFAULT_DESCRIPTION =
+  "Visa ditt körkort eller medlemskort från Scoutnet för läsaren.";
+const DEFAULT_MANUAL_ENTRY_LABEL = "Ange manuellt";
+
 const Payload = type({
   "scannerSide?": "'top' | 'bottom' | 'left' | 'right'",
+  "title?": "string | undefined",
+  "description?": "string | undefined",
+  "hideCallout?": "boolean | undefined",
+  "hideScannerArrow?": "boolean | undefined",
+  "manualEntryLabel?": "string | undefined",
+  "largeManualEntryButton?": "boolean | undefined",
 });
 
 export function StartScreen({ payload }: { payload: object }) {
@@ -99,44 +110,50 @@ export function StartScreen({ payload }: { payload: object }) {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-heading-base font-semibold">Skanna ditt kort</h1>
+        <h1 className="text-heading-base font-semibold">
+          {validPayload.title ?? DEFAULT_TITLE}
+        </h1>
         <p className="text-body-base">
-          Visa ditt körkort eller medlemskort från Scoutnet för läsaren.
+          {validPayload.description ?? DEFAULT_DESCRIPTION}
         </p>
       </div>
-      <div className="rounded-xl p-4 gap-4 bg-gray-50 border border-gray-100 flex">
-        <IconQrcode className="size-12" stroke={1.5} />
+      {!validPayload.hideCallout && (
+        <div className="rounded-xl p-4 gap-4 bg-gray-50 border border-gray-100 flex">
+          <IconQrcode className="size-12" stroke={1.5} />
 
-        <div className="flex-1">
-          <p className="font-bold">Skanna ditt kort</p>
-          <p>
-            Körkort eller medlemskort från Scoutnet på din telefon fungerar.
-          </p>
+          <div className="flex-1">
+            <p className="font-bold">Skanna ditt kort</p>
+            <p>
+              Körkort eller medlemskort från Scoutnet på din telefon fungerar.
+            </p>
+          </div>
         </div>
-      </div>
-      <div
-        className={cn(
-          "flex gap-2 items-center",
-          validPayload.scannerSide === "right" &&
-            "flex-row-reverse justify-end",
-        )}
-      >
+      )}
+      {!validPayload.hideScannerArrow && (
         <div
-          className="size-12"
-          style={{
-            transform: `rotate(${arrowRotation})`,
-          }}
+          className={cn(
+            "flex gap-2 items-center",
+            validPayload.scannerSide === "right" &&
+              "flex-row-reverse justify-end",
+          )}
         >
-          <IconArrowDown
-            className="w-full h-full animate-oscillate-vertical text-blue-400"
-            stroke={1.5}
-          />
-        </div>
+          <div
+            className="size-12"
+            style={{
+              transform: `rotate(${arrowRotation})`,
+            }}
+          >
+            <IconArrowDown
+              className="w-full h-full animate-oscillate-vertical text-blue-400"
+              stroke={1.5}
+            />
+          </div>
 
-        <span className="text-body-sm italic text-blue-400">
-          Redo att skanna...
-        </span>
-      </div>
+          <span className="text-body-sm italic text-blue-400">
+            Redo att skanna...
+          </span>
+        </div>
+      )}
       {noResultsQuery && (
         <p className="text-body-base text-red-600">Ingen träff. Försök igen.</p>
       )}
@@ -144,9 +161,10 @@ export function StartScreen({ payload }: { payload: object }) {
         <ScoutButton
           icon={KeyboardIcon}
           iconPosition="before"
+          size={validPayload.largeManualEntryButton ? "large" : "medium"}
           onScoutClick={() => setManualEntryOpen(true)}
         >
-          Ange manuellt
+          {validPayload.manualEntryLabel ?? DEFAULT_MANUAL_ENTRY_LABEL}
         </ScoutButton>
       </div>
 

@@ -106,6 +106,12 @@ const Inputs = type({
   "identifierHint?": "string",
   "dataSources?": "string[]",
   "skipConfirmation?": "boolean",
+  "title?": "string",
+  "description?": "string",
+  "hideCallout?": "boolean",
+  "hideScannerArrow?": "boolean",
+  "manualEntryLabel?": "string",
+  "largeManualEntryButton?": "boolean",
 });
 
 type Inputs = typeof Inputs.infer;
@@ -130,8 +136,18 @@ export const identify: StepImplementation<State> = {
   }),
   hooks: {
     async onStepStart(ctx) {
-      const { scannerSide, identifierHint, dataSources, skipConfirmation } =
-        ctx.getInputs() as Inputs;
+      const {
+        scannerSide,
+        identifierHint,
+        dataSources,
+        skipConfirmation,
+        title,
+        description,
+        hideCallout,
+        hideScannerArrow,
+        manualEntryLabel,
+        largeManualEntryButton,
+      } = ctx.getInputs() as Inputs;
 
       if (identifierHint != null) {
         if (await isBlocked(String(identifierHint))) {
@@ -149,7 +165,15 @@ export const identify: StepImplementation<State> = {
         }
       }
 
-      await ctx.showScreen("base:identify:start", { scannerSide });
+      await ctx.showScreen("base:identify:start", {
+        scannerSide,
+        title,
+        description,
+        hideCallout,
+        hideScannerArrow,
+        manualEntryLabel,
+        largeManualEntryButton,
+      });
     },
     async onStepRollback(ctx) {
       await ctx.clearActor();
