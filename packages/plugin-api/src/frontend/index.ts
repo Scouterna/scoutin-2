@@ -2,7 +2,24 @@ import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useRef } from "react";
 
 export type * from "../backend/index.ts";
+export {
+  coerceLanguage,
+  DEFAULT_LANGUAGE,
+  isSupportedLanguage,
+  LANGUAGE_LABELS,
+  type Language,
+  LocalizedString,
+  resolveLocalized,
+  SUPPORTED_LANGUAGES,
+} from "../i18n.ts";
 export { BottomSheet } from "./BottomSheet.tsx";
+export {
+  type Dictionary,
+  LanguageContext,
+  type Translate,
+  useLanguage,
+  useTranslations,
+} from "./i18n.tsx";
 export { ValidationError } from "./ValidationError.tsx";
 
 export interface PluginSocket {

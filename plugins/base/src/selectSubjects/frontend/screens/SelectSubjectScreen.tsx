@@ -1,5 +1,6 @@
 import {
   usePluginSocket,
+  useTranslations,
   ValidationError,
 } from "@scouterna/scoutin-plugin-api/frontend";
 import {
@@ -21,9 +22,28 @@ const Participant = type({
 });
 // type Participant = typeof Participant.infer;
 
-const DEFAULT_TITLE = "Checka in";
-const DEFAULT_DESCRIPTION =
-  "Välj vilka du vill checka in. Avmarkera de som inte är på plats.";
+const dict = {
+  sv: {
+    title: "Checka in",
+    description:
+      "Välj vilka du vill checka in. Avmarkera de som inte är på plats.",
+    otherSubGroup: "Övriga",
+    selectedCount: "{selected} av {total} valda",
+    deselectAll: "Avmarkera alla",
+    selectAll: "Markera alla",
+    submit: "Checka in {selected}/{total} deltagare",
+  },
+  en: {
+    title: "Check in",
+    description:
+      "Select who you want to check in. Deselect anyone who isn't here.",
+    otherSubGroup: "Others",
+    selectedCount: "{selected} of {total} selected",
+    deselectAll: "Deselect all",
+    selectAll: "Select all",
+    submit: "Check in {selected}/{total} participants",
+  },
+};
 
 const Payload = type({
   "title?": "string | undefined",
@@ -32,12 +52,14 @@ const Payload = type({
   participants: Participant.array(),
   subGroups: type({
     id: "string",
-    name: "Record<string, string>",
+    // Already resolved for the session language by the backend.
+    name: "string",
   }).array(),
 });
 
 export function SelectSubjectScreen({ payload }: { payload: object }) {
   const socket = usePluginSocket();
+  const t = useTranslations(dict);
 
   const validPayload = Payload(payload);
 
@@ -75,13 +97,13 @@ export function SelectSubjectScreen({ payload }: { payload: object }) {
 
   const subGroupNames: Record<string, string> = {};
   for (const subGroup of validPayload.subGroups) {
-    subGroupNames[subGroup.id] = subGroup.name.sv;
+    subGroupNames[subGroup.id] = subGroup.name;
   }
 
   for (const participant of validPayload.participants) {
     const key = participant.subGroup ?? "";
     if (!(key in subGroupNames)) {
-      subGroupNames[key] = key || "Övriga";
+      subGroupNames[key] = key || t("otherSubGroup");
     }
   }
 
@@ -111,18 +133,20 @@ export function SelectSubjectScreen({ payload }: { payload: object }) {
     <div className="h-full flex flex-col gap-6">
       <div>
         <h1 className="text-heading-base font-semibold">
-          {validPayload.title ?? DEFAULT_TITLE}
+          {validPayload.title ?? t("title")}
         </h1>
         <p className="text-body-base">
-          {validPayload.description ?? DEFAULT_DESCRIPTION}
+          {validPayload.description ?? t("description")}
         </p>
       </div>
 
       <div className="flex flex-col flex-1 overflow-y-hidden">
         <div className="flex items-center justify-between">
           <div className="text-body-sm text-neutral-500">
-            {selectedParticipantIds.length} av{" "}
-            {validPayload.participants.length} valda
+            {t("selectedCount", {
+              selected: selectedParticipantIds.length,
+              total: validPayload.participants.length,
+            })}
           </div>
 
           <ScoutButton
@@ -141,8 +165,8 @@ export function SelectSubjectScreen({ payload }: { payload: object }) {
             }}
           >
             {selectedParticipantIds.length === validPayload.participants.length
-              ? "Avmarkera alla"
-              : "Markera alla"}
+              ? t("deselectAll")
+              : t("selectAll")}
           </ScoutButton>
         </div>
 
@@ -154,7 +178,9 @@ export function SelectSubjectScreen({ payload }: { payload: object }) {
               {Object.entries(subGroupNames).map(
                 ([subGroupId, subGroupName]) => (
                   <ScoutListView key={subGroupId}>
-                    <ScoutListViewSubheader text={subGroupName || "Övriga"} />
+                    <ScoutListViewSubheader
+                      text={subGroupName || t("otherSubGroup")}
+                    />
 
                     {participantsGroupedBySubGroup[subGroupId]?.map(
                       (participant) => (
@@ -195,8 +221,10 @@ export function SelectSubjectScreen({ payload }: { payload: object }) {
             disabled={selectedParticipantIds.length === 0}
             onClick={submitSelected}
           >
-            Checka in {selectedParticipantIds.length}/
-            {validPayload.participants.length} deltagare
+            {t("submit", {
+              selected: selectedParticipantIds.length,
+              total: validPayload.participants.length,
+            })}
           </ScoutButton>
         </div>
       </div>

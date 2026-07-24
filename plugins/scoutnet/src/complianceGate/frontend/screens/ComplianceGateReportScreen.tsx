@@ -1,5 +1,6 @@
 import {
   usePluginSocket,
+  useTranslations,
   ValidationError,
 } from "@scouterna/scoutin-plugin-api/frontend";
 import { ScoutButton, ScoutListView } from "@scouterna/ui-react";
@@ -20,7 +21,22 @@ const Payload = type({
   message: "string",
 });
 
-const DEFAULT_TITLE = "Ledare som saknar krav";
+const dict = {
+  sv: {
+    title: "Ledare som saknar krav",
+    safeFromHarm: "Trygga Möten",
+    criminalRecordExtract: "registerutdrag",
+    missing: "Saknar: {items}",
+    continue: "Fortsätt",
+  },
+  en: {
+    title: "Leaders missing requirements",
+    safeFromHarm: "Safe from Harm",
+    criminalRecordExtract: "criminal record extract",
+    missing: "Missing: {items}",
+    continue: "Continue",
+  },
+};
 
 // Mirrors list-view-item.css so display-only rows match a real ScoutListViewItem
 // (which is always interactive - button/link/radio/checkbox - so it can't be
@@ -45,6 +61,7 @@ const rowStyle = {
  */
 export function ComplianceGateReportScreen({ payload }: { payload: object }) {
   const socket = usePluginSocket();
+  const t = useTranslations(dict);
 
   // Once confirm is sent the step advances; a second send would land on the
   // next step (which has no `confirm` method) and surface as a spurious error.
@@ -66,7 +83,7 @@ export function ComplianceGateReportScreen({ payload }: { payload: object }) {
     <div className="h-full flex flex-col gap-6">
       <div>
         <h1 className="text-heading-base font-semibold">
-          {validPayload.title ?? DEFAULT_TITLE}
+          {validPayload.title ?? t("title")}
         </h1>
         <p className="text-body-base">{validPayload.message}</p>
       </div>
@@ -75,8 +92,8 @@ export function ComplianceGateReportScreen({ payload }: { payload: object }) {
         <ScoutListView>
           {validPayload.subjects.map((subject) => {
             const missing = [
-              !subject.safeFromHarmOk && "Trygga Möten",
-              !subject.criminalRecordExtractOk && "registerutdrag",
+              !subject.safeFromHarmOk && t("safeFromHarm"),
+              !subject.criminalRecordExtractOk && t("criminalRecordExtract"),
             ].filter((v): v is string => Boolean(v));
             return (
               <div key={subject.id} style={rowStyle}>
@@ -84,7 +101,7 @@ export function ComplianceGateReportScreen({ payload }: { payload: object }) {
                   {subject.firstName} {subject.lastName}
                 </span>
                 <span className="text-body-small text-neutral-500">
-                  Saknar: {missing.join(", ")}
+                  {t("missing", { items: missing.join(", ") })}
                 </span>
               </div>
             );
@@ -98,7 +115,7 @@ export function ComplianceGateReportScreen({ payload }: { payload: object }) {
           onScoutClick={confirm}
           disabled={submitting}
         >
-          Fortsätt
+          {t("continue")}
         </ScoutButton>
       </div>
     </div>

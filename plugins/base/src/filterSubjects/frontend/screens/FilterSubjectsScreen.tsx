@@ -1,5 +1,6 @@
 import {
   usePluginSocket,
+  useTranslations,
   ValidationError,
 } from "@scouterna/scoutin-plugin-api/frontend";
 import { ScoutButton, ScoutListView } from "@scouterna/ui-react";
@@ -15,12 +16,24 @@ const Participant = type({
 const Payload = type({
   "title?": "string",
   "message?": "string",
-  "buttonText?": type({
-    "sv?": "string",
-    "en?": "string",
-  }),
+  // Localized `{ sv, en }` config text is collapsed to a plain string by the
+  // backend before it reaches this screen.
+  "buttonText?": "string",
   participants: Participant.array(),
 });
+
+const dict = {
+  sv: {
+    title: "Information",
+    noMatches: "Inga matchande.",
+    continue: "Fortsätt",
+  },
+  en: {
+    title: "Information",
+    noMatches: "No matches.",
+    continue: "Continue",
+  },
+};
 
 // Mirrors list-view-item.css so display-only rows match a real ScoutListViewItem
 // (which is always interactive - button/link/radio/checkbox - so it can't be
@@ -38,6 +51,7 @@ const rowStyle = {
 
 export function FilterSubjectsScreen({ payload }: { payload: object }) {
   const socket = usePluginSocket();
+  const t = useTranslations(dict);
 
   const validPayload = Payload(payload);
   if (validPayload instanceof type.errors) {
@@ -52,7 +66,7 @@ export function FilterSubjectsScreen({ payload }: { payload: object }) {
     <div className="h-full flex flex-col gap-6">
       <div>
         <h1 className="text-heading-base font-semibold">
-          {validPayload.title ?? "Information"}
+          {validPayload.title ?? t("title")}
         </h1>
         {validPayload.message && (
           <p className="text-body-base">{validPayload.message}</p>
@@ -61,7 +75,7 @@ export function FilterSubjectsScreen({ payload }: { payload: object }) {
 
       <div className="flex-1 overflow-y-auto">
         {validPayload.participants.length === 0 ? (
-          <p className="text-body-base text-neutral-500">Inga matchande.</p>
+          <p className="text-body-base text-neutral-500">{t("noMatches")}</p>
         ) : (
           <ScoutListView>
             {validPayload.participants.map((participant) => (
@@ -79,9 +93,7 @@ export function FilterSubjectsScreen({ payload }: { payload: object }) {
 
       <div className="flex justify-end">
         <ScoutButton variant="primary" onScoutClick={confirm}>
-          {validPayload.buttonText?.sv ??
-            validPayload.buttonText?.en ??
-            "Fortsätt"}
+          {validPayload.buttonText ?? t("continue")}
         </ScoutButton>
       </div>
     </div>

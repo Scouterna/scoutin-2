@@ -1,8 +1,13 @@
 import type { Listeners, MessageTypes } from "@scouterna/scoutin-backend";
+import {
+  coerceLanguage,
+  DEFAULT_LANGUAGE,
+} from "@scouterna/scoutin-plugin-api/frontend";
 import type { TypedSocket } from "@/api/typedSocket";
 import { showErrorToast } from "@/lib/errors";
 import {
   currentScreenAtom,
+  languageAtom,
   pendingAutoRestartAtom,
   screenHistoryAtom,
   sessionInfoAtom,
@@ -23,17 +28,22 @@ export function setupSocket(socket: TypedSocket<Listeners, MessageTypes>) {
     store.set(currentScreenAtom, null);
     store.set(screenHistoryAtom, []);
     store.set(sessionInfoAtom, null);
+    store.set(languageAtom, DEFAULT_LANGUAGE);
   });
 
   socket.on("session:completed", () => {
     store.set(currentScreenAtom, null);
     store.set(screenHistoryAtom, []);
     store.set(sessionInfoAtom, null);
+    store.set(languageAtom, DEFAULT_LANGUAGE);
     store.set(pendingAutoRestartAtom, true);
   });
 
   socket.on("session:info", (data) => {
     store.set(sessionInfoAtom, { actor: data.actor ?? null });
+    if (data.language !== undefined) {
+      store.set(languageAtom, coerceLanguage(data.language));
+    }
   });
 
   socket.on("error", ({ code, message }) => {

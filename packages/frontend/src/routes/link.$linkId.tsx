@@ -8,6 +8,7 @@ import { ScreenRenderer } from "../screens/ScreenRenderer";
 import { setupSocket } from "../socket/socketLogic";
 import {
   currentScreenAtom,
+  languageAtom,
   screenHistoryAtom,
   sessionInfoAtom,
 } from "../store/session";
@@ -16,6 +17,13 @@ import { socketAtom } from "../store/socket";
 export const Route = createFileRoute("/link/$linkId")({
   component: RouteComponent,
 });
+
+// The page chrome sits outside ScreenRenderer's LanguageContext, so it reads
+// the session language straight from the atom.
+const dict = {
+  sv: { back: "Tillbaka", retry: "Försök igen" },
+  en: { back: "Back", retry: "Try again" },
+};
 
 async function loadStyles() {
   await import("../kiosk-styles.css");
@@ -28,6 +36,8 @@ function RouteComponent() {
   const [currentScreen, setCurrentScreen] = useAtom(currentScreenAtom);
   const setScreenHistory = useSetAtom(screenHistoryAtom);
   const sessionInfo = useAtomValue(sessionInfoAtom);
+  const language = useAtomValue(languageAtom);
+  const t = (key: keyof (typeof dict)["sv"]) => dict[language][key];
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const tokenRef = useRef<string | null>(null);
@@ -87,7 +97,7 @@ function RouteComponent() {
             variant="primary"
             onClick={() => window.location.reload()}
           >
-            Försök igen
+            {t("retry")}
           </ScoutButton>
         </div>
       );
@@ -111,7 +121,7 @@ function RouteComponent() {
         <div>
           {currentScreen != null && (
             <ScoutButton variant="text" onClick={handleBack}>
-              Tillbaka
+              {t("back")}
             </ScoutButton>
           )}
         </div>

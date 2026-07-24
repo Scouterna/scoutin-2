@@ -1,4 +1,5 @@
 import { prisma } from "../../app/prisma.ts";
+import { coerceLanguage } from "../../core/i18n/localized.ts";
 import type { MessageTypes } from "../../core/websocket/messageTypes.ts";
 import type { TypedWSContext } from "../../core/websocket/socketRouter.ts";
 import type { CheckinSessionModel } from "../../generated/prisma/models.ts";
@@ -197,6 +198,7 @@ export async function sendSessionInfo(
             lastName: session.actor.participant.lastName,
           }
         : null,
+      language: coerceLanguage(session?.language),
     },
   });
 }

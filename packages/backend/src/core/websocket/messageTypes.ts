@@ -42,6 +42,8 @@ export const messageTypes = createMessageRegistry()
     "session:info",
     type({
       "actor?": type({ firstName: "string", lastName: "string" }).or("null"),
+      // The session language, so the client can localize its own strings.
+      "language?": "string",
     }),
   )
   .register(

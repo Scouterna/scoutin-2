@@ -6,6 +6,8 @@ type ScreenData = { screenId: string; payload: object };
 type StepMeta = {
   idInFlow?: string;
   evaluatedInputs?: Record<string, unknown>;
+  /** The session language the inputs above were resolved for. */
+  language?: string;
 };
 
 type SessionEntry = {
@@ -57,6 +59,16 @@ export function getStepMeta(sessionId: string): StepMeta | null {
 
 export function setStepMeta(sessionId: string, meta: StepMeta): void {
   getOrCreate(sessionId).stepMeta = meta;
+}
+
+/**
+ * Updates the language on the current step's metadata. Used when a step
+ * changes the session language mid-step (`base:selectLanguage`) so that
+ * `ctx.language` reflects the new choice immediately, without a DB round trip.
+ */
+export function setStepMetaLanguage(sessionId: string, language: string): void {
+  const entry = getOrCreate(sessionId);
+  entry.stepMeta = { ...(entry.stepMeta ?? {}), language };
 }
 
 export function clearScreenTracking(sessionId: string): void {

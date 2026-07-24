@@ -1,5 +1,6 @@
 import {
   usePluginSocket,
+  useTranslations,
   ValidationError,
 } from "@scouterna/scoutin-plugin-api/frontend";
 import { ScoutButton, ScoutCheckbox } from "@scouterna/ui-react";
@@ -9,19 +10,29 @@ import { useState } from "react";
 const Payload = type({
   "title?": "string",
   "message?": "string",
-  "buttonText?": type({
-    "sv?": "string",
-    "en?": "string",
-  }),
+  // Localized `{ sv, en }` config text is collapsed to a plain string by the
+  // backend before it reaches this screen.
+  "buttonText?": "string",
   "requireAcknowledgement?": "boolean",
-  "acknowledgementText?": type({
-    "sv?": "string",
-    "en?": "string",
-  }),
+  "acknowledgementText?": "string",
 });
+
+const dict = {
+  sv: {
+    title: "Välkommen!",
+    acknowledgement: "Jag har läst och förstått informationen",
+    continue: "Fortsätt",
+  },
+  en: {
+    title: "Welcome!",
+    acknowledgement: "I have read and understood this information",
+    continue: "Continue",
+  },
+};
 
 export function MessageScreen({ payload }: { payload: object }) {
   const socket = usePluginSocket();
+  const t = useTranslations(dict);
   const [acknowledged, setAcknowledged] = useState(false);
 
   const validPayload = Payload(payload);
@@ -41,7 +52,7 @@ export function MessageScreen({ payload }: { payload: object }) {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-heading-base font-semibold">
-          {validPayload.title ?? "Välkommen!"}
+          {validPayload.title ?? t("title")}
         </h1>
         {validPayload.message && (
           <p className="text-body-base">{validPayload.message}</p>
@@ -50,11 +61,7 @@ export function MessageScreen({ payload }: { payload: object }) {
       {requiresAcknowledgement && (
         <ScoutCheckbox
           checked={acknowledged}
-          label={
-            validPayload.acknowledgementText?.sv ??
-            validPayload.acknowledgementText?.en ??
-            "Jag har läst och förstått informationen"
-          }
+          label={validPayload.acknowledgementText ?? t("acknowledgement")}
           onScoutChecked={(e) => setAcknowledged(e.detail.checked)}
         />
       )}
@@ -64,9 +71,7 @@ export function MessageScreen({ payload }: { payload: object }) {
           onScoutClick={confirm}
           disabled={!canConfirm}
         >
-          {validPayload.buttonText?.sv ??
-            validPayload.buttonText?.en ??
-            "Fortsätt"}
+          {validPayload.buttonText ?? t("continue")}
         </ScoutButton>
       </div>
     </div>

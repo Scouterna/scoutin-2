@@ -1,8 +1,8 @@
-import type { StepDefinition } from "../../config/stepConfig.ts";
 import {
   deleteStepData,
   findLastCompletedStep,
   getCurrentStep,
+  type ResolvedStepDefinition,
 } from "../../domains/workflows/step.service.ts";
 import { stepRegistry } from "../../domains/workflows/steps.ts";
 import { getLogger } from "../logging/logger.ts";
@@ -18,7 +18,7 @@ import { createStepContext } from "./stepContext.ts";
 export async function startStep(
   c: TypedContext,
   ws: TypedWSContext<unknown>,
-  stepDef: StepDefinition,
+  stepDef: ResolvedStepDefinition,
 ) {
   const step = stepRegistry.get(stepDef.uses);
 
@@ -37,6 +37,7 @@ export async function startStep(
   setStepMeta(sessionId, {
     idInFlow: stepDef.id,
     evaluatedInputs: stepDef.with,
+    language: stepDef.language,
   });
   clearScreenTracking(sessionId);
 

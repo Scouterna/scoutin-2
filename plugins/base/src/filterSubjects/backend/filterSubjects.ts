@@ -14,10 +14,9 @@ const FilterSubjectsInputs = type({
   filter: "string",
   "title?": "string",
   "message?": "string",
-  "buttonText?": type({
-    "sv?": "string",
-    "en?": "string",
-  }),
+  // May be authored as `{ sv, en }` in config; the flow engine resolves it to
+  // a plain string for the session language before we see it.
+  "buttonText?": "string",
   // What to do when no subject matches the filter. Defaults to "show" (render
   // the message with an empty list); "skip" auto-completes without a screen.
   "whenEmpty?": "'skip' | 'show'",

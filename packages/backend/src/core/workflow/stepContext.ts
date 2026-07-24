@@ -11,6 +11,11 @@ import {
   finalizeSession,
   getCurrentStep,
 } from "../../domains/workflows/step.service.ts";
+import {
+  DEFAULT_LANGUAGE,
+  isSupportedLanguage,
+  SUPPORTED_LANGUAGES,
+} from "../i18n/localized.ts";
 import { getLogger, logger } from "../logging/logger.ts";
 import type { MessageTypes } from "../websocket/messageTypes.ts";
 import {
@@ -20,6 +25,7 @@ import {
   getStepState,
   markScreenShown,
   registerConnection,
+  setStepMetaLanguage,
   setStepStateKey,
   wasScreenShown,
 } from "../websocket/sessionRegistry.ts";
@@ -40,6 +46,33 @@ export function createStepContext(
   return {
     sessionId,
     logger: getLogger(c),
+    // A getter, not a captured value: `setLanguage()` can change this
+    // mid-step, and the step may read it again afterwards.
+    get language() {
+      return getStepMeta(sessionId)?.language ?? DEFAULT_LANGUAGE;
+    },
+    async setLanguage(language) {
+      if (!isSupportedLanguage(language)) {
+        throw new Error(
+          `Unsupported language "${language}". Supported: ${SUPPORTED_LANGUAGES.join(", ")}`,
+        );
+      }
+
+      const effectiveSessionId = c.get("wsSessionId") ?? sessionId;
+
+      await prisma.checkinSession.update({
+        where: { id: effectiveSessionId },
+        data: { language },
+      });
+
+      setStepMetaLanguage(effectiveSessionId, language);
+      if (effectiveSessionId !== sessionId) {
+        setStepMetaLanguage(sessionId, language);
+      }
+
+      // Let the client know so its own hardcoded strings switch language too.
+      await sendSessionInfo(effectiveSessionId, ws);
+    },
     async sendMessage(name, payload = {}) {
       ws.send({
         name: "step:message",

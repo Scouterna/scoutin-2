@@ -9,7 +9,10 @@ import type {
   StepImplementation,
   StepMethodContext,
 } from "@scouterna/scoutin-plugin-api/backend";
-import { typedMethod } from "@scouterna/scoutin-plugin-api/backend";
+import {
+  resolveLocalized,
+  typedMethod,
+} from "@scouterna/scoutin-plugin-api/backend";
 import { type } from "arktype";
 
 // Dedicated terminal screen shown when a blocked identifier is submitted. The
@@ -23,10 +26,14 @@ type Candidate = {
   lastName: string;
   subGroup?: string | null;
   dataSource: string;
-  dataSourceName: Record<string, string>;
+  /** Already resolved for the session language, ready to render. */
+  dataSourceName: string;
 };
 
-const participantToCandidate = (p: Participant): Candidate => {
+const participantToCandidate = (
+  p: Participant,
+  language: string,
+): Candidate => {
   const dataSource = dataSourceConfig.dataSources[p.dataSource];
 
   if (!dataSource) {
@@ -41,12 +48,13 @@ const participantToCandidate = (p: Participant): Candidate => {
     lastName: p.lastName,
     subGroup: p.subGroup,
     dataSource: p.dataSource,
-    dataSourceName: dataSource.name,
+    dataSourceName: resolveLocalized(dataSource.name, language),
   };
 };
 
 async function searchCandidates(
   query: string,
+  language: string,
   dataSources?: string[],
 ): Promise<Candidate[]> {
   const participants = await findParticipantsByLookupValue(query);
@@ -65,7 +73,7 @@ async function searchCandidates(
 
     return true;
   });
-  return filtered.map(participantToCandidate);
+  return filtered.map((p) => participantToCandidate(p, language));
 }
 
 async function autoConfirm(
@@ -131,7 +139,7 @@ export const identify: StepImplementation<State> = {
       firstName: "string",
       lastName: "string",
       dataSource: "string",
-      dataSourceName: "Record<string, string>",
+      dataSourceName: "string",
     }),
   }),
   hooks: {
@@ -157,6 +165,7 @@ export const identify: StepImplementation<State> = {
 
         const candidates = await searchCandidates(
           normalizeIdentifier(String(identifierHint)),
+          ctx.language,
           dataSources,
         );
         if (candidates.length > 0) {
@@ -198,6 +207,7 @@ export const identify: StepImplementation<State> = {
         const { dataSources, skipConfirmation } = ctx.getInputs() as Inputs;
         const candidates = await searchCandidates(
           normalizeIdentifier(typedInputs.query),
+          ctx.language,
           dataSources,
         );
 

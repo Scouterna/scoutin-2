@@ -1,4 +1,8 @@
 steps:
+  # Must stay first: every step after it gets its `{ sv, en }` text resolved in
+  # the chosen language.
+  - uses: base:selectLanguage
+
   - uses: base:identify
     id: identify
     with:
@@ -14,8 +18,12 @@ steps:
       }}
     uses: base:block
     with:
-      title: "Du kan inte checka in"
-      message: "Endast ledare kan checka in deltagare."
+      title:
+        sv: "Du kan inte checka in"
+        en: "You cannot check in"
+      message:
+        sv: "Endast ledare kan checka in deltagare."
+        en: "Only leaders can check in participants."
 
   - uses: base:deduplicateSession
     with:

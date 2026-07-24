@@ -1,6 +1,10 @@
 import ExcelJS from "exceljs";
 import { prisma } from "../../app/prisma.ts";
 import type { EnrichWithEntry } from "../../config/baseDataSource.ts";
+import {
+  DEFAULT_LANGUAGE,
+  resolveLocalized,
+} from "../../core/i18n/localized.ts";
 import { Prisma } from "../../generated/prisma/client.ts";
 import { enricherRegistry } from "../workflows/steps.ts";
 import {
@@ -10,14 +14,11 @@ import {
   resolveEnrichEntry,
 } from "./data.service.ts";
 
-const DEFAULT_LOCALE = "sv";
-
 /**
  * Resolves a localized `{ sv: "...", en: "..." }`-style name map to a single
- * display string. No i18n framework exists in this codebase - the rest of the
- * app reads `.name.sv` directly (see SelectSubjectScreen.tsx) - so this picks
- * the requested locale, falling back to Swedish, then any available value,
- * then the raw config key so a misconfigured/missing name never disappears.
+ * display string, falling back to the raw config key so a misconfigured or
+ * missing name never disappears from a report. The locale fallback chain
+ * itself lives in `core/i18n/localized.ts`.
  */
 export function pickLocalizedName(
   map: Record<string, string> | undefined,
@@ -25,9 +26,7 @@ export function pickLocalizedName(
   fallbackKey: string,
 ): string {
   if (!map) return fallbackKey;
-  return (
-    map[locale] ?? map[DEFAULT_LOCALE] ?? Object.values(map)[0] ?? fallbackKey
-  );
+  return resolveLocalized(map, locale) || fallbackKey;
 }
 
 export type StatusBucket =
@@ -243,7 +242,7 @@ export async function buildRoster(opts?: {
   locale?: string;
   sourceKey?: string;
 }): Promise<RosterResponse> {
-  const locale = opts?.locale ?? DEFAULT_LOCALE;
+  const locale = opts?.locale ?? DEFAULT_LANGUAGE;
 
   const configuredKeys = Object.keys(dataSourceConfig.dataSources);
   const sourceKeys = opts?.sourceKey
@@ -427,7 +426,7 @@ export type RosterSummaryResponse = {
 export async function buildRosterSummary(opts?: {
   locale?: string;
 }): Promise<RosterSummaryResponse> {
-  const locale = opts?.locale ?? DEFAULT_LOCALE;
+  const locale = opts?.locale ?? DEFAULT_LANGUAGE;
   const sourceKeys = Object.keys(dataSourceConfig.dataSources);
 
   const participants = await prisma.participant.findMany({
@@ -537,7 +536,7 @@ export async function listParticipants(opts?: {
   offset?: number;
   locale?: string;
 }): Promise<ParticipantListResult> {
-  const locale = opts?.locale ?? DEFAULT_LOCALE;
+  const locale = opts?.locale ?? DEFAULT_LANGUAGE;
   const offset = Math.max(0, Math.floor(opts?.offset ?? 0));
   const limit = Math.min(
     MAX_PAGE_SIZE,

@@ -1,16 +1,18 @@
 import {
+  LanguageContext,
   type PluginSocket,
   PluginSocketContext,
 } from "@scouterna/scoutin-plugin-api/frontend";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { findScreen } from "@/plugins/plugins";
-import { currentScreenAtom } from "@/store/session";
+import { currentScreenAtom, languageAtom } from "@/store/session";
 import { socketAtom } from "@/store/socket";
 
 export function ScreenRenderer() {
   const currentScreenInfo = useAtomValue(currentScreenAtom);
   const socket = useAtomValue(socketAtom);
+  const language = useAtomValue(languageAtom);
 
   const pluginSocket = useMemo<PluginSocket | null>(() => {
     if (!socket) return null;
@@ -49,7 +51,9 @@ export function ScreenRenderer() {
 
   return (
     <PluginSocketContext.Provider value={pluginSocket}>
-      <currentScreen.component payload={currentScreenInfo.payload} />
+      <LanguageContext.Provider value={language}>
+        <currentScreen.component payload={currentScreenInfo.payload} />
+      </LanguageContext.Provider>
     </PluginSocketContext.Provider>
   );
 }

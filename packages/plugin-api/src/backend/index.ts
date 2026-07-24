@@ -1,5 +1,16 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 
+export {
+  coerceLanguage,
+  DEFAULT_LANGUAGE,
+  isSupportedLanguage,
+  LANGUAGE_LABELS,
+  type Language,
+  LocalizedString,
+  resolveLocalized,
+  SUPPORTED_LANGUAGES,
+} from "../i18n.ts";
+
 // Step implementation types
 export type SetActorOptions =
   | {
@@ -27,6 +38,20 @@ export type StepLogger = {
 export type StepMethodContext<TState = Record<string, unknown>> = {
   sessionId: string;
   logger: StepLogger;
+  /**
+   * The language this session is being conducted in (e.g. `"sv"`, `"en"`).
+   *
+   * Localized `{ sv, en }` maps in the step config are already collapsed to
+   * plain strings before `getInputs()` sees them, so this is only needed for
+   * text a step generates in code - resolve it with `resolveLocalized()`.
+   */
+  readonly language: string;
+  /**
+   * Changes the session language. Persists to the session and notifies the
+   * client so its own strings switch too. Subsequent steps get their config
+   * text resolved in the new language.
+   */
+  setLanguage(language: string): Promise<void>;
   sendMessage(name: string, payload?: Record<string, unknown>): Promise<void>;
   setCompleted(outputs?: Record<string, unknown>): Promise<void>;
   showScreen(

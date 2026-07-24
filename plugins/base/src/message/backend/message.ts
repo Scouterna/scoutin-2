@@ -6,15 +6,12 @@ export const message: StepImplementation = {
   inputs: type({
     "title?": "string",
     "message?": "string",
-    "buttonText?": type({
-      "sv?": "string",
-      "en?": "string",
-    }),
+    // These may be authored as `{ sv, en }` in config; the flow engine
+    // resolves them to plain strings for the session language before we see
+    // them.
+    "buttonText?": "string",
     "requireAcknowledgement?": "boolean",
-    "acknowledgementText?": type({
-      "sv?": "string",
-      "en?": "string",
-    }),
+    "acknowledgementText?": "string",
   }),
   hooks: {
     async onStepStart(ctx) {
@@ -27,9 +24,9 @@ export const message: StepImplementation = {
       } = ctx.getInputs() as {
         title?: string;
         message?: string;
-        buttonText?: { sv?: string; en?: string };
+        buttonText?: string;
         requireAcknowledgement?: boolean;
-        acknowledgementText?: { sv?: string; en?: string };
+        acknowledgementText?: string;
       };
       const actor = await ctx.getActor();
 

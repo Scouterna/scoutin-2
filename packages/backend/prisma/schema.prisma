@@ -89,6 +89,11 @@ model CheckinSession {
   params     Json                     @default("{}")
   stepData   CheckinSessionStepData[]
 
+  // The language this session is conducted in. Drives resolution of
+  // `{ sv, en }` text maps in the step config and the kiosk/link UI. Set by
+  // the `base:selectLanguage` step; flows without that step keep the default.
+  language String @default("sv")
+
   actor CheckinActor?
 
   subjects CheckinSubject[]

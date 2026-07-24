@@ -2,6 +2,7 @@ import {
   BottomSheet,
   usePluginMessage,
   usePluginSocket,
+  useTranslations,
   ValidationError,
 } from "@scouterna/scoutin-plugin-api/frontend";
 import { ScoutButton, ScoutField, ScoutInput } from "@scouterna/ui-react";
@@ -47,10 +48,38 @@ const arrowRotations = {
   right: "270deg",
 } as const;
 
-const DEFAULT_TITLE = "Skanna ditt kort";
-const DEFAULT_DESCRIPTION =
-  "Visa ditt körkort eller medlemskort från Scoutnet för läsaren.";
-const DEFAULT_MANUAL_ENTRY_LABEL = "Ange manuellt";
+const dict = {
+  sv: {
+    title: "Skanna ditt kort",
+    description:
+      "Visa ditt körkort eller medlemskort från Scoutnet för läsaren.",
+    manualEntryLabel: "Ange manuellt",
+    calloutTitle: "Skanna ditt kort",
+    calloutBody:
+      "Körkort eller medlemskort från Scoutnet på din telefon fungerar.",
+    readyToScan: "Redo att skanna...",
+    noResults: "Ingen träff. Försök igen.",
+    manualEntryHeading: "Ange ID manuellt",
+    identifierLabel: "Person- eller medlemsnummer",
+    cancel: "Avbryt",
+    submit: "Checka in",
+  },
+  en: {
+    title: "Scan your card",
+    description:
+      "Show your driving licence or your Scoutnet membership card to the reader.",
+    manualEntryLabel: "Enter manually",
+    calloutTitle: "Scan your card",
+    calloutBody:
+      "A driving licence or your Scoutnet membership card on your phone works.",
+    readyToScan: "Ready to scan...",
+    noResults: "No match. Please try again.",
+    manualEntryHeading: "Enter ID manually",
+    identifierLabel: "Personal or membership number",
+    cancel: "Cancel",
+    submit: "Check in",
+  },
+};
 
 const Payload = type({
   "scannerSide?": "'top' | 'bottom' | 'left' | 'right'",
@@ -64,6 +93,7 @@ const Payload = type({
 
 export function StartScreen({ payload }: { payload: object }) {
   const socket = usePluginSocket();
+  const t = useTranslations(dict);
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
   const [manualEntryValue, setManualEntryValue] = useState("");
   const [noResultsQuery, setNoResultsQuery] = useState<string | null>(null);
@@ -111,10 +141,10 @@ export function StartScreen({ payload }: { payload: object }) {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-heading-base font-semibold">
-          {validPayload.title ?? DEFAULT_TITLE}
+          {validPayload.title ?? t("title")}
         </h1>
         <p className="text-body-base">
-          {validPayload.description ?? DEFAULT_DESCRIPTION}
+          {validPayload.description ?? t("description")}
         </p>
       </div>
       {!validPayload.hideCallout && (
@@ -122,10 +152,8 @@ export function StartScreen({ payload }: { payload: object }) {
           <IconQrcode className="size-12" stroke={1.5} />
 
           <div className="flex-1">
-            <p className="font-bold">Skanna ditt kort</p>
-            <p>
-              Körkort eller medlemskort från Scoutnet på din telefon fungerar.
-            </p>
+            <p className="font-bold">{t("calloutTitle")}</p>
+            <p>{t("calloutBody")}</p>
           </div>
         </div>
       )}
@@ -150,12 +178,12 @@ export function StartScreen({ payload }: { payload: object }) {
           </div>
 
           <span className="text-body-sm italic text-blue-400">
-            Redo att skanna...
+            {t("readyToScan")}
           </span>
         </div>
       )}
       {noResultsQuery && (
-        <p className="text-body-base text-red-600">Ingen träff. Försök igen.</p>
+        <p className="text-body-base text-red-600">{t("noResults")}</p>
       )}
       <div>
         <ScoutButton
@@ -164,7 +192,7 @@ export function StartScreen({ payload }: { payload: object }) {
           size={validPayload.largeManualEntryButton ? "large" : "medium"}
           onScoutClick={() => setManualEntryOpen(true)}
         >
-          {validPayload.manualEntryLabel ?? DEFAULT_MANUAL_ENTRY_LABEL}
+          {validPayload.manualEntryLabel ?? t("manualEntryLabel")}
         </ScoutButton>
       </div>
 
@@ -196,10 +224,12 @@ export function StartScreen({ payload }: { payload: object }) {
           onSubmit={handleManualSubmit}
         >
           <div>
-            <h2 className="text-heading-xs font-semibold">Ange ID manuellt</h2>
+            <h2 className="text-heading-xs font-semibold">
+              {t("manualEntryHeading")}
+            </h2>
           </div>
 
-          <ScoutField label="Person- eller medlemsnummer">
+          <ScoutField label={t("identifierLabel")}>
             <ScoutInput
               size="large"
               inputMode="none"
@@ -210,7 +240,7 @@ export function StartScreen({ payload }: { payload: object }) {
 
           {noResultsQuery && (
             <p className="text-body-base text-text-danger-base">
-              Ingen träff. Försök igen.
+              {t("noResults")}
             </p>
           )}
 
@@ -247,7 +277,7 @@ export function StartScreen({ payload }: { payload: object }) {
               onPointerDown={(e) => e.preventDefault()}
               className="mt-2"
             >
-              Avbryt
+              {t("cancel")}
             </ScoutButton>
             <ScoutButton
               size="large"
@@ -257,7 +287,7 @@ export function StartScreen({ payload }: { payload: object }) {
               onPointerDown={(e) => e.preventDefault()}
               disabled={manualEntryValue.length === 0}
             >
-              Checka in
+              {t("submit")}
             </ScoutButton>
           </div>
         </form>

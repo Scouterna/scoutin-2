@@ -8,6 +8,11 @@ import {
   evaluateExpressionsInString,
   recursivelyEvaluateExpressionsInObject,
 } from "../../core/expressions/expressions.ts";
+import {
+  coerceLanguage,
+  type Language,
+  resolveLocalizedInputs,
+} from "../../core/i18n/localized.ts";
 import type { CheckinSessionStepDataModel } from "../../generated/prisma/models.ts";
 
 const configCache = new Map<string, StepConfig>();
@@ -53,14 +58,23 @@ function matchesStepData(
   return data.stepId === stepDefinition.uses;
 }
 
+/**
+ * A step definition whose `with` block has been fully evaluated: expressions
+ * substituted and localized `{ sv, en }` text maps collapsed for the session's
+ * language. `language` travels along so the step implementation can localize
+ * text it generates itself (see `ctx.language`).
+ */
+export type ResolvedStepDefinition = StepDefinition & { language: Language };
+
 export async function getCurrentStep(
   sessionId: string,
-): Promise<StepDefinition | null> {
+): Promise<ResolvedStepDefinition | null> {
   const session = await prisma.checkinSession.findUniqueOrThrow({
     where: { id: sessionId },
     include: { stepData: true },
   });
   const params = session.params as Record<string, unknown>;
+  const language = coerceLanguage(session.language);
   const stepConfig = await getStepConfig(session.configFile);
   const context = createContext(sessionId, session.stepData, params);
 
@@ -77,8 +91,15 @@ export async function getCurrentStep(
   return {
     uses: nextStepDefinition.uses,
     id: nextStepDefinition.id,
+    language,
     with: nextStepDefinition.with
-      ? recursivelyEvaluateExpressionsInObject(nextStepDefinition.with, context)
+      ? resolveLocalizedInputs(
+          recursivelyEvaluateExpressionsInObject(
+            nextStepDefinition.with,
+            context,
+          ),
+          language,
+        )
       : {},
   };
 }

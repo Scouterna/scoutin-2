@@ -7,11 +7,13 @@ import { identify } from "./identify/backend/identify.ts";
 import { markConfirmedCheckedIn } from "./markConfirmedCheckedIn/backend/markConfirmedCheckedIn.ts";
 import { markPreliminaryCheckedIn } from "./markPreliminaryCheckedIn/backend/markPreliminaryCheckedIn.ts";
 import { message } from "./message/backend/message.ts";
+import { selectLanguage } from "./selectLanguage/backend/selectLanguage.ts";
 import { selectSubjects } from "./selectSubjects/backend/selectSubjects.ts";
 import { setActorAsSubject } from "./setActorAsSubject/backend/setActorAsSubject.ts";
 
 export const plugin: BackendPlugin = {
   setup(ctx) {
+    ctx.registerStep(selectLanguage);
     ctx.registerStep(block);
     ctx.registerStep(identify);
     ctx.registerStep(deduplicateSession);

@@ -2,7 +2,10 @@ import {
   dataSourceConfig,
   getSubjectCandidates,
 } from "@scouterna/scoutin-backend/plugin-services";
-import type { StepImplementation } from "@scouterna/scoutin-plugin-api/backend";
+import {
+  resolveLocalized,
+  type StepImplementation,
+} from "@scouterna/scoutin-plugin-api/backend";
 import { type } from "arktype";
 
 const ConfirmSubjectsInputs = type({
@@ -40,10 +43,12 @@ export const selectSubjects: StepImplementation = {
       const dataSource =
         dataSourceConfig.dataSources[actor.participant.dataSource];
 
+      // Names are resolved here rather than on the screen so the client never
+      // has to know about locale maps.
       const subGroups = Object.entries(dataSource.subGroups || {}).map(
         ([id, subGroup]) => ({
           id,
-          name: subGroup.name,
+          name: resolveLocalized(subGroup.name, ctx.language),
         }),
       );
 
