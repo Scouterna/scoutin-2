@@ -1,3 +1,4 @@
+import { prisma } from "../../app/prisma.ts";
 import {
   deleteStepData,
   findLastCompletedStep,
@@ -77,6 +78,25 @@ export async function goBack(
   const sessionId = c.get("wsSessionId");
   if (!sessionId) {
     throw new Error("No session ID found in context");
+  }
+
+  // A finished session is a durable record, not something to unwind: rollback
+  // hooks undo real side effects (subject links, check-in timestamps), so
+  // walking backwards through one would quietly damage a completed check-in.
+  // The kiosk hides its back button once `session:completed` arrives, but
+  // `step:goBack` can still be sent directly (see the admin debug panel), so
+  // the guard belongs here rather than in the UI. Use undoCheckin to reverse a
+  // finished check-in.
+  const session = await prisma.checkinSession.findUniqueOrThrow({
+    where: { id: sessionId },
+    select: { completedAt: true, abortedAt: true },
+  });
+  if (session.completedAt || session.abortedAt) {
+    getLogger(c).warn(
+      { completedAt: session.completedAt, abortedAt: session.abortedAt },
+      "Ignoring goBack for a session that is already completed or aborted",
+    );
+    return;
   }
 
   // Walk backwards, skipping steps marked skipOnGoBack.

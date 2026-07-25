@@ -66,8 +66,11 @@ export const selectSubjects: StepImplementation = {
         subGroups,
       });
     },
-    async onStepRollback(_ctx) {
-      // await ctx.clearActor();
+    async onStepRollback(ctx) {
+      // Rolling back deletes this step's data but not the subject rows it
+      // wrote, so they must be cleared here — otherwise the re-run selection
+      // is layered on top of the previous one.
+      await ctx.clearSubjects();
     },
   },
   publicMethods: {
