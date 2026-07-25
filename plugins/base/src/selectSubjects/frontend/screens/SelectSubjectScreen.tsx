@@ -120,8 +120,10 @@ export function SelectSubjectScreen({ payload }: { payload: object }) {
 
   const submitSelected = () => {
     // Guard against double-tapping: two confirmSubjects calls can otherwise be
-    // in flight at once, before the backend has advanced the step. The screen
-    // unmounts on step advancement, so this never needs resetting.
+    // in flight at once, before the backend has advanced the step. `loading`
+    // already blocks the click (it sets the underlying disabled attribute), so
+    // this is a backstop for clicks that reach the host element directly. The
+    // screen unmounts on step advancement, so neither needs resetting.
     if (submitted) return;
     setSubmitted(true);
 
@@ -225,7 +227,8 @@ export function SelectSubjectScreen({ payload }: { payload: object }) {
             variant="primary"
             icon={ArrowRightIcon}
             iconPosition="after"
-            disabled={selectedParticipantIds.length === 0 || submitted}
+            disabled={selectedParticipantIds.length === 0}
+            loading={submitted}
             onClick={submitSelected}
           >
             {t("submit", {
