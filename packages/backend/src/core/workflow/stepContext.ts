@@ -224,25 +224,24 @@ export function createStepContext(
         throw new Error("No session ID found in context");
       }
 
-      const existingSubjects = await prisma.checkinSubject.findMany({
-        where: { checkinSessionId: sessionId },
-      });
-
-      if (existingSubjects.length > 0) {
-        // TODO: Can we handle this gracefully? We could delete old subjects and
-        // set new ones, but that could have unintended consequences. Maybe we
-        // should just let the user start a new session?
-        throw new Error(
-          "Subjects have already been set for this session, cannot set again",
-        );
-      }
-
-      await prisma.checkinSubject.createMany({
-        data: participantIds.map((participantId) => ({
-          checkinSessionId: sessionId,
-          participantId,
-        })),
-      });
+      // Idempotent by design: the same set can legitimately be submitted twice.
+      // A rollback to the selecting step leaves the old rows behind, and a
+      // double-tapped submit sends two calls before the step advances (the
+      // stale-method guard in session.socket.ts only catches calls arriving
+      // after advancement). Replacing the set is safe here because no step
+      // after subject selection has run yet — anything that acts on subjects
+      // runs downstream and will see the new set.
+      await prisma.$transaction([
+        prisma.checkinSubject.deleteMany({
+          where: { checkinSessionId: sessionId },
+        }),
+        prisma.checkinSubject.createMany({
+          data: participantIds.map((participantId) => ({
+            checkinSessionId: sessionId,
+            participantId,
+          })),
+        }),
+      ]);
     },
     async clearSubjects() {
       const sessionId = c.get("wsSessionId");

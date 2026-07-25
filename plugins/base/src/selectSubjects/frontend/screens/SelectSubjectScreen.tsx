@@ -63,6 +63,7 @@ export function SelectSubjectScreen({ payload }: { payload: object }) {
 
   const validPayload = Payload(payload);
 
+  const [submitted, setSubmitted] = useState(false);
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<
     string[]
   >(() => {
@@ -118,6 +119,12 @@ export function SelectSubjectScreen({ payload }: { payload: object }) {
   };
 
   const submitSelected = () => {
+    // Guard against double-tapping: two confirmSubjects calls can otherwise be
+    // in flight at once, before the backend has advanced the step. The screen
+    // unmounts on step advancement, so this never needs resetting.
+    if (submitted) return;
+    setSubmitted(true);
+
     socket?.send({
       name: "step:callMethod",
       data: {
@@ -218,7 +225,7 @@ export function SelectSubjectScreen({ payload }: { payload: object }) {
             variant="primary"
             icon={ArrowRightIcon}
             iconPosition="after"
-            disabled={selectedParticipantIds.length === 0}
+            disabled={selectedParticipantIds.length === 0 || submitted}
             onClick={submitSelected}
           >
             {t("submit", {
