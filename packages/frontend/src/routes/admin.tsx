@@ -70,6 +70,9 @@ function RouteComponent() {
   }
 
   const user = context && "user" in context ? context.user : null;
+  // Right after logging in, the location is already /admin while the route
+  // context is still the login page's (no user) until beforeLoad has run.
+  if (!user) return null;
 
   return (
     <UserContext.Provider value={user}>
