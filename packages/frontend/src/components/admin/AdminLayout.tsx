@@ -8,6 +8,7 @@ import {
   HowToReg as HowToRegIcon,
   Link as LinkIcon,
   ManageAccounts as ManageAccountsIcon,
+  Print as PrintIcon,
   Route as RouteIcon,
   Schedule as ScheduleIcon,
   Tune as TuneIcon,
@@ -133,6 +134,20 @@ export function AdminLayout({ children }: Props) {
               <ListItemText primary="Deltagare" />
             </ListItemButtonLink>
           </ListItem>
+          {isAdmin && (
+            <ListItem disablePadding>
+              <ListItemButtonLink
+                to={"/admin/printing"}
+                search={{ tab: "relays" }}
+                activeProps={{ selected: true }}
+              >
+                <ListItemIcon>
+                  <PrintIcon />
+                </ListItemIcon>
+                <ListItemText primary="Utskrift" />
+              </ListItemButtonLink>
+            </ListItem>
+          )}
           <ListItem disablePadding>
             <ListItemButton onClick={() => setAdvancedOpen((open) => !open)}>
               <ListItemIcon>

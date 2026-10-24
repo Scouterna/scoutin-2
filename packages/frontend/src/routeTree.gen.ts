@@ -18,6 +18,7 @@ import { Route as KioskIndexRouteImport } from './routes/_kiosk/index'
 import { Route as LinkLinkIdRouteImport } from './routes/link.$linkId'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminSessionsRouteImport } from './routes/admin/sessions'
+import { Route as AdminPrintingRouteImport } from './routes/admin/printing'
 import { Route as AdminParticipantsRouteImport } from './routes/admin/participants'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as AdminLinksRouteImport } from './routes/admin/links'
@@ -71,6 +72,11 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
 const AdminSessionsRoute = AdminSessionsRouteImport.update({
   id: '/sessions',
   path: '/sessions',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPrintingRoute = AdminPrintingRouteImport.update({
+  id: '/printing',
+  path: '/printing',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminParticipantsRoute = AdminParticipantsRouteImport.update({
@@ -137,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/admin/links': typeof AdminLinksRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/participants': typeof AdminParticipantsRoute
+  '/admin/printing': typeof AdminPrintingRoute
   '/admin/sessions': typeof AdminSessionsRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
   '/link/$linkId': typeof LinkLinkIdRoute
@@ -155,6 +162,7 @@ export interface FileRoutesByTo {
   '/admin/links': typeof AdminLinksRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/participants': typeof AdminParticipantsRoute
+  '/admin/printing': typeof AdminPrintingRoute
   '/admin/users': typeof AdminUsersRoute
   '/link/$linkId': typeof LinkLinkIdRoute
   '/': typeof KioskIndexRoute
@@ -176,6 +184,7 @@ export interface FileRoutesById {
   '/admin/links': typeof AdminLinksRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/participants': typeof AdminParticipantsRoute
+  '/admin/printing': typeof AdminPrintingRoute
   '/admin/sessions': typeof AdminSessionsRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
   '/link/$linkId': typeof LinkLinkIdRoute
@@ -199,6 +208,7 @@ export interface FileRouteTypes {
     | '/admin/links'
     | '/admin/login'
     | '/admin/participants'
+    | '/admin/printing'
     | '/admin/sessions'
     | '/admin/users'
     | '/link/$linkId'
@@ -217,6 +227,7 @@ export interface FileRouteTypes {
     | '/admin/links'
     | '/admin/login'
     | '/admin/participants'
+    | '/admin/printing'
     | '/admin/users'
     | '/link/$linkId'
     | '/'
@@ -237,6 +248,7 @@ export interface FileRouteTypes {
     | '/admin/links'
     | '/admin/login'
     | '/admin/participants'
+    | '/admin/printing'
     | '/admin/sessions'
     | '/admin/users'
     | '/link/$linkId'
@@ -317,6 +329,13 @@ declare module '@tanstack/react-router' {
       path: '/sessions'
       fullPath: '/admin/sessions'
       preLoaderRoute: typeof AdminSessionsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/printing': {
+      id: '/admin/printing'
+      path: '/printing'
+      fullPath: '/admin/printing'
+      preLoaderRoute: typeof AdminPrintingRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/participants': {
@@ -426,6 +445,7 @@ interface AdminRouteChildren {
   AdminLinksRoute: typeof AdminLinksRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminParticipantsRoute: typeof AdminParticipantsRoute
+  AdminPrintingRoute: typeof AdminPrintingRoute
   AdminSessionsRoute: typeof AdminSessionsRouteWithChildren
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -439,6 +459,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminLinksRoute: AdminLinksRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminParticipantsRoute: AdminParticipantsRoute,
+  AdminPrintingRoute: AdminPrintingRoute,
   AdminSessionsRoute: AdminSessionsRouteWithChildren,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,

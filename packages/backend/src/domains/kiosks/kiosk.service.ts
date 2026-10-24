@@ -103,7 +103,13 @@ export async function deleteKiosk(id: string): Promise<boolean> {
 
 export async function listKiosks() {
   return prisma.kiosk.findMany({
-    select: { id: true, name: true, lastSeenAt: true, createdAt: true },
+    select: {
+      id: true,
+      name: true,
+      lastSeenAt: true,
+      createdAt: true,
+      printPoolId: true,
+    },
     orderBy: { createdAt: "desc" },
   });
 }

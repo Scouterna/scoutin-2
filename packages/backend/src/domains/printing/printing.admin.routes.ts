@@ -37,6 +37,7 @@ import {
   updatePool,
   updatePrinter,
 } from "./printers.service.ts";
+import type { PrinterActionResult, RelayActionResult } from "./protocol.ts";
 import {
   printerAction,
   RelayActionError,
@@ -79,7 +80,7 @@ async function runAction(
   c: Context<AppEnv>,
   action: string,
   details: Record<string, string>,
-  run: () => Promise<{ ok: boolean }>,
+  run: () => Promise<PrinterActionResult | RelayActionResult>,
 ) {
   try {
     const result = await run();
@@ -132,13 +133,15 @@ export const printingAdminRouter = new Hono<AppEnv>()
   // and printers before pairing. Never lists codes.
   .post("/pairing/lookup", arktypeValidator("json", CodeEntry), async (c) => {
     const found = lookupEnrollment(c.req.valid("json").colors);
-    if (!found) return c.json({ error: "No relay is showing that code" }, 404);
+    if (!found)
+      return c.json({ error: "No relay is showing those colors" }, 404);
     return c.json(found);
   })
   .post("/pairing", arktypeValidator("json", PairBody), async (c) => {
     const body = c.req.valid("json");
     const relay = await pairEnrollment(body.colors, body.name);
-    if (!relay) return c.json({ error: "No relay is showing that code" }, 404);
+    if (!relay)
+      return c.json({ error: "No relay is showing those colors" }, 404);
     await recordAudit({
       actor: getAuthUser(c).username,
       action: "printing.relay.pair",

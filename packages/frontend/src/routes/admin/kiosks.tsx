@@ -8,6 +8,8 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
+import MenuItem from "@mui/material/MenuItem";
+import Select from "@mui/material/Select";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -18,9 +20,12 @@ import Typography from "@mui/material/Typography";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { toast } from "sonner";
 import { api } from "@/api/api";
 import { assertAdmin } from "@/lib/user-context";
 import { AddKioskDialog } from "../../components/admin/AddKioskDialog";
+import { poolsQueryOptions } from "../../components/admin/printing/PoolsQuery";
+import { apiErrorMessage } from "../../components/admin/printing/PrinterApiError";
 
 export const Route = createFileRoute("/admin/kiosks")({
   beforeLoad: ({ context }) => assertAdmin(context),
@@ -61,7 +66,51 @@ type Kiosk = {
   name: string;
   lastSeenAt: string | null;
   createdAt: string;
+  printPoolId: string | null;
 };
+
+/** The print pool a kiosk draws its badges from. */
+function KioskPoolSelect({ kiosk }: { kiosk: Kiosk }) {
+  const queryClient = useQueryClient();
+  const poolsQuery = useQuery(poolsQueryOptions);
+
+  const mutation = useMutation({
+    mutationFn: async (poolId: string | null) => {
+      const res = await api.admin.printing.kiosks[":id"].pool.$put({
+        param: { id: kiosk.id },
+        json: { poolId },
+      });
+      if (!res.ok) {
+        throw new Error(
+          await apiErrorMessage(res, "Kunde inte ändra skrivarpoolen"),
+        );
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "kiosks"] });
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  return (
+    <Select
+      size="small"
+      variant="standard"
+      value={kiosk.printPoolId ?? "none"}
+      disabled={!poolsQuery.data || mutation.isPending}
+      onChange={(e) =>
+        mutation.mutate(e.target.value === "none" ? null : e.target.value)
+      }
+    >
+      <MenuItem value="none">Ingen</MenuItem>
+      {poolsQuery.data?.map((pool) => (
+        <MenuItem key={pool.id} value={pool.id}>
+          {pool.name}
+        </MenuItem>
+      ))}
+    </Select>
+  );
+}
 
 function RenameDialog({
   kiosk,
@@ -212,6 +261,7 @@ function KiosksPage() {
           <TableHead>
             <TableRow>
               <TableCell>Name</TableCell>
+              <TableCell>Skrivarpool</TableCell>
               <TableCell>Last seen</TableCell>
               <TableCell>Added</TableCell>
               <TableCell />
@@ -221,6 +271,9 @@ function KiosksPage() {
             {data?.kiosks.map((kiosk) => (
               <TableRow key={kiosk.id}>
                 <TableCell>{kiosk.name}</TableCell>
+                <TableCell>
+                  <KioskPoolSelect kiosk={kiosk as Kiosk} />
+                </TableCell>
                 <TableCell>
                   {kiosk.lastSeenAt ? timeAgo(kiosk.lastSeenAt) : "Never"}
                 </TableCell>
