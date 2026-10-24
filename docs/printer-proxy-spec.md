@@ -56,7 +56,7 @@ settings.
 | Pool without healthy printers | Attendee sees nothing; jobs queue and staff are alerted |
 | Reprint | Admin only. Always creates a **new** job |
 | Admin printing | Any template with custom values, to a pool or one specific printer. Test and calibration labels are just templates |
-| Enrollment | Pi has no screen or keyboard: an unenrolled relay **shows a 4-color code on its LEDs**, and staff enter the colors in admin. Without LEDs, the code is in the log |
+| Enrollment | Pi has no screen or keyboard: an unenrolled relay **shows a 4-color code on its LEDs**, and staff enter the colors in admin. Without LEDs, the colors are in the log |
 | Stale jobs | Never expire. Printed FIFO when printers come back |
 | Visibility | Admin dashboard, Prometheus metrics, **4 NeoPixels on the Pi in a row, one per USB port** |
 | Desk switch | A GPIO switch. Closed = no new jobs start on this relay; the pool fails over |
@@ -100,6 +100,24 @@ settings.
 
 ## 4. Data model (Prisma, indicative)
 
+Built in `packages/backend/prisma/schema.prisma`, which is authoritative. It
+differs from the sketch below in a few places:
+
+- `PrintJob.relayId` records the relay that holds the lease. Reconciling
+  (§7.3) and a dropped connection (§13.5) go by it rather than by the
+  printer's current relay, so a printer moved to another Pi mid-job can't get
+  its `sending` job re-queued by a relay whose journal never saw it.
+- No `PrintRelayEnrollment` table: pending enrollments live in the backend's
+  memory (§12.3). A paired enrollment holds the new key until the relay
+  collects it, which ends the enrollment.
+- `PrintRelay.hostname` is kept from `hello`, `Printer.port` from
+  `PrinterInfo`.
+- No CHECK constraint for "exactly one of `poolId` / `targetPrinterId`": the
+  code creating jobs enforces it, and deleting a pool sets `poolId` to null on
+  its finished jobs, which a CHECK would forbid.
+- Raw SQL writes timestamps in UTC (`now() AT TIME ZONE 'utc'`), like Prisma:
+  the columns have no time zone.
+
 ```prisma
 model PrintRelay {
   id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -110,20 +128,6 @@ model PrintRelay {
   revokedAt   DateTime?
   createdAt   DateTime  @default(now())
   printers    Printer[]
-}
-
-model PrintRelayEnrollment {             // pending pairing, see §12
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  colors      String?                 // e.g. "RGBY", unique among pending (LED pairing)
-  code         String    @unique         // printed-label fallback
-  secretHash   String                    // relay proves it owns this enrollment
-  hostname     String
-  ip           String?
-  printers     Json                      // serials etc. reported at enrollment
-  lastPolledAt DateTime
-  approvedAt   DateTime?
-  relayId      String?   @db.Uuid        // set on approval
-  createdAt    DateTime  @default(now())
 }
 
 model PrintPool {
@@ -158,8 +162,8 @@ model Printer {
 }
 
 // Added to the existing Kiosk model:
-//   poolId String?    @db.Uuid
-//   pool   PrintPool? @relation(fields: [poolId], references: [id])
+//   printPoolId String?    @db.Uuid
+//   printPool   PrintPool? @relation(fields: [printPoolId], references: [id])
 
 model PrintJob {
   id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -616,7 +620,7 @@ label.
 ### 8.6 Desk hardware: LEDs and switch
 
 Both are optional. A relay with neither works fine; it just loses local feedback,
-and its pairing code is only in the log (§12).
+and its pairing colors are only in the log (§12).
 
 #### NeoPixels (4 × WS2812/SK6812)
 
@@ -961,7 +965,7 @@ reliable power strip.
 
 ### 8.10 Versions and automatic updates
 
-The updater is built; the CI workflow and the server endpoint aren't yet.
+The updater and the CI job are built; the server endpoint isn't yet.
 `fakecloud -bundle <file>` stands in for both.
 
 - **A relay version is a content hash, not a number:** the git tree hash of
@@ -972,13 +976,18 @@ The updater is built; the CI workflow and the server endpoint aren't yet.
   `dist.sh` computes it from the working tree, so uncommitted changes count as
   if committed. Admin shows it shortened; versions have no order, and nothing
   needs one: the server names exactly the one it wants.
-- **CI builds each version once.** On a push to `main`, a workflow computes the
-  tree hash. If a GitHub Release tagged `printer-proxy/<hash>` already exists it
-  stops; otherwise it runs `dist.sh` and publishes that release with the bundle
-  and its `.sha256`. It runs before the Docker image build, so no server goes
-  live expecting a bundle that doesn't exist yet.
-- **The server decides the version.** The Docker build gets the tree hash as a
-  build arg. A public, unauthenticated endpoint, e.g.
+- **CI builds each version once.** The `relay` job in `build-image.yml` runs on
+  every push, ahead of the image build (`needs: relay`), so no server goes live
+  expecting a bundle that doesn't exist yet. It computes the tree hash. If the
+  GitHub Release `printer-proxy/<hash>` already has the bundle's `.sha256`, it
+  stops there; otherwise it tests, runs `dist.sh` and publishes that release
+  (`--latest=false`, so "Latest release" stays the app's) with the bundle, then
+  the `.sha256` last, which marks it complete. Builds aren't byte-reproducible
+  (tar timestamps), which is fine: each version is built once, and the checksum
+  always comes from the release.
+- **The server decides the version.** The Docker build gets the tree hash and
+  the bundle's checksum as build args, set in the image as
+  `PRINT_RELAY_VERSION` and `PRINT_RELAY_SHA256`. A public, unauthenticated endpoint, e.g.
   `GET /api/print-relays/version` → `{ version, url, sha256 }` (`sha256` is the
   bundle's checksum, for checking the download). Public so it also works before
   pairing. The relay protocol and the backend change together, so the server
@@ -1009,7 +1018,9 @@ The updater is built; the CI workflow and the server endpoint aren't yet.
   there (the `-` in `ExecStartPre=-+`). `TimeoutStartSec=120` leaves room for
   the timeouts. `autoUpdate: false` in the config turns it off, for a Pi
   running a development build.
-- **Triggering it:** the relay sends its version (the tree hash) in `hello`. If the server wants
+- **Triggering it (not built yet):** today a relay updates on its next
+  restart; the server only logs a relay running another version. Planned: the
+  relay sends its version (the tree hash) in `hello`. If the server wants
   another, it refuses the connection with an "upgrade required" reason; the relay
   exits, systemd restarts it, and the updater runs. A `relay:action reboot` does
   the same.
@@ -1217,8 +1228,8 @@ turns out to matter.
 
 ### 11.1 Admin UI
 
-- **Relays:** list, connection state, version, last seen. **Pair** (enter the code
-  from a pairing label), rename, revoke.
+- **Relays:** list, connection state, version, last seen. **Pair** (enter the colors
+  the relay shows), rename, revoke.
 - **Printers:** live state and detail, relay, pool assignment, name. Reported
   configuration with **deviations from the pool's profile** highlighted. Actions
   (§8.9): **apply profile**, **calibrate media**, **cancel buffer**, and one-click
@@ -1269,12 +1280,11 @@ configured on the Pi is the server URL.
    used. The code is shown at **full brightness**: at the normal status
    brightness (0.2) the colors wash out. That gives 5⁴ = 625 codes, and the
    server never hands out a combination already held by another pending
-   enrollment. The code and the 8-character typed form are
-   also logged, for anyone with SSH access. A relay without LEDs is paired from
-   the log.
-3. **Staff pair it.** In admin, staff choose *Pair relay* and either click the four
-   colors in order (swatches in a row, like the LEDs) or type the code from the
-   log. They give the relay a name. Before confirming, admin shows the hostname,
+   enrollment. The colors are also logged, for anyone with SSH access. A relay
+   without LEDs is paired from the log. There is no typed code: pairing is
+   always by colors.
+3. **Staff pair it.** In admin, staff choose *Pair relay* and click the four
+   colors in order (swatches in a row, like the LEDs). They give the relay a name. Before confirming, admin shows the hostname,
    IP and printer serials of the matching enrollment.
 4. **Collect the key.** The relay polls every 5 s. Once paired, it receives a
    long-lived key, stores it in `/var/lib/printer-proxy/key` (0600, written
@@ -1285,14 +1295,11 @@ configured on the Pi is the server URL.
 
 | Request | Reply |
 | --- | --- |
-| `POST /api/print-relays/enroll` `{ hostname, printers: PrinterInfo[] }` | `201 { enrollmentId, secret, colors: string[4], code }`. `429` when rate-limited |
+| `POST /api/print-relays/enroll` `{ hostname, printers: PrinterInfo[] }` | `201 { enrollmentId, secret, colors: string[4] }`. `429` when rate-limited |
 | `GET /api/print-relays/enroll/:id`, `Authorization: Bearer <secret>` | `200 { status: "pending" }` or `200 { status: "paired", key }`. `404` unknown or expired; `401` wrong secret |
 
 - `PrinterInfo` is the same type as in §13.3. `printers` may be empty: a relay can
   be paired before any printer is plugged in.
-- `code` is `XXXX-XXXX` from the kiosk setup-code alphabet
-  (`23456789ABCDEFGHJKMNPQRSTUVWXYZ`, `kiosk.service.ts`). It's looked up
-  case-insensitively, is single-use and dies with the enrollment.
 - Once `paired` has been returned, the enrollment is done and further polls get
   `404`.
 - The relay treats `404` and `401` alike: it deletes its enrollment and starts
@@ -1302,15 +1309,25 @@ configured on the Pi is the server URL.
 ### 12.3 Lifetime and revocation
 
 - **The server never reveals a code.** No API, admin page or log on the server
-  shows the colors or typed code of a pending enrollment. The only way to learn a
-  code is to look at the Pi's LEDs or its own log. Admin finds an enrollment
+  shows the colors of a pending enrollment. The only way to learn a code is to
+  look at the Pi's LEDs or its own log. Admin finds an enrollment
   only by its code, and shows its hostname, IP and printers only after a match,
   for confirmation. A list of pending enrollments, if any, carries no codes (it's
   for spotting a flood, not for picking one). Otherwise the code would no longer
   prove physical presence, and pairing would become "approve from a pending list"
   (rejected below).
 - **Expiry:** a pending enrollment lives while the relay keeps polling and is
-  dropped 1 hour after the last poll.
+  dropped 5 minutes after the last poll. The relay polls every 5 s, so the
+  TTL only has to bridge a Pi reboot or a short network drop (the relay keeps
+  its enrollment on disk and shows the same colors after a restart). An
+  abandoned enrollment doesn't hold its colors and pending slot any longer than
+  that.
+- **In memory, not in the database.** Pending enrollments are short-lived and
+  there's one backend instance. A server restart forgets them: the relay's next
+  poll gets `404` and it starts over with new colors. Restarting in the few
+  seconds between staff pairing a relay and the relay collecting its key leaves
+  an unused relay row (the relay enrolls again and is paired anew); staff
+  revoke it.
 - **Revocation:** a revoked key gets a `401` on the WebSocket upgrade. The relay
   deletes the key and starts over at step 1, showing a new code. A revoked Pi can
   be re-paired without touching it.
@@ -1510,6 +1527,5 @@ case as before.
 - Network-attached printers (the transport should stay behind an interface so this
   can be added)
 - Fallback pools, job priorities, job expiry
-- Relay self-update
 - Retrying the print step after staff assign a pool to a kiosk that had none
 - Printing anything other than full-label 1-bit images
