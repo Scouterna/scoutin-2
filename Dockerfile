@@ -62,6 +62,13 @@ RUN mkdir -p node_modules/@scouterna/scoutin-backend && \
 # Frontend static files served by Hono's serveStatic middleware
 COPY --from=builder /app/packages/frontend/dist ./public
 
+# The print relay version this server expects (spec §8.10), from the relay job
+# in build-image.yml. Last, so a new relay doesn't invalidate the layers above.
+ARG PRINT_RELAY_VERSION=""
+ARG PRINT_RELAY_SHA256=""
+ENV PRINT_RELAY_VERSION=$PRINT_RELAY_VERSION \
+    PRINT_RELAY_SHA256=$PRINT_RELAY_SHA256
+
 EXPOSE 3000
 # --conditions production activates the compiled-JS export condition in plugin packages,
 # bypassing the TypeScript source that cannot be type-stripped from node_modules.

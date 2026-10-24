@@ -14,7 +14,87 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The print relay bundle for this commit's printer-proxy/ (spec §8.10). Its
+  # version is the git tree hash of printer-proxy/, so a release exists once per
+  # relay change, not per push. It runs before the image build: a server must
+  # never go live expecting a relay version that hasn't been published.
+  relay:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      sha256: ${{ steps.release.outputs.sha256 }}
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: printer-proxy
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Find the relay version
+        id: version
+        run: |
+          version=$(git rev-parse HEAD:printer-proxy)
+          echo "version=$version" >>"$GITHUB_OUTPUT"
+          echo "tag=printer-proxy/$version" >>"$GITHUB_OUTPUT"
+          bundle="printer-proxy-$version-linux-arm64.tar.gz"
+          echo "bundle=$bundle" >>"$GITHUB_OUTPUT"
+          # Published = the release exists and has the bundle. A release
+          # without it (a canceled run) is finished below.
+          if gh release view "printer-proxy/$version" --json assets -q '.assets[].name' 2>/dev/null |
+            grep -qx "$bundle.sha256"; then
+            echo "published=true" >>"$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Go
+        if: steps.version.outputs.published != 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: printer-proxy/go.mod
+          cache-dependency-path: printer-proxy/go.sum
+
+      - name: Test
+        if: steps.version.outputs.published != 'true'
+        run: go vet ./... && go test ./...
+
+      - name: Build and publish the bundle
+        if: steps.version.outputs.published != 'true'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+          BUNDLE: ${{ steps.version.outputs.bundle }}
+        run: |
+          ./dist.sh
+          # --latest=false: "Latest release" stays the app's, not a relay bundle.
+          # Creating it with GITHUB_TOKEN doesn't trigger this workflow again.
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --target "$GITHUB_SHA" --latest=false \
+              --title "Print relay ${VERSION:0:12}" \
+              --notes "printer-proxy bundle for git tree \`$VERSION\` (spec §8.10). Installed by \`printer-proxy update\`." ||
+              gh release view "$TAG" >/dev/null # a parallel run created it
+          fi
+          # The checksum file last: it marks the release as complete.
+          gh release upload "$TAG" --clobber "dist/$BUNDLE"
+          gh release upload "$TAG" --clobber "dist/$BUNDLE.sha256"
+
+      - name: Read the published checksum
+        id: release
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          dir=$(mktemp -d)
+          gh release download "$TAG" --pattern '*.sha256' --dir "$dir"
+          sha256=$(cut -d' ' -f1 "$dir"/*.sha256)
+          echo "version=$VERSION" >>"$GITHUB_OUTPUT"
+          echo "sha256=$sha256" >>"$GITHUB_OUTPUT"
+          echo "Print relay $VERSION, bundle sha256 $sha256" >>"$GITHUB_STEP_SUMMARY"
+
   docker:
+    needs: relay
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -56,6 +136,9 @@ jobs:
           platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            PRINT_RELAY_VERSION=${{ needs.relay.outputs.version }}
+            PRINT_RELAY_SHA256=${{ needs.relay.outputs.sha256 }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
