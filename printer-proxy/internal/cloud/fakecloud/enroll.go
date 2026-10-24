@@ -18,17 +18,14 @@ import (
 //
 //	POST /api/print-relays/enroll        relay asks for a code
 //	GET  /api/print-relays/enroll/{id}   relay polls, Authorization: Bearer <secret>
-//	POST /pair?colors=red,green,white,pink  or  ?code=ABCD-EFGH   staff pair it
+//	POST /pair?colors=red,green,white,pink  staff pair it
 //	GET  /enrollments                    pending enrollments, without their codes
 //	POST /revoke?key=K                   revoke a key and drop its connections
 
 var pairingColors = []string{"red", "green", "yellow", "white", "pink"}
 
-// Same alphabet as kiosk setup codes: no 0/O, 1/I/L.
-const codeChars = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
-
 // EnrollmentTTL: a pending enrollment is dropped this long after its last poll.
-var EnrollmentTTL = time.Hour
+var EnrollmentTTL = 5 * time.Minute
 
 type enrollment struct {
 	enroll.Enrollment
@@ -79,19 +76,12 @@ func (s *Server) postEnroll(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	var code strings.Builder
-	for i := range 8 {
-		if i == 4 {
-			code.WriteByte('-')
-		}
-		code.WriteByte(codeChars[pick(len(codeChars))])
-	}
 	e := &enrollment{
-		Enrollment: enroll.Enrollment{ID: newID("enr-"), Secret: newID("sec-") + newID(""), Colors: colors, Code: code.String()},
+		Enrollment: enroll.Enrollment{ID: newID("enr-"), Secret: newID("sec-") + newID(""), Colors: colors},
 		Hostname:   req.Hostname, Printers: req.Printers, IP: r.RemoteAddr, LastPoll: time.Now(),
 	}
 	s.enrollments[e.ID] = e
-	slog.Info("fakecloud: enrollment started", "id", e.ID, "hostname", e.Hostname, "colors", colors, "code", e.Code)
+	slog.Info("fakecloud: enrollment started", "id", e.ID, "hostname", e.Hostname, "colors", colors)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(e.Enrollment)
@@ -120,9 +110,9 @@ func (s *Server) getEnroll(w http.ResponseWriter, r *http.Request, id string) {
 	writeJSON(w, enroll.Status{Status: "paired", Key: e.Key})
 }
 
-// Pair plays the admin entering a code: by colors ("red,green,white,pink") or
-// by the typed code. It returns the issued key.
-func (s *Server) Pair(colors, code string) (string, bool) {
+// Pair plays the admin entering the colors ("red,green,white,pink"). It
+// returns the issued key.
+func (s *Server) Pair(colors string) (string, bool) {
 	s.init()
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -132,7 +122,7 @@ func (s *Server) Pair(colors, code string) (string, bool) {
 		if e.Key != "" {
 			continue
 		}
-		if (colors != "" && slices.Equal(e.Colors, want)) || (code != "" && strings.EqualFold(e.Code, code)) {
+		if slices.Equal(e.Colors, want) {
 			e.Key = newID("key-") + newID("")
 			s.issued[e.Key] = true
 			slog.Info("fakecloud: relay paired", "id", e.ID, "hostname", e.Hostname)
@@ -180,9 +170,9 @@ func (s *Server) serveEnrollAPI(w http.ResponseWriter, r *http.Request) bool {
 	case strings.HasPrefix(r.URL.Path, base+"/") && r.Method == http.MethodGet:
 		s.getEnroll(w, r, strings.TrimPrefix(r.URL.Path, base+"/"))
 	case r.URL.Path == "/pair" && r.Method == http.MethodPost:
-		key, ok := s.Pair(r.URL.Query().Get("colors"), r.URL.Query().Get("code"))
+		key, ok := s.Pair(r.URL.Query().Get("colors"))
 		if !ok {
-			http.Error(w, "no pending enrollment with that code", http.StatusNotFound)
+			http.Error(w, "no pending enrollment with those colors", http.StatusNotFound)
 			return true
 		}
 		writeJSON(w, map[string]string{"key": key})

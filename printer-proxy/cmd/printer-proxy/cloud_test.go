@@ -323,7 +323,7 @@ func TestRevokedKeyEnrollsAgain(t *testing.T) {
 		t.Helper()
 		select {
 		case e := <-shown:
-			key, ok := fake.Pair(strings.Join(e.Colors, ","), "")
+			key, ok := fake.Pair(strings.Join(e.Colors, ","))
 			if !ok {
 				t.Fatal("pairing failed")
 			}

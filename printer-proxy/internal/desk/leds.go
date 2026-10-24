@@ -15,7 +15,7 @@ import (
 // §8.6). Values are palette inputs, before gamma and brightness.
 var (
 	green = hw.RGB{R: 0x00, G: 0xff, B: 0x40}
-	amber = hw.RGB{R: 0xff, G: 0xc0, B: 0x00} // provisional
+	amber = hw.RGB{R: 0xff, G: 0xc0, B: 0x00}
 	red   = hw.RGB{R: 0xff}
 	white = hw.RGB{R: 0xff, G: 0xff, B: 0xff}
 	blue  = hw.RGB{B: 0xff}

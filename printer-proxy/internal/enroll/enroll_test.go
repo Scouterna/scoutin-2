@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -62,10 +63,10 @@ func TestPairByColors(t *testing.T) {
 	done := run(context.Background(), en)
 
 	e := next(t, shown)
-	if len(e.Colors) != 4 || len(e.Code) != 9 {
+	if len(e.Colors) != 4 {
 		t.Fatalf("code %+v", e)
 	}
-	key, ok := fake.Pair(strings.Join(e.Colors, ","), "")
+	key, ok := fake.Pair(strings.Join(e.Colors, ","))
 	if !ok {
 		t.Fatal("pairing failed")
 	}
@@ -93,14 +94,14 @@ func TestRestartKeepsCode(t *testing.T) {
 
 	done = run(context.Background(), en)
 	again := next(t, shown)
-	if again.ID != first.ID || again.Code != first.Code {
-		t.Fatalf("after restart got %s/%s, want the same %s/%s", again.ID, again.Code, first.ID, first.Code)
+	if again.ID != first.ID || !slices.Equal(again.Colors, first.Colors) {
+		t.Fatalf("after restart got %s/%v, want the same %s/%v", again.ID, again.Colors, first.ID, first.Colors)
 	}
 	if n := fake.Enrollments(); n != 1 {
 		t.Fatalf("%d enrollments on the server, want 1", n)
 	}
-	if _, ok := fake.Pair("", strings.ToLower(first.Code)); !ok {
-		t.Fatal("pairing by typed code failed")
+	if _, ok := fake.Pair(strings.Join(first.Colors, ",")); !ok {
+		t.Fatal("pairing failed")
 	}
 	if r := <-done; r.err != nil {
 		t.Fatal(r.err)
@@ -117,7 +118,7 @@ func TestExpiredStartsOver(t *testing.T) {
 	if second.ID == first.ID {
 		t.Fatal("same enrollment after the server forgot it")
 	}
-	if _, ok := fake.Pair("", second.Code); !ok {
+	if _, ok := fake.Pair(strings.Join(second.Colors, ",")); !ok {
 		t.Fatal("pairing failed")
 	}
 	if r := <-done; r.err != nil {

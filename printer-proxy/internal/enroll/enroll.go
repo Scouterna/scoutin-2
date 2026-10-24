@@ -43,7 +43,6 @@ type Enrollment struct {
 	ID     string   `json:"enrollmentId"`
 	Secret string   `json:"secret"`
 	Colors []string `json:"colors"`
-	Code   string   `json:"code"`
 }
 
 // Status is GET /api/print-relays/enroll/:id.
@@ -113,7 +112,7 @@ func (e *Enroller) Run(ctx context.Context) (string, error) {
 		}
 		retry = retryMin
 		e.Show(*en)
-		slog.Info("waiting to be paired: enter this code in admin", "colors", en.Colors, "code", en.Code)
+		slog.Info("waiting to be paired: enter these colors in admin", "colors", en.Colors)
 
 		key, err := e.await(ctx, enrollURL, en)
 		if errors.Is(err, errGone) {
