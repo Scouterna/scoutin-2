@@ -1,0 +1,3 @@
+# Installed by install.sh in /etc/udev/rules.d/ (spec §8.8): keep Zebra
+# printers' USB power on, so the kernel never autosuspends them.
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0a5f", TEST=="power/control", ATTR{power/control}="on"

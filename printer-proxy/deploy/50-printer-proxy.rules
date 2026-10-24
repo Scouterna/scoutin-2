@@ -1,0 +1,16 @@
+// Installed by install.sh in /etc/polkit-1/rules.d/ (spec §8.8). Lets the
+// relay's service user reboot or power off the Pi when admin asks (relay:action),
+// and nothing else.
+polkit.addRule(function (action, subject) {
+  if (subject.user !== "printer-proxy") {
+    return polkit.Result.NOT_HANDLED;
+  }
+  switch (action.id) {
+    case "org.freedesktop.login1.reboot":
+    case "org.freedesktop.login1.reboot-multiple-sessions":
+    case "org.freedesktop.login1.power-off":
+    case "org.freedesktop.login1.power-off-multiple-sessions":
+      return polkit.Result.YES;
+  }
+  return polkit.Result.NOT_HANDLED;
+});

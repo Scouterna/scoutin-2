@@ -1,0 +1,48 @@
+# Installed by install.sh as /etc/systemd/system/printer-proxy.service (spec §8.8).
+[Unit]
+Description=Scoutin print relay
+Documentation=https://github.com/Scouterna/scoutin-2/blob/main/docs/printer-proxy-spec.md
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=notify
+NotifyAccess=main
+# Install the relay version the server expects, if it isn't this one (spec
+# §8.10). "+": as root, outside the hardening below. "-": a failed update
+# still starts the installed version.
+ExecStartPre=-+/opt/printer-proxy/current/printer-proxy update -config /etc/printer-proxy/config.yaml
+ExecStart=/opt/printer-proxy/current/printer-proxy -config /etc/printer-proxy/config.yaml
+Restart=always
+RestartSec=2
+# The relay pings from its discovery loop every second; a hang restarts it.
+WatchdogSec=30
+# Room for the update: up to 10 s asking the server, 60 s downloading.
+TimeoutStartSec=120
+TimeoutStopSec=15
+
+User=printer-proxy
+Group=printer-proxy
+# Printers (/dev/usb/lp*), LEDs (/dev/spidev*), desk switch (/dev/gpiochip*).
+SupplementaryGroups=lp spi gpio
+# /var/lib/printer-proxy: key, journal, enrollment, lock.
+StateDirectory=printer-proxy
+StateDirectoryMode=0700
+# /run/printer-proxy: local print socket (local-only mode).
+RuntimeDirectory=printer-proxy
+
+# Hardening. The relay needs its devices, the network, and D-Bus for the
+# reboot/power-off actions (allowed by the polkit rule), nothing else.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target

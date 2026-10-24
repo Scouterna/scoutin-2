@@ -1,0 +1,14 @@
+# /etc/printer-proxy/config.yaml (spec §8.7). Only `server` is required;
+# everything else shows its default.
+server: https://scoutin.example.se
+autoUpdate: true           # install the relay version the server expects at every start; off for a dev build
+
+leds:
+  enabled: true
+  spi: /dev/spidev0.0
+  brightness: 0.2          # status colors; a pairing code always shows at full brightness
+  # portMap: { "1-1.1.2": 0, "1-1.1.3": 1, "1-1.3": 2, "1-1.2": 3 }   # USB port → LED (0-based); default: the Pi 3B+ map
+
+switch:
+  enabled: true
+  gpio: 22                 # BCM number; physical pin 15, switch to GND on pin 14
