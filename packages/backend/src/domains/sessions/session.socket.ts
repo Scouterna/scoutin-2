@@ -1,6 +1,10 @@
 import { type } from "arktype";
-import { stepMethodCallSeconds } from "../../app/metrics.ts";
-import { getLogger } from "../../core/logging/logger.ts";
+import { Hono } from "hono";
+import {
+  activeWebSocketConnections,
+  stepMethodCallSeconds,
+} from "../../app/metrics.ts";
+import { getLogger, logger } from "../../core/logging/logger.ts";
 import type { MessageTypes } from "../../core/websocket/messageTypes.ts";
 import { createBroadcastWs } from "../../core/websocket/sessionRegistry.ts";
 import {
@@ -8,6 +12,7 @@ import {
   type InferListeners,
   type TypedWSContext,
 } from "../../core/websocket/socketRouter.ts";
+import type { AppEnv, UpgradeWebSocket } from "../../core/websocket/types.ts";
 import { goBack } from "../../core/workflow/step.ts";
 import { createStepContext } from "../../core/workflow/stepContext.ts";
 import { getCurrentStep } from "../workflows/step.service.ts";
@@ -123,3 +128,30 @@ const routes = router
   });
 
 export type Listeners = InferListeners<typeof routes>;
+
+/** The kiosk session WebSocket, mounted at /ws/session. */
+export function sessionSocket(upgradeWebSocket: UpgradeWebSocket) {
+  return new Hono<AppEnv>().get(
+    "/",
+    upgradeWebSocket(async (c) => {
+      // Simulate delay for testing purposes
+      // await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      const connId = crypto.randomUUID();
+      c.set("connId", connId);
+      c.set("logger", logger.child({ connId }));
+
+      getLogger(c).info("WebSocket connection opened");
+      activeWebSocketConnections.inc();
+
+      return {
+        onMessage: router.onMessage(c),
+        onClose() {
+          activeWebSocketConnections.dec();
+          getLogger(c).info("WebSocket connection closed");
+          c.get("wsUnregister")?.();
+        },
+      };
+    }),
+  );
+}

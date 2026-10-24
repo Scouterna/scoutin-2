@@ -34,6 +34,11 @@ model Kiosk {
   keyHash    String    @unique
   lastSeenAt DateTime?
   createdAt  DateTime  @default(now())
+
+  // The print pool its badges go to. Null: the printer:print step shows a
+  // "no printer" error instead.
+  printPoolId String?    @db.Uuid
+  printPool   PrintPool? @relation(fields: [printPoolId], references: [id], onDelete: SetNull)
 }
 
 model KioskSetupToken {
@@ -167,11 +172,11 @@ model Participant {
   // The ID of the participant in the data source.
   idInDataSource String
 
-  firstName                String
-  lastName                 String
-  subGroup                 String?
-  preliminaryCheckedInAt   DateTime?
-  confirmedCheckedInAt     DateTime?
+  firstName              String
+  lastName               String
+  subGroup               String?
+  preliminaryCheckedInAt DateTime?
+  confirmedCheckedInAt   DateTime?
 
   // Arbitrary per-key data written by import enrichers (never flat-merged;
   // each enricher owns its own key). See registerImportEnricher.
@@ -241,4 +246,125 @@ model ParticipantGroup {
   participants Participant[]
 
   @@unique([dataSource, idInDataSource])
+}
+
+// ── Printing ──────────────────────────────────────────────────────────────────
+// Badge printing through printer-proxy relays; see docs/printer-proxy-spec.md.
+
+// A Raspberry Pi running printer-proxy. Authenticates with a key it got
+// when staff paired it.
+model PrintRelay {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String
+  keyHash    String    @unique
+  hostname   String?
+  // The relay's version (the git tree hash of printer-proxy/), as it reported
+  // when it last connected.
+  version    String?
+  lastSeenAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  printers   Printer[]
+}
+
+model PrintPool {
+  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String     @unique
+  // Name of the printer settings profile its printers should have.
+  profile   String?
+  printers  Printer[]
+  kiosks    Kiosk[]
+  jobs      PrintJob[]
+  createdAt DateTime   @default(now())
+}
+
+// A Zebra printer, identified by its serial wherever it's plugged in.
+model Printer {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serial      String      @unique
+  // Staff-friendly label, e.g. "Desk 3 left".
+  name        String?
+  model       String?
+  // 1-based desk port on its relay, if known.
+  port        Int?
+  dpi         Int?
+  widthDots   Int?
+  lengthDots  Int?
+  // The relay currently reporting it.
+  relayId     String?     @db.Uuid
+  relay       PrintRelay? @relation(fields: [relayId], references: [id], onDelete: SetNull)
+  // Null: unassigned, gets only jobs targeted at this printer.
+  poolId      String?     @db.Uuid
+  pool        PrintPool?  @relation(fields: [poolId], references: [id], onDelete: SetNull)
+  // As reported by the relay: connecting | ready | printing | inhibited |
+  // paused | media_out | head_open | error | unresponsive | offline
+  state       String      @default("offline")
+  stateDetail String?
+  // Highest printer:status seq applied (a millisecond timestamp).
+  stateSeq    BigInt      @default(0)
+  // Settings read from the printer when it was last connected.
+  config      Json?
+  configAt    DateTime?
+  lastSeenAt  DateTime?
+  createdAt   DateTime    @default(now())
+  jobs        PrintJob[]  @relation("leasedTo")
+  targetedBy  PrintJob[]  @relation("targetedAt")
+}
+
+// A badge to print. Exactly one of poolId / targetPrinterId is set: any
+// printer in the pool, or that one printer.
+model PrintJob {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  poolId          String?         @db.Uuid
+  pool            PrintPool?      @relation(fields: [poolId], references: [id], onDelete: SetNull)
+  targetPrinterId String?         @db.Uuid
+  targetPrinter   Printer?        @relation("targetedAt", fields: [targetPrinterId], references: [id], onDelete: SetNull)
+  // step | reprint | admin
+  source          String
+  createdById     String?         @db.Uuid
+  // queued | leased | sending | printed | unknown | failed | canceled
+  state           String          @default("queued")
+  template        String
+  values          Json
+  // One job per (session, step, item), so a retried step doesn't print twice.
+  idempotencyKey  String?         @unique
+  sessionId       String?         @db.Uuid
+  kioskId         String?         @db.Uuid
+  reprintOfId     String?         @db.Uuid
+  // Set on lease: the printer, and the relay that holds the lease. When that
+  // relay reconnects, its jobs in flight are settled from its journal, even if
+  // the printer has since moved to another relay.
+  relayId         String?         @db.Uuid
+  printerId       String?         @db.Uuid
+  printer         Printer?        @relation("leasedTo", fields: [printerId], references: [id], onDelete: SetNull)
+  leaseId         String?         @db.Uuid
+  leaseExpiresAt  DateTime?
+  failureReason   String?
+  createdAt       DateTime        @default(now())
+  leasedAt        DateTime?
+  sendingAt       DateTime?
+  finishedAt      DateTime?
+  events          PrintJobEvent[]
+
+  @@index([poolId, state, createdAt])
+  @@index([targetPrinterId, state, createdAt])
+  @@index([printerId, state])
+  @@index([relayId, state])
+}
+
+// Every transition of a job, for "what happened to this badge?".
+model PrintJobEvent {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId     String   @db.Uuid
+  job       PrintJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  from      String?
+  to        String
+  printerId String?  @db.Uuid
+  leaseId   String?  @db.Uuid
+  reason    String?
+  // Admin username, for staff actions.
+  actor     String?
+  at        DateTime @default(now())
+
+  @@index([jobId, at])
 }

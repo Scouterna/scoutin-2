@@ -14,6 +14,12 @@ async function main() {
   // evaluation time, so it must not be imported until after loadConfig() ran.
   const { loadAllDataSourcesIntoDatabase, writeBackAllDataSources } =
     await import("./domains/participants/data.service.ts");
+  const { startDispatch, stopDispatch } = await import(
+    "./domains/printing/dispatch.service.ts"
+  );
+  const { startRelaySockets, stopRelaySockets } = await import(
+    "./domains/printing/relay.socket.ts"
+  );
 
   const server = serve(
     {
@@ -44,6 +50,8 @@ async function main() {
     handler: writeBackAllDataSources,
   });
   jobRunner.start();
+  startRelaySockets();
+  startDispatch();
 
   // Graceful shutdown: stop accepting connections and drain both in-flight
   // HTTP/WS connections (server.close) and in-flight jobs, so we don't cut a
@@ -56,6 +64,9 @@ async function main() {
     if (shuttingDown) return;
     shuttingDown = true;
     logger.info({ signal }, "Shutting down");
+    // Relays reconnect to the next instance and reconcile there.
+    stopRelaySockets();
+    stopDispatch();
 
     const forceExit = setTimeout(() => {
       logger.warn({}, "Shutdown grace period exceeded, forcing exit");

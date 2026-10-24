@@ -1,3 +1,4 @@
+import type { createNodeWebSocket } from "@hono/node-ws";
 import type { Context } from "hono";
 import type { AppUser } from "../../domains/auth/auth.service.ts";
 import type { Logger } from "../logging/logger.ts";
@@ -25,7 +26,18 @@ export type AppEnv = {
     reqId?: string;
     /** The authenticated admin user, set by the role guards (requireStaff etc.). */
     user?: AppUser;
+    /** The print relay authenticated on a /ws/print-relay upgrade. */
+    printRelayId?: string;
   };
 };
 
 export type TypedContext = Context<AppEnv>;
+
+/**
+ * The upgrade helper from createNodeWebSocket. It's created in app.ts and
+ * handed to the socket routers, which can't import it from there without an
+ * import cycle.
+ */
+export type UpgradeWebSocket = ReturnType<
+  typeof createNodeWebSocket
+>["upgradeWebSocket"];

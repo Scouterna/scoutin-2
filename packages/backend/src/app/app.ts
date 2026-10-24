@@ -4,17 +4,19 @@ import { prometheus } from "@hono/prometheus";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import config from "../config/config.ts";
-import { getLogger, logger } from "../core/logging/logger.ts";
+import { logger } from "../core/logging/logger.ts";
 import type { AppEnv } from "../core/websocket/types.ts";
 import { authRouter } from "../domains/auth/auth.routes.ts";
 import { ensureDefaultAdmin } from "../domains/auth/user.service.ts";
 import { kiosksRouter } from "../domains/kiosks/kiosks.routes.ts";
+import { printingRouter } from "../domains/printing/printing.routes.ts";
+import { printRelaySocket } from "../domains/printing/relay.socket.ts";
 import { sessionRouter } from "../domains/sessions/session.routes.ts";
-import { router as sessionSocketRouter } from "../domains/sessions/session.socket.ts";
+import { sessionSocket } from "../domains/sessions/session.socket.ts";
 import { stepRouter } from "../domains/workflows/step.routes.ts";
 import { loadPlugins } from "../domains/workflows/steps.ts";
 import { adminRouter } from "./admin.ts";
-import { activeWebSocketConnections, registry } from "./metrics.ts";
+import { registry } from "./metrics.ts";
 
 // Load plugins before creating the app
 await loadPlugins();
@@ -97,29 +99,9 @@ const routes = app
   .route("/api/admin/auth", authRouter)
   .route("/api/admin", adminRouter)
   .route("/api/kiosk", kiosksRouter)
-  .get(
-    "/ws/session",
-    upgradeWebSocket(async (c) => {
-      // Simulate delay for testing purposes
-      // await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      const connId = crypto.randomUUID();
-      c.set("connId", connId);
-      c.set("logger", logger.child({ connId }));
-
-      getLogger(c).info("WebSocket connection opened");
-      activeWebSocketConnections.inc();
-
-      return {
-        onMessage: sessionSocketRouter.onMessage(c),
-        onClose() {
-          activeWebSocketConnections.dec();
-          getLogger(c).info("WebSocket connection closed");
-          c.get("wsUnregister")?.();
-        },
-      };
-    }),
-  );
+  .route("/api/print-relays", printingRouter)
+  .route("/ws/print-relay", printRelaySocket(upgradeWebSocket))
+  .route("/ws/session", sessionSocket(upgradeWebSocket));
 
 if (config.NODE_ENV === "production") {
   // SPA fallback: return index.html for any path not matched above (client-side routes).

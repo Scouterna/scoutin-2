@@ -7,6 +7,7 @@ import { jobsAdminRouter } from "../domains/jobs/jobs.admin.routes.ts";
 import { kiosksAdminRouter } from "../domains/kiosks/kiosks.admin.routes.ts";
 import { participantsAdminRouter } from "../domains/participants/participants.admin.routes.ts";
 import { reportsAdminRouter } from "../domains/participants/reports.admin.routes.ts";
+import { printingAdminRouter } from "../domains/printing/printing.admin.routes.ts";
 import { linksAdminRouter } from "../domains/sessions/links.admin.routes.ts";
 import { sessionsAdminRouter } from "../domains/sessions/sessions.admin.routes.ts";
 
@@ -24,6 +25,7 @@ export const adminRouter = new Hono<AppEnv>()
   .use("/blocklist/*", requireAdmin)
   .use("/jobs/*", requireAdmin)
   .use("/participants/reimport", requireAdmin)
+  .use("/printing/*", requireAdmin)
   .get("/me", (c) => c.json({ authenticated: true, user: c.get("user") }))
   .route("/users", usersAdminRouter)
   .route("/sessions", sessionsAdminRouter)
@@ -32,4 +34,5 @@ export const adminRouter = new Hono<AppEnv>()
   .route("/participants", participantsAdminRouter)
   .route("/jobs", jobsAdminRouter)
   .route("/reports", reportsAdminRouter)
-  .route("/blocklist", blocklistAdminRouter);
+  .route("/blocklist", blocklistAdminRouter)
+  .route("/printing", printingAdminRouter);

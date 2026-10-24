@@ -44,6 +44,11 @@ const Config = type({
   SHUTDOWN_GRACE_MS: type("string.integer>=0")
     .pipe((value) => Number.parseInt(value, 10))
     .default("30000"),
+  // The print relay version this server expects (git tree hash of
+  // printer-proxy/) and its bundle's SHA-256, set by the image build. Unset:
+  // relays aren't told to update. See docs/printer-proxy-spec.md §8.10.
+  "PRINT_RELAY_VERSION?": type("string"),
+  "PRINT_RELAY_SHA256?": type("string"),
 });
 type Config = typeof Config.infer;
 
