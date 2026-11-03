@@ -9,6 +9,7 @@ import {
   HowToReg as HowToRegIcon,
   Link as LinkIcon,
   ManageAccounts as ManageAccountsIcon,
+  Menu as MenuIcon,
   Print as PrintIcon,
   Route as RouteIcon,
   Schedule as ScheduleIcon,
@@ -20,6 +21,7 @@ import Button from "@mui/material/Button";
 import Collapse from "@mui/material/Collapse";
 import Divider from "@mui/material/Divider";
 import Drawer from "@mui/material/Drawer";
+import IconButton from "@mui/material/IconButton";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
@@ -34,6 +36,15 @@ import { hasRole, useUser } from "@/lib/user-context";
 import { ListItemButtonLink } from "./muiLinks";
 
 const drawerWidth = 240;
+const sidebarStorageKey = "admin-sidebar-open";
+
+function readSidebarOpen(): boolean {
+  try {
+    return localStorage.getItem(sidebarStorageKey) !== "false";
+  } catch {
+    return true;
+  }
+}
 
 // Pages living under the collapsible "Avancerat" section.
 function isAdvancedPath(pathname: string): boolean {
@@ -64,6 +75,17 @@ export function AdminLayout({ children }: Props) {
     isAdvancedPath(location.pathname),
   );
 
+  const [sidebarOpen, setSidebarOpen] = useState(readSidebarOpen);
+
+  const toggleSidebar = () => {
+    setSidebarOpen((open) => {
+      try {
+        localStorage.setItem(sidebarStorageKey, String(!open));
+      } catch {}
+      return !open;
+    });
+  };
+
   const handleLogout = async () => {
     await api.admin.auth.logout.$post();
     navigate({ to: "/admin/login" });
@@ -73,9 +95,20 @@ export function AdminLayout({ children }: Props) {
     <Box sx={{ display: "flex" }}>
       <AppBar
         position="fixed"
-        sx={{ width: `calc(100% - ${drawerWidth}px)`, ml: `${drawerWidth}px` }}
+        sx={(theme) => ({
+          zIndex: theme.zIndex.drawer + 1,
+        })}
       >
         <Toolbar>
+          <IconButton
+            color="inherit"
+            edge="start"
+            aria-label={sidebarOpen ? "Dölj sidomeny" : "Visa sidomeny"}
+            onClick={toggleSidebar}
+            sx={{ mr: 2 }}
+          >
+            <MenuIcon />
+          </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             Scoutin 2 Admin
           </Typography>
@@ -88,14 +121,24 @@ export function AdminLayout({ children }: Props) {
         </Toolbar>
       </AppBar>
       <Drawer
-        sx={{
-          width: drawerWidth,
+        sx={(theme) => ({
+          width: sidebarOpen ? drawerWidth : 0,
           flexShrink: 0,
+          transition: theme.transitions.create("width", {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.shorter,
+          }),
           "& .MuiDrawer-paper": {
+            transform: sidebarOpen ? "none" : `translateX(-${drawerWidth}px)`,
+            visibility: "visible",
+            transition: theme.transitions.create("transform", {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.shorter,
+            }),
             width: drawerWidth,
             boxSizing: "border-box",
           },
-        }}
+        })}
         variant="permanent"
         anchor="left"
       >
