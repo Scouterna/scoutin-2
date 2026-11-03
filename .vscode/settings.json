@@ -1,5 +1,9 @@
 {
   "search.exclude": {
     "packages/backend/src/core/expressions/github-actions-expressions": true
-  }
+  },
+  "tailwindCSS.experimental.classRegex": [
+    "\\btw\\s*[:=]\\s*\\{?\\s*['\"`]([^'\"`]*)['\"`]",
+  ],
+  "editor.defaultFormatter": "biomejs.biome"
 }
