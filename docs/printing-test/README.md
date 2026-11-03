@@ -24,3 +24,14 @@
   plays for a given stripe frequency. Twelve blocks of 0.25 s: all white (the
   printer's own hum), solid black, then stripes at 300, 260, 220, 190, 160, 130,
   100, 75, 50 and 30 Hz. Write down the note heard for each block, in order.
+- `reverse-text-thresholds.png`, `make-reverse-text.mjs`: white-on-black text in
+  eight sizes and weights, rendered with Satori and resvg and thresholded to
+  1-bit three ways (thresholds 128, 85, 45), one band each. A pixel turns
+  white at or above the threshold, so lower values make white strokes bolder. Print it to see which
+  threshold keeps small reverse text readable (the first test badge's
+  "Löddeköpinge Scoutkår" bled shut). About 60% of the label is black.
+- `both-polarities.png`, `make-both-polarities.mjs`: white-on-black and
+  black-on-white text at five sizes and weights, thresholded at 85, 64 and 45,
+  one band each. The threshold compensates dot gain (the printer's black
+  spreads): lower values thicken white strokes and thin black ones, so this
+  shows which single value works for both. About 40% of the label is black.
