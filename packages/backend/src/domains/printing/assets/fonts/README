@@ -1,0 +1,6 @@
+Roboto Regular (400) and Bold (700), latin subset, from @fontsource/roboto.
+Copyright Google LLC, licensed under the Apache License 2.0
+(https://www.apache.org/licenses/LICENSE-2.0). These are the built-in default
+fonts for tests and the built-in test label. Static WOFF, because FitText
+measures text with opentype.js, which can't read WOFF2, and Satori renders a
+variable font only as its default instance.

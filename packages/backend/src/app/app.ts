@@ -67,6 +67,8 @@ if (config.NODE_ENV === "development") {
     cors({
       origin: (origin) => origin,
       credentials: true,
+      // The template studio reads these off the preview response.
+      exposeHeaders: ["X-Render-Ms", "X-Black-Percent"],
     }),
   );
 }

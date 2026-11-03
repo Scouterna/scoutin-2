@@ -152,15 +152,15 @@ describe("render", () => {
     );
   });
 
-  it("renders the png template from base64", () => {
+  it("renders the png template from base64", async () => {
     const png = pngHeader(100, 50);
-    const r = render("png", { png: png.toString("base64") });
+    const r = await render("png", { png: png.toString("base64") });
     expect(r).toMatchObject({ width: 100, height: 50 });
     expect(r.png.equals(png)).toBe(true);
   });
 
-  it("fails unknown templates and missing values permanently", () => {
-    expect(() => render("badge", {})).toThrow(RenderError);
-    expect(() => render("png", {})).toThrow(RenderError);
+  it("fails unknown templates and missing values permanently", async () => {
+    await expect(render("badge", {})).rejects.toThrow(RenderError);
+    await expect(render("png", {})).rejects.toThrow(RenderError);
   });
 });

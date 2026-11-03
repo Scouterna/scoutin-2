@@ -37,6 +37,7 @@ import {
   updatePool,
   updatePrinter,
 } from "./printers.service.ts";
+import { printingDevRouter } from "./printing.dev.routes.ts";
 import type { PrinterActionResult, RelayActionResult } from "./protocol.ts";
 import {
   printerAction,
@@ -44,6 +45,12 @@ import {
   relayAction,
 } from "./relay.socket.ts";
 import { PNG_TEMPLATE, pngSize, RenderError } from "./render.ts";
+import { renderJob, sizeToDots } from "./render-job.ts";
+import {
+  getTemplate,
+  listTemplates,
+  validateValues,
+} from "./templates.service.ts";
 
 const Color = type.enumerated(...PAIRING_COLORS);
 // Admin enters the four colors in LED order.
@@ -73,6 +80,26 @@ const PngJobBody = type({
   png: "string > 0",
   "copies?": "1 <= number.integer <= 50",
 }).and(type({ poolId: "string.uuid" }).or({ printerId: "string.uuid" }));
+const TemplateJobBody = type({
+  template: "string > 0",
+  values: "unknown",
+  "copies?": "1 <= number.integer <= 50",
+}).and(type({ poolId: "string.uuid" }).or({ printerId: "string.uuid" }));
+// Limits keep a preview from being a way to make the server render a
+// gigantic image.
+const PreviewBody = type({
+  values: "unknown",
+  dpi: "150 <= number.integer <= 600",
+  widthDots: "100 <= number.integer <= 4000",
+  lengthDots: "100 <= number.integer <= 4000",
+  "debug?": "boolean",
+  "printer?": {
+    "name?": "string",
+    "serial?": "string",
+    "pool?": "string",
+    "relay?": "string",
+  },
+});
 const ResolveBody = type({ resolution: "'printed' | 'dismissed'" });
 
 /** Runs a relay/printer action, audits it, and maps "not connected" to 409. */
@@ -154,6 +181,62 @@ export const printingAdminRouter = new Hono<AppEnv>()
     return c.json(relay, 201);
   })
   .get("/pairing/pending", (c) => c.json({ pending: listPendingEnrollments() }))
+
+  // ── Templates ──
+  .get("/templates", (c) => c.json({ templates: listTemplates() }))
+  .post(
+    "/templates/:name/preview",
+    arktypeValidator("json", PreviewBody),
+    async (c) => {
+      const name = c.req.param("name");
+      if (name === PNG_TEMPLATE || !getTemplate(name)) {
+        return c.json({ error: `Unknown template "${name}"` }, 404);
+      }
+      const body = c.req.valid("json");
+      // The template's size wins over the body, so a preview shows the
+      // canvas the template will really get. No limit check: the studio
+      // warns about a printer that is too small instead.
+      const entry = getTemplate(name);
+      const fixed = sizeToDots(
+        entry?.kind === "tsx" ? entry.module.size : undefined,
+        body.dpi,
+      );
+      const checked = validateValues(name, body.values);
+      if (!checked.ok) return c.json({ error: checked.error }, 400);
+      try {
+        const started = performance.now();
+        const image = await renderJob({
+          template: name,
+          values: checked.values,
+          printer: {
+            name: body.printer?.name ?? "Preview printer",
+            serial: body.printer?.serial ?? "PREVIEW0001",
+            pool: body.printer?.pool ?? "Preview pool",
+            relay: body.printer?.relay ?? "Preview relay",
+            dpi: body.dpi,
+            widthDots: fixed.widthDots ?? body.widthDots,
+            lengthDots: fixed.lengthDots ?? body.lengthDots,
+          },
+          debug: body.debug,
+        });
+        const headers: Record<string, string> = {
+          "Content-Type": "image/png",
+          "Cache-Control": "no-store",
+          "X-Render-Ms": String(Math.round(performance.now() - started)),
+        };
+        if (image.stats) {
+          headers["X-Black-Percent"] = String(image.stats.blackPercent);
+        }
+        return c.body(new Uint8Array(image.png), 200, headers);
+      } catch (err) {
+        if (err instanceof RenderError)
+          return c.json({ error: err.message }, 422);
+        throw err;
+      }
+    },
+  )
+
+  .route("/dev", printingDevRouter)
 
   // ── Printers ──
   .get("/printers", async (c) => c.json({ printers: await listPrinters() }))
@@ -268,6 +351,46 @@ export const printingAdminRouter = new Hono<AppEnv>()
       201,
     );
   })
+  .post(
+    "/jobs/template",
+    arktypeValidator("json", TemplateJobBody),
+    async (c) => {
+      const body = c.req.valid("json");
+      if (body.template === PNG_TEMPLATE) {
+        return c.json({ error: "Use /jobs/png for the png template" }, 400);
+      }
+      if (!getTemplate(body.template)) {
+        return c.json({ error: `Unknown template "${body.template}"` }, 400);
+      }
+      const checked = validateValues(body.template, body.values);
+      if (!checked.ok) return c.json({ error: checked.error }, 400);
+      const user = getAuthUser(c);
+      const target =
+        "poolId" in body
+          ? { poolId: body.poolId }
+          : { targetPrinterId: body.printerId };
+      const job: NewJob = {
+        template: body.template,
+        values: checked.values as NewJob["values"],
+        source: "admin",
+        createdById: user.sub,
+        ...target,
+      };
+      const jobs = await createJobs(
+        Array.from({ length: body.copies ?? 1 }, () => job),
+        user.username,
+      );
+      getLogger(c).info(
+        { jobs: jobs.length, template: body.template, ...target },
+        "Admin print jobs queued",
+      );
+      dispatch();
+      return c.json(
+        { jobs: jobs.map((j) => ({ id: j.id, state: j.state })) },
+        201,
+      );
+    },
+  )
   .post("/jobs/:id/cancel", async (c) => {
     const ok = await cancelJob(
       c.req.param("id"),

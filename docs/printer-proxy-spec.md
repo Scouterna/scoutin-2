@@ -1099,7 +1099,7 @@ also exports an ArkType schema for its values:
 ```tsx
 export const values = type({ firstName: "string", "groupName?": "string" });
 
-export default function badge(values: typeof values.infer, label: Label) {
+export default function badge(values: typeof values.infer, label: Label, printer: PrinterContext) {
   return (
     <div style={{ width: label.width, height: label.height, display: "flex", flexDirection: "column" }}>
       <FitText width={label.width - label.mm(6)} max={label.pt(40)} min={label.pt(14)}>
@@ -1127,7 +1127,7 @@ relay) for labels that describe the printer itself.
 
 ### 10.1.1 Built-in labels
 
-- **Test label** (`_test`): built in, so it works with no config. It shows the
+- **Test label** (`_test`): built in (code only), so it works with no config. Its values are `{}`. It shows the
   printer's name, serial, pool, relay and dpi, with a border at the label edge.
   Used to tell which physical printer is which.
 - **Calibration label** (`calibration`): a **static image template** (see below).
@@ -1145,18 +1145,23 @@ gets converted to PNG once, e.g. via Labelary or by printing and scanning it.
 ### 10.2 Helpers
 
 - **`<FitText>`** measures text with `opentype.js`, using the same font buffers
-  Satori uses, and picks
-  `size = min(max, ref × width / measured(ref)) × 0.98`. At `min`, it wraps to
-  `lineClamp` lines and then ellipsises (**SPIKE**: confirm Satori's `lineClamp` /
-  `textOverflow` behavior).
+  Satori uses (glyph advances plus kerning; opentype.js can't read the GSUB table
+  of some fonts, so ligatures are ignored, which the 0.98 factor absorbs), and
+  picks `size = min(max, ref × width / measured(ref)) × 0.98`. At `min`, it wraps
+  to `lineClamp` lines and then ellipsises, using Satori's `lineClamp` and
+  `textOverflow` (checked 2026-10-24: it wraps and ends in "…").
 - **`<Img dither>`** resizes the image with `sharp` to its exact pixel size and
   Floyd–Steinberg dithers it to pure black and white *before* embedding, placed at
-  integer pixel coordinates. Without `dither`, the image is thresholded.
+  integer pixel coordinates. Without `dither`, the image is thresholded. `<Img>` is
+  only a marker in the tree; the renderer resolves it to a real `<img>` before
+  Satori runs.
 
 ### 10.3 Pipeline
 
 `template(values, label)` → Satori → SVG → resvg at native size → grayscale →
-**threshold at 50%** → 1-bit PNG.
+**threshold at 80 of 255** → 1-bit PNG. Below the midpoint on purpose: thermal dot
+gain spreads the printer's black, so 80 keeps small white-on-black text legible
+(found by test prints on a ZD421: 128 loses it, 64 warps round letters).
 
 Text and vectors come out crisp. Pre-dithered images survive thresholding because
 their pixels are already pure black or white.
@@ -1198,8 +1203,12 @@ Consequences for templates:
   `/app/node_modules`, and templates can share local helper files.
 - JSX is compiled to our own `h` function, which produces the plain element
   objects Satori takes. There's no React dependency.
-- jiti's filesystem cache points at a writable temp directory, or is disabled,
-  since the config mount may be read-only.
+- jiti's filesystem and module caches are disabled (`fsCache: false`,
+  `moduleCache: false`), since the config mount may be read-only. JSX uses
+  `{ runtime: "automatic", importSource: "@scouterna/scoutin-print-templates" }`,
+  so a file needs no pragma. Babel refuses a classic `@jsx h` pragma under the
+  automatic runtime, so a file with one is loaded by a second jiti instance
+  configured for the classic runtime (`pragma: "h"`, `pragmaFrag: "Fragment"`).
 - Template helpers (`FitText`, `Img`, `Label`, `h`) come from a package
   (`@scouterna/scoutin-print-templates`, a workspace package), not relative paths,
   so templates get types in the editor.
@@ -1210,8 +1219,8 @@ JSX-free templates (no compile step, but much worse to write).
 
 **Load and validate everything at startup and fail fast.** Compile every template,
 check each `values` schema, and check that static PNG templates (§10.1.1) parse as
-1-bit PNGs. Also check that every `printer:print` step in every step config
-references a template that exists. A broken template stops the deploy, not the
+1-bit PNGs. Checking that every `printer:print` step references a template that exists comes
+with that step. A broken template stops the deploy, not the
 first attendee's badge.
 
 When a printer of a new dpi connects and a static template has no file for that

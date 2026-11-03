@@ -14,6 +14,20 @@ async function main() {
   // evaluation time, so it must not be imported until after loadConfig() ran.
   const { loadAllDataSourcesIntoDatabase, writeBackAllDataSources } =
     await import("./domains/participants/data.service.ts");
+  // Fail fast: a broken template stops the server from starting, so it shows
+  // up at deploy time and not on the first badge.
+  const {
+    DEFAULT_TEMPLATES_DIR,
+    loadTemplates,
+    listTemplates,
+    startTemplateWatcher,
+    stopTemplateWatcher,
+  } = await import("./domains/printing/templates.service.ts");
+  await loadTemplates(undefined, { warn: (msg) => logger.warn(msg) });
+  logger.info(
+    { templates: listTemplates().map((t) => t.name) },
+    "Templates loaded",
+  );
   const { startDispatch, stopDispatch } = await import(
     "./domains/printing/dispatch.service.ts"
   );
@@ -52,6 +66,16 @@ async function main() {
   jobRunner.start();
   startRelaySockets();
   startDispatch();
+  // Template edits show up without a restart while developing.
+  if (config.NODE_ENV === "development") {
+    startTemplateWatcher(DEFAULT_TEMPLATES_DIR, {
+      log: (msg, detail) =>
+        detail === undefined
+          ? logger.info(msg)
+          : logger.warn({ detail: String(detail) }, msg),
+      warn: (msg) => logger.warn(msg),
+    });
+  }
 
   // Graceful shutdown: stop accepting connections and drain both in-flight
   // HTTP/WS connections (server.close) and in-flight jobs, so we don't cut a
@@ -67,6 +91,7 @@ async function main() {
     // Relays reconnect to the next instance and reconcile there.
     stopRelaySockets();
     stopDispatch();
+    stopTemplateWatcher();
 
     const forceExit = setTimeout(() => {
       logger.warn({}, "Shutdown grace period exceeded, forcing exit");

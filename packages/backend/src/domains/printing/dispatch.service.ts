@@ -16,7 +16,8 @@ import {
   transition,
 } from "./jobs.service.ts";
 import type { ServerMessage } from "./protocol.ts";
-import { RenderError, render } from "./render.ts";
+import { PNG_TEMPLATE, RenderError } from "./render.ts";
+import { renderJob } from "./render-job.ts";
 
 const log = logger.child({ module: "print-dispatch" });
 
@@ -93,7 +94,18 @@ async function kick(serial: string) {
 async function offer(serial: string, link: RelayLink): Promise<boolean> {
   const printer = await prisma.printer.findUnique({
     where: { serial },
-    select: { id: true, poolId: true, relayId: true },
+    select: {
+      id: true,
+      poolId: true,
+      relayId: true,
+      name: true,
+      serial: true,
+      dpi: true,
+      widthDots: true,
+      lengthDots: true,
+      pool: { select: { name: true } },
+      relay: { select: { name: true } },
+    },
   });
   if (!printer || printer.relayId !== link.relayId) return false;
 
@@ -101,9 +113,36 @@ async function offer(serial: string, link: RelayLink): Promise<boolean> {
     const job = await leaseNext(printer.id, printer.poolId, link.relayId);
     if (!job) return false;
 
-    let image: ReturnType<typeof render>;
+    let image: Awaited<ReturnType<typeof renderJob>>;
     try {
-      image = render(job.template, job.values);
+      const { dpi, widthDots, lengthDots } = printer;
+      if (
+        job.template !== PNG_TEMPLATE &&
+        (dpi === null || widthDots === null || lengthDots === null)
+      ) {
+        // Not the job's fault: the printer hasn't reported its label size
+        // yet. It's offered again when the printer next reports in.
+        link.log.warn(
+          { jobId: job.id, serial },
+          "Printer size unknown, job stays queued",
+        );
+        await requeue(job.id, ["leased"], "printer size unknown", job.leaseId);
+        return false;
+      }
+      image = await renderJob({
+        template: job.template,
+        values: job.values,
+        jobId: job.id,
+        printer: {
+          name: printer.name ?? printer.serial,
+          serial: printer.serial,
+          pool: printer.pool?.name ?? "-",
+          relay: printer.relay?.name ?? "-",
+          dpi: dpi as number,
+          widthDots: widthDots as number,
+          lengthDots: lengthDots as number,
+        },
+      });
     } catch (err) {
       // Permanent: a broken template or image fails the job, which is never
       // retried. Then on to the next one.
