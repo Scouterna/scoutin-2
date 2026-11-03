@@ -11,6 +11,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/backend/package.json ./packages/backend/
 COPY packages/frontend/package.json ./packages/frontend/
 COPY packages/plugin-api/package.json ./packages/plugin-api/
+COPY packages/print-templates/package.json ./packages/print-templates/
 COPY plugins/base/package.json ./plugins/base/
 COPY plugins/malcolm-test/package.json ./plugins/malcolm-test/
 COPY plugins/scoutnet/package.json ./plugins/scoutnet/
@@ -33,6 +34,7 @@ RUN VITE_API_URL=/_services/scoutin-2 pnpm --filter frontend exec vite build --b
 # Compile plugin backend TypeScript to JS so pnpm deploy can include them
 # as plain JavaScript in node_modules (Node cannot type-strip files in node_modules).
 RUN pnpm --filter @scouterna/scoutin-plugin-api run build
+RUN pnpm --filter @scouterna/scoutin-print-templates run build
 RUN pnpm --filter @scouterna/scoutin-plugin-base run build
 RUN pnpm --filter @scouterna/scoutin-plugin-malcolm-test run build
 RUN pnpm --filter @scouterna/scoutin-plugin-scoutnet run build

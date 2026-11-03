@@ -1,0 +1,36 @@
+{
+  "name": "@scouterna/scoutin-print-templates",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "production": "./dist/index.js",
+      "default": "./src/index.ts"
+    },
+    "./jsx-runtime": {
+      "types": "./src/jsx-runtime.ts",
+      "production": "./dist/jsx-runtime.js",
+      "default": "./src/jsx-runtime.ts"
+    },
+    "./jsx-dev-runtime": {
+      "types": "./src/jsx-dev-runtime.ts",
+      "production": "./dist/jsx-dev-runtime.js",
+      "default": "./src/jsx-dev-runtime.ts"
+    }
+  },
+  "dependencies": {
+    "opentype.js": "^1.3.4",
+    "sharp": "^0.34.0",
+    "uqr": "^0.1.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/opentype.js": "^1.3.8",
+    "satori": "^0.63.2",
+    "typescript": "^6.0.3"
+  }
+}
