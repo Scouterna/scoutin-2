@@ -1,6 +1,7 @@
 import {
   Assessment as AssessmentIcon,
   Block as BlockIcon,
+  Brush as BrushIcon,
   CropLandscape as CropLandscapeIcon,
   ExpandLess as ExpandLessIcon,
   ExpandMore as ExpandMoreIcon,
@@ -43,6 +44,7 @@ function isAdvancedPath(pathname: string): boolean {
     "/admin/links",
     "/admin/blocklist",
     "/admin/users",
+    "/admin/template-studio",
   ].some((path) => pathname.startsWith(path));
 }
 
@@ -185,6 +187,20 @@ export function AdminLayout({ children }: Props) {
                       <ListItemText primary="Jobb" />
                     </ListItemButtonLink>
                   </ListItem>
+                  {import.meta.env.DEV && (
+                    <ListItem disablePadding>
+                      <ListItemButtonLink
+                        to={"/admin/template-studio"}
+                        activeProps={{ selected: true }}
+                        sx={{ pl: 4 }}
+                      >
+                        <ListItemIcon>
+                          <BrushIcon />
+                        </ListItemIcon>
+                        <ListItemText primary="Template studio" />
+                      </ListItemButtonLink>
+                    </ListItem>
+                  )}
                 </>
               )}
               <ListItem disablePadding>
@@ -246,7 +262,9 @@ export function AdminLayout({ children }: Props) {
       </Drawer>
       <Box
         component="main"
-        sx={{ flexGrow: 1, bgcolor: "background.default", p: 3 }}
+        // minWidth 0: without it wide content (the studio canvas) stretches
+        // the page instead of scrolling inside its own box.
+        sx={{ flexGrow: 1, minWidth: 0, bgcolor: "background.default", p: 3 }}
       >
         <Toolbar />
 

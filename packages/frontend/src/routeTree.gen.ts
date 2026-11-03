@@ -17,6 +17,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as KioskIndexRouteImport } from './routes/_kiosk/index'
 import { Route as LinkLinkIdRouteImport } from './routes/link.$linkId'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
+import { Route as AdminTemplateStudioRouteImport } from './routes/admin/template-studio'
 import { Route as AdminSessionsRouteImport } from './routes/admin/sessions'
 import { Route as AdminPrintingRouteImport } from './routes/admin/printing'
 import { Route as AdminParticipantsRouteImport } from './routes/admin/participants'
@@ -67,6 +68,11 @@ const LinkLinkIdRoute = LinkLinkIdRouteImport.update({
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTemplateStudioRoute = AdminTemplateStudioRouteImport.update({
+  id: '/template-studio',
+  path: '/template-studio',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminSessionsRoute = AdminSessionsRouteImport.update({
@@ -145,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/admin/participants': typeof AdminParticipantsRoute
   '/admin/printing': typeof AdminPrintingRoute
   '/admin/sessions': typeof AdminSessionsRouteWithChildren
+  '/admin/template-studio': typeof AdminTemplateStudioRoute
   '/admin/users': typeof AdminUsersRoute
   '/link/$linkId': typeof LinkLinkIdRoute
   '/admin/': typeof AdminIndexRoute
@@ -163,6 +170,7 @@ export interface FileRoutesByTo {
   '/admin/login': typeof AdminLoginRoute
   '/admin/participants': typeof AdminParticipantsRoute
   '/admin/printing': typeof AdminPrintingRoute
+  '/admin/template-studio': typeof AdminTemplateStudioRoute
   '/admin/users': typeof AdminUsersRoute
   '/link/$linkId': typeof LinkLinkIdRoute
   '/': typeof KioskIndexRoute
@@ -186,6 +194,7 @@ export interface FileRoutesById {
   '/admin/participants': typeof AdminParticipantsRoute
   '/admin/printing': typeof AdminPrintingRoute
   '/admin/sessions': typeof AdminSessionsRouteWithChildren
+  '/admin/template-studio': typeof AdminTemplateStudioRoute
   '/admin/users': typeof AdminUsersRoute
   '/link/$linkId': typeof LinkLinkIdRoute
   '/_kiosk/': typeof KioskIndexRoute
@@ -210,6 +219,7 @@ export interface FileRouteTypes {
     | '/admin/participants'
     | '/admin/printing'
     | '/admin/sessions'
+    | '/admin/template-studio'
     | '/admin/users'
     | '/link/$linkId'
     | '/admin/'
@@ -228,6 +238,7 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/admin/participants'
     | '/admin/printing'
+    | '/admin/template-studio'
     | '/admin/users'
     | '/link/$linkId'
     | '/'
@@ -250,6 +261,7 @@ export interface FileRouteTypes {
     | '/admin/participants'
     | '/admin/printing'
     | '/admin/sessions'
+    | '/admin/template-studio'
     | '/admin/users'
     | '/link/$linkId'
     | '/_kiosk/'
@@ -322,6 +334,13 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/admin/users'
       preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/template-studio': {
+      id: '/admin/template-studio'
+      path: '/template-studio'
+      fullPath: '/admin/template-studio'
+      preLoaderRoute: typeof AdminTemplateStudioRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/sessions': {
@@ -447,6 +466,7 @@ interface AdminRouteChildren {
   AdminParticipantsRoute: typeof AdminParticipantsRoute
   AdminPrintingRoute: typeof AdminPrintingRoute
   AdminSessionsRoute: typeof AdminSessionsRouteWithChildren
+  AdminTemplateStudioRoute: typeof AdminTemplateStudioRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
@@ -461,6 +481,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminParticipantsRoute: AdminParticipantsRoute,
   AdminPrintingRoute: AdminPrintingRoute,
   AdminSessionsRoute: AdminSessionsRouteWithChildren,
+  AdminTemplateStudioRoute: AdminTemplateStudioRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
 }

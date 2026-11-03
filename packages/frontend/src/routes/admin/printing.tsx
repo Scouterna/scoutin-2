@@ -9,9 +9,10 @@ import { assertAdmin } from "@/lib/user-context";
 import { JobsTab } from "../../components/admin/printing/JobsTab";
 import { PoolsTab } from "../../components/admin/printing/PoolsTab";
 import { PrintersTab } from "../../components/admin/printing/PrintersTab";
+import { PrintTab } from "../../components/admin/printing/PrintTab";
 import { RelaysTab } from "../../components/admin/printing/RelaysTab";
 
-const printingTabs = ["relays", "printers", "pools", "jobs"] as const;
+const printingTabs = ["relays", "printers", "pools", "print", "jobs"] as const;
 type PrintingTab = (typeof printingTabs)[number];
 
 function parseTab(value: unknown): PrintingTab {
@@ -47,6 +48,7 @@ function PrintingPage() {
         <Tab label="Reläer" value="relays" />
         <Tab label="Skrivare" value="printers" />
         <Tab label="Skrivarpooler" value="pools" />
+        <Tab label="Skriv ut" value="print" />
         <Tab
           label={
             <Badge
@@ -64,6 +66,7 @@ function PrintingPage() {
       {tab === "relays" && <RelaysTab />}
       {tab === "printers" && <PrintersTab />}
       {tab === "pools" && <PoolsTab />}
+      {tab === "print" && <PrintTab />}
       {tab === "jobs" && <JobsTab />}
     </Box>
   );

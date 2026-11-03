@@ -31,15 +31,19 @@ type Printer = InferResponseType<
   typeof api.admin.printing.printers.$get
 >["printers"][number];
 
-type ActionKind = "calibrate" | "cancelBuffer";
+type ActionKind = "calibrate" | "cancelBuffer" | "testLabel";
 type PendingAction = { printer: Printer; kind: ActionKind };
 
 const printersQueryKey = ["admin", "printing", "printers"];
 
-const actionCopy: Record<
-  ActionKind,
-  { title: string; body: string; confirm: string; done: string }
-> = {
+type ActionCopy = {
+  title: string;
+  body: string | ((printerName: string) => string);
+  confirm: string;
+  done: string;
+};
+
+const actionCopy: Record<ActionKind, ActionCopy> = {
   calibrate: {
     title: "Kalibrera etiketter?",
     body: "Kalibreringen matar fram etiketter genom skrivaren, så tomma badge-etiketter går åt. Kör den bara med etiketter i skrivaren och inga andra jobb köade på skrivaren.",
@@ -51,6 +55,13 @@ const actionCopy: Record<
     body: "Rensa bufferten tar bort allt som skrivaren redan har tagit emot men inte skrivit ut. De badgerna kommer inte ut.",
     confirm: "Rensa bufferten",
     done: "Bufferten är rensad",
+  },
+  testLabel: {
+    title: "Skriv ut testetikett?",
+    body: (printerName) =>
+      `En testetikett med skrivarens namn, serienummer, skrivarpool och relä skrivs ut på ${printerName}. Den använder en etikett.`,
+    confirm: "Skriv ut",
+    done: "Testetikett köad",
   },
 };
 
@@ -82,6 +93,13 @@ function PrinterNameField({
       slotProps={{ htmlInput: { "aria-label": "Skrivarnamn" } }}
     />
   );
+}
+
+function bodyText(action: PendingAction): string {
+  const { body } = actionCopy[action.kind];
+  return typeof body === "string"
+    ? body
+    : body(action.printer.name ?? action.printer.serial);
 }
 
 export function PrintersTab() {
@@ -124,7 +142,10 @@ export function PrintersTab() {
   });
 
   const actionMutation = useMutation({
-    mutationFn: async (input: PendingAction) => {
+    mutationFn: async (input: {
+      printer: Printer;
+      kind: Exclude<ActionKind, "testLabel">;
+    }) => {
       const res = await api.admin.printing.printers[":id"].actions.$post({
         param: { id: input.printer.id },
         json: { kind: input.kind },
@@ -149,6 +170,35 @@ export function PrintersTab() {
       toast.error(e.message);
     },
   });
+
+  const testLabelMutation = useMutation({
+    mutationFn: async (printer: Printer) => {
+      const res = await api.admin.printing.jobs.template.$post({
+        json: { template: "_test", values: {}, printerId: printer.id },
+      });
+      if (!res.ok) {
+        throw new Error(
+          await apiErrorMessage(res, "Kunde inte köa testetiketten"),
+        );
+      }
+    },
+    onSuccess: () => {
+      setPending(null);
+      toast.success(actionCopy.testLabel.done);
+    },
+    onError: (e) => {
+      setPending(null);
+      toast.error(e.message);
+    },
+  });
+
+  const confirmPending = (action: PendingAction) => {
+    if (action.kind === "testLabel") {
+      testLabelMutation.mutate(action.printer);
+    } else {
+      actionMutation.mutate({ printer: action.printer, kind: action.kind });
+    }
+  };
 
   const pools = poolsQuery.data ?? [];
   const printers = printersQuery.data ?? [];
@@ -179,8 +229,10 @@ export function PrintersTab() {
               const offline =
                 printer.state === "offline" || !printer.relay?.connected;
               const busy =
-                actionMutation.isPending &&
-                actionMutation.variables?.printer.id === printer.id;
+                (actionMutation.isPending &&
+                  actionMutation.variables?.printer.id === printer.id) ||
+                (testLabelMutation.isPending &&
+                  testLabelMutation.variables?.id === printer.id);
               return (
                 <TableRow key={printer.id}>
                   <TableCell>
@@ -264,6 +316,13 @@ export function PrintersTab() {
                     >
                       Rensa bufferten
                     </Button>
+                    <Button
+                      size="small"
+                      disabled={offline || busy}
+                      onClick={() => setPending({ printer, kind: "testLabel" })}
+                    >
+                      Testetikett
+                    </Button>
                   </TableCell>
                 </TableRow>
               );
@@ -282,9 +341,7 @@ export function PrintersTab() {
           <>
             <DialogTitle>{actionCopy[pending.kind].title}</DialogTitle>
             <DialogContent>
-              <DialogContentText>
-                {actionCopy[pending.kind].body}
-              </DialogContentText>
+              <DialogContentText>{bodyText(pending)}</DialogContentText>
               <DialogContentText sx={{ mt: 2 }}>
                 Skrivare:{" "}
                 <strong>
@@ -296,8 +353,10 @@ export function PrintersTab() {
               <Button onClick={() => setPending(null)}>Avbryt</Button>
               <Button
                 variant="contained"
-                disabled={actionMutation.isPending}
-                onClick={() => actionMutation.mutate(pending)}
+                disabled={
+                  actionMutation.isPending || testLabelMutation.isPending
+                }
+                onClick={() => confirmPending(pending)}
               >
                 {actionCopy[pending.kind].confirm}
               </Button>
