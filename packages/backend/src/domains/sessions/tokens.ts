@@ -12,8 +12,12 @@ const ISSUER = `${URN_PREFIX}backend`;
 const AUDIENCE = ISSUER;
 const EXPIRATION_TIME = "2h";
 
+export type SessionRole = "kiosk" | "staff";
+
 const TokenPayload = type({
   [`${URN_PREFIX}sessionId`]: "string",
+  // Optional so tokens issued before roles existed keep working as kiosk.
+  [`${URN_PREFIX}role?`]: "'kiosk' | 'staff'",
 });
 type TokenPayload = typeof TokenPayload.infer;
 

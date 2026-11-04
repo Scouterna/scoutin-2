@@ -1,9 +1,10 @@
 import { prisma } from "../../app/prisma.ts";
 import { coerceLanguage } from "../../core/i18n/localized.ts";
 import type { MessageTypes } from "../../core/websocket/messageTypes.ts";
+import { clearNavigationLock } from "../../core/websocket/sessionRegistry.ts";
 import type { TypedWSContext } from "../../core/websocket/socketRouter.ts";
 import type { CheckinSessionModel } from "../../generated/prisma/models.ts";
-import { signJWT } from "./tokens.ts";
+import { type SessionRole, signJWT } from "./tokens.ts";
 
 export type SessionTokenPayload = {
   sessionId: string;
@@ -26,9 +27,13 @@ export async function createSession(options?: {
   });
 }
 
-export async function createSessionToken(sessionId: string): Promise<string> {
+export async function createSessionToken(
+  sessionId: string,
+  role: SessionRole = "kiosk",
+): Promise<string> {
   return await signJWT({
     "urn:scoutin:sessionId": sessionId,
+    "urn:scoutin:role": role,
   });
 }
 
@@ -40,6 +45,8 @@ export async function abortSession(sessionId: string): Promise<void> {
     where: { id: sessionId, completedAt: null, abortedAt: null },
     data: { abortedAt: new Date() },
   });
+  // An ended session must not keep a lock that a step could never release.
+  clearNavigationLock(sessionId);
 }
 
 type ParticipantHistoryEntry = {

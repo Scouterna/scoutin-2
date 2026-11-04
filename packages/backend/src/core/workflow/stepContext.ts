@@ -19,19 +19,21 @@ import {
 import { getLogger, logger } from "../logging/logger.ts";
 import type { MessageTypes } from "../websocket/messageTypes.ts";
 import {
+  clearNavigationLock,
   clearStepState,
   createBroadcastWs,
   getStepMeta,
   getStepState,
   markScreenShown,
   registerConnection,
+  setNavigationLock,
   setStepMetaLanguage,
   setStepStateKey,
   wasScreenShown,
 } from "../websocket/sessionRegistry.ts";
 import type { TypedWSContext } from "../websocket/socketRouter.ts";
 import type { TypedContext } from "../websocket/types.ts";
-import { restartStep, startStep } from "./step.ts";
+import { restartStep, sendNavigationState, startStep } from "./step.ts";
 
 export function createStepContext(
   c: TypedContext,
@@ -109,6 +111,9 @@ export function createStepContext(
       }
 
       stepCompletions.inc({ step_id: stepImplementation.id });
+      // The step is done; its lock must not outlive it, even if the next step
+      // fails to start.
+      clearNavigationLock(effectiveSessionId);
 
       await completeStep(
         effectiveSessionId,
@@ -297,6 +302,16 @@ export function createStepContext(
     },
     async restartStep() {
       await restartStep(c, ws);
+    },
+    async lockNavigation() {
+      const effectiveSessionId = c.get("wsSessionId") ?? sessionId;
+      setNavigationLock(effectiveSessionId);
+      await sendNavigationState(effectiveSessionId);
+    },
+    async unlockNavigation() {
+      const effectiveSessionId = c.get("wsSessionId") ?? sessionId;
+      clearNavigationLock(effectiveSessionId);
+      await sendNavigationState(effectiveSessionId);
     },
   };
 }

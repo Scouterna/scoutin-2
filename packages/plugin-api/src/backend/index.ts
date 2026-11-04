@@ -95,6 +95,16 @@ export type StepMethodContext<TState = Record<string, unknown>> = {
   writeResultData(participantId: string, value: unknown): Promise<void>;
   overrideSession(newSessionId: string): void;
   restartStep(): Promise<void>;
+  /**
+   * Blocks the kiosk from navigating away (back button, idle abort) while the
+   * step is in progress, for example while a badge is printing. Staff can still
+   * override. The lock is released automatically when the step completes or
+   * restarts, or when the session ends, so a step can't leak it. It is held in
+   * memory only: a step that still needs it after a restart must lock again in
+   * `onStepStart`.
+   */
+  lockNavigation(): Promise<void>;
+  unlockNavigation(): Promise<void>;
 };
 
 export type StepImplementationMethod<TState> = {
@@ -110,6 +120,12 @@ export type StepImplementation<
 > = {
   id: string;
   skipOnGoBack?: boolean;
+  /**
+   * Once completed, going back past this step is refused for every client. Use
+   * it for side effects that can't be undone. A step config can override it
+   * per use with its own `preventGoBack`. Cannot be combined with `skipOnGoBack`.
+   */
+  preventGoBack?: boolean;
   inputs?: StandardSchemaV1<Record<string, unknown>, Record<string, unknown>>;
   outputs?: StandardSchemaV1<Record<string, unknown>, Record<string, unknown>>;
   hooks?: {

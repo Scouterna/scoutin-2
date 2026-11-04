@@ -1,5 +1,29 @@
 # Step navigation: barriers and locks — design spec
 
+> **Implemented (backend and plugin-api).** The frontend part is still open.
+> Deviations from the text below:
+>
+> - `preventGoBack` exists only on the step implementation. A config-level override
+>   was dropped because nothing needs it; it can be added later without breaking
+>   anything. The `skipOnGoBack` + `preventGoBack` contradiction is rejected when the
+>   step is registered (`StepRegistry.register`), not when a config is loaded.
+> - `canGoBack` is `false` for a completed or aborted session, matching the
+>   existing refusal to go back there.
+> - A refused `goBack` for the lock (kiosk, locked) re-sends the navigation state
+>   only; it does not log as a barrier refusal.
+> - The lock is also cleared inside `abortSession`, so every abort path releases
+>   it.
+> - There is no admin abort route. A staff connection can already send
+>   `session:abort`, and the admin session view connects with a staff token, so
+>   its abort button needs nothing new on the backend.
+> - No lock reason: the lock is a boolean, and `session:navigation` carries
+>   `{ canGoBack, locked }`.
+> - The navigation state is not cached for replay. An admin takeover computes it
+>   fresh next to the replayed screen; a first connection restarts the step,
+>   which sends it.
+> - Check-in links (`/from-link`) and kiosk sessions both get
+>   the `kiosk` role; only `POST /admin/sessions/:id/token` issues `staff`.
+
 Target: two generic step-engine features.
 
 - **Barrier:** a completed step that you can't go back past.
@@ -16,18 +40,18 @@ This is a living design document. Sections marked **OPEN** are unresolved.
 
 ## 1. Context: what exists today
 
-- **`skipOnGoBack`** (`packages/plugin-api/src/backend/index.ts:112`) is the only
+- **`skipOnGoBack`** (`packages/plugin-api/src/backend/index.ts:122`) is the only
   per-step navigation flag. Going back steps *over* such a step (rolling it back
   silently) and continues to the previous one. Used by `base:deduplicateSession`.
 - **The only point of no return is session completion.** `goBack`
-  (`packages/backend/src/core/workflow/step.ts:74`) refuses on completed or aborted
+  (`packages/backend/src/core/workflow/step.ts:148`) refuses on completed or aborted
   sessions. The comment there explains why the guard belongs in the backend:
   `step:goBack` can be sent directly, not just from the kiosk's back button.
 - **Three clients send `step:goBack`:** the kiosk (`routes/_kiosk/index.tsx:28`),
   staff check-in (`components/admin/StaffCheckin.tsx:115`) and check-in links
   (`routes/link.$linkId.tsx:84`), plus the admin debug panel.
 - **The kiosk back button** is shown whenever a screen is shown
-  (`_kiosk/index.tsx:37`). It first pops the client-side within-step
+  (`_kiosk/index.tsx:37`, `showBackButton={currentScreen != null}`). It first pops the client-side within-step
   `screenHistoryAtom`, and only sends `step:goBack` when that is empty.
 - **The idle timeout** (`components/kiosk/IdleTimeout.tsx`) runs entirely on the
   client: 45 s of inactivity, then a 10 s countdown, then `session:abort`. Abort
@@ -57,27 +81,19 @@ covered by the lock (§3).
 
 ### 2.2 Declaring a barrier
 
-Either the step implementation declares it (it's inherent to what the step does):
+The step implementation declares it, since it is inherent to what the step does:
 
 ```ts
 export const print: StepImplementation = {
   id: "printer:print",
-  noGoBack: true,
+  preventGoBack: true,
   …
 };
 ```
 
-Or the config makes any step a barrier (it depends on the flow):
-
-```yaml
-- uses: base:markConfirmedCheckedIn
-  noGoBack: true
-```
-
-Effective value: `def.noGoBack ?? impl.noGoBack ?? false`. The config may also set
-`noGoBack: false` to override an implementation default. Adding `noGoBack?` to
-`StepDefinition` (`packages/backend/src/config/stepConfig.ts`) and to
-`StepImplementation` is the whole API change.
+Adding `preventGoBack?` to `StepImplementation` is the whole API change. There is
+deliberately no config-level switch: no flow needs to make an arbitrary step a
+barrier today, and adding one later is backward compatible.
 
 ### 2.3 `goBack` must plan before it acts
 
@@ -132,10 +148,14 @@ against staff.
 ### 3.2 API
 
 ```ts
-ctx.lockNavigation(reason?: string);  // e.g. "printing"
-ctx.unlockNavigation();
+await ctx.lockNavigation();
+await ctx.unlockNavigation();
 ```
 
+- **Async, and awaited.** Each call resolves once the new navigation state has been
+  sent. The state needs a database read (`canGoBack`), so firing the broadcast in
+  the background would let two quick calls arrive out of order and leave the
+  client with a stale `locked`.
 - **Ephemeral, held in memory** in the session registry, next to `lastScreen`.
   It's not persisted.
 - **Cleared automatically** when the step completes, when the step is restarted,
@@ -168,10 +188,11 @@ While a session is locked:
 | `session:abort` | rejected | allowed |
 | `step:callMethod` | allowed (the step decides) | allowed |
 
-New: **an admin abort action** (`POST /admin/sessions/:id/abort`, plus a button in
-the admin session view). It calls `abortSession` and broadcasts
-`session:terminated`. This is how staff free a kiosk that's locked and stuck,
-for example one waiting on a print pool with no healthy printers.
+New: **an abort button in the admin session view**. That view already connects
+with a staff token, so the button just sends `session:abort` on its socket. No
+separate route is needed. This is how staff free a kiosk that's locked and stuck,
+for example one waiting on a print pool with no healthy printers. (Opening the
+view also disconnects the kiosk, since any second connection takes over.)
 
 ---
 
@@ -184,29 +205,30 @@ A new server → client message, registered in
 .register("session:navigation", type({
   canGoBack: "boolean",      // a goBack would be allowed by barriers (§2.3)
   locked: "boolean",
-  "lockReason?": "string",
 }))
 ```
 
 - **Sent** after every `step:started`, on every lock or unlock, and after a refused
   `goBack`.
-- **Replayed to late joiners** by the session registry, the same way `lastScreen`
-  is.
+- **Sent to an admin who takes over** a running session, computed fresh at that
+  moment (the lock is in memory and `canGoBack` is derived from the step records,
+  so nothing needs caching).
 - **Kiosk back button:** visible when
   `!locked && (screenHistory.length > 0 || canGoBack)`.
 - **`IdleTimeout`:** treats `locked` the same as "not in a session" (timer stopped).
-- **`StaffCheckin` and the admin views** show the lock state and reason (for
-  example "Locked: printing") instead of hiding controls, since staff can override.
+- **`StaffCheckin` and the admin views** show the lock state instead of
+  hiding controls, since staff can override. There is no lock reason: on takeover
+  staff get the step's own screen replayed, which already says what it is doing.
 
 ---
 
 ## 5. `printer:print` as the first consumer
 
-- `noGoBack: true` on the implementation. Once its jobs exist, going back past it
+- `preventGoBack: true` on the implementation. Once its jobs exist, going back past it
   is refused, so the question of canceling queued jobs on go-back never comes up.
   `undoCheckin` leaves print jobs alone; staff cancel queued ones in admin if
   needed.
-- `behavior: wait` locks navigation (`reason: "printing"`) from job creation until
+- `behavior: wait` locks navigation from job creation until
   every job is terminal, then unlocks and completes.
 - `behavior: queue` completes immediately, so it never needs a lock.
 - A kiosk stuck in `behavior: wait` (pool stalled) is freed by staff with the admin
@@ -220,6 +242,6 @@ A new server → client message, registered in
 1. **Check-in links** (`link.$linkId.tsx`) run on the attendee's own phone. They
    follow the same rules. A phone user can always close the tab, and that's
    acceptable: the lock protects the flow, not the device.
-2. **`skipOnGoBack` together with `noGoBack` on the same step is a config error**,
-   raised when the config is loaded (`stepConfigLoader.ts`), because the two
-   contradict each other.
+2. **`skipOnGoBack` together with `preventGoBack` on the same step is an error**,
+   raised when the step implementation is registered (`StepRegistry.register`),
+   because the two contradict each other.

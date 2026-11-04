@@ -15,7 +15,7 @@ import {
   type RouteMiddleware,
   type TypedWSContext,
 } from "../../core/websocket/socketRouter.ts";
-import { startStep } from "../../core/workflow/step.ts";
+import { getNavigationState, startStep } from "../../core/workflow/step.ts";
 import { finalizeSession, getCurrentStep } from "../workflows/step.service.ts";
 import { sendSessionInfo } from "./session.service.ts";
 import { verifyJWT } from "./tokens.ts";
@@ -103,6 +103,8 @@ export const authRouter = createSocketRouter<MessageTypes>()
       }
 
       c.set("wsSessionId", sessionId);
+      // Tokens issued before roles existed carry no claim and act as a kiosk.
+      c.set("wsRole", token.payload["urn:scoutin:role"] ?? "kiosk");
       c.set("logger", logger.child({ connId: c.get("connId"), sessionId }));
       getLogger(c).info("WebSocket authenticated");
 
@@ -166,6 +168,10 @@ export const authRouter = createSocketRouter<MessageTypes>()
         const lastScreen = getLastScreen(sessionId);
         if (lastScreen) {
           ws.send({ name: "step:showScreen", data: lastScreen });
+          ws.send({
+            name: "session:navigation",
+            data: await getNavigationState(sessionId),
+          });
         } else {
           await startStep(c, broadcastWs, currentStep);
         }
@@ -174,6 +180,7 @@ export const authRouter = createSocketRouter<MessageTypes>()
   )
   .bind("auth:clear", null, (c, _evt, ws) => {
     c.set("wsSessionId", undefined);
+    c.set("wsRole", undefined);
     c.set("logger", logger.child({ connId: c.get("connId") }));
     getLogger(c).info("WebSocket authentication cleared");
     ws.send({

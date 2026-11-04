@@ -13,6 +13,13 @@ export class StepRegistry {
         `Step with ID "${implementation.id}" is already registered.`,
       );
     }
+    // Skipping a step on the way back and refusing to go back past it
+    // contradict each other.
+    if (implementation.skipOnGoBack && implementation.preventGoBack) {
+      throw new Error(
+        `Step "${implementation.id}" can't be both skipOnGoBack and preventGoBack.`,
+      );
+    }
     this.steps.set(implementation.id, implementation);
   }
 

@@ -1,6 +1,7 @@
 import type { createNodeWebSocket } from "@hono/node-ws";
 import type { Context } from "hono";
 import type { AppUser } from "../../domains/auth/auth.service.ts";
+import type { SessionRole } from "../../domains/sessions/tokens.ts";
 import type { Logger } from "../logging/logger.ts";
 import type { MessageTypes } from "./messageTypes.ts";
 
@@ -8,6 +9,8 @@ import type { MessageTypes } from "./messageTypes.ts";
 export type AppEnv = {
   Variables: {
     wsSessionId?: string;
+    /** Role from the verified session token; absent until authenticated. */
+    wsRole?: SessionRole;
     wsUnregister?: () => void;
     /**
      * Raw send for this specific connection (not a broadcast). Stored so that

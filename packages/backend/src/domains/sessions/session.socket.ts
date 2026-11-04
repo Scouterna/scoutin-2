@@ -6,19 +6,45 @@ import {
 } from "../../app/metrics.ts";
 import { getLogger, logger } from "../../core/logging/logger.ts";
 import type { MessageTypes } from "../../core/websocket/messageTypes.ts";
-import { createBroadcastWs } from "../../core/websocket/sessionRegistry.ts";
+import {
+  createBroadcastWs,
+  isNavigationLocked,
+} from "../../core/websocket/sessionRegistry.ts";
 import {
   createSocketRouter,
   type InferListeners,
   type TypedWSContext,
 } from "../../core/websocket/socketRouter.ts";
 import type { AppEnv, UpgradeWebSocket } from "../../core/websocket/types.ts";
-import { goBack } from "../../core/workflow/step.ts";
+import { goBack, sendNavigationState } from "../../core/workflow/step.ts";
 import { createStepContext } from "../../core/workflow/stepContext.ts";
 import { getCurrentStep } from "../workflows/step.service.ts";
 import { stepRegistry } from "../workflows/steps.ts";
 import { authRouter, requireAuth } from "./auth.socket.ts";
 import { abortSession } from "./session.service.ts";
+
+/**
+ * While a step holds the navigation lock, a kiosk must not leave it. The kiosk
+ * screen hides its back button, but that is only a courtesy: `step:goBack` and
+ * `session:abort` can be sent directly, so the backend enforces it too.
+ *
+ * Call this first in those handlers. If the session is locked and the connection
+ * is not staff, it logs, re-sends the navigation state (so a stale screen hides
+ * its back button) and returns true, meaning the caller must stop. Otherwise it
+ * does nothing and returns false.
+ */
+async function refuseIfLocked(
+  c: Parameters<typeof getLogger>[0],
+  sessionId: string,
+  action: string,
+): Promise<boolean> {
+  if (!isNavigationLocked(sessionId) || c.get("wsRole") === "staff") {
+    return false;
+  }
+  getLogger(c).warn({ action }, "Rejected while navigation is locked");
+  await sendNavigationState(sessionId);
+  return true;
+}
 
 export const router = createSocketRouter<MessageTypes>();
 
@@ -108,6 +134,7 @@ const routes = router
     if (!sessionId) {
       throw new Error("No session ID found in context");
     }
+    if (await refuseIfLocked(c, sessionId, "step:goBack")) return;
     const broadcastWs = createBroadcastWs(
       sessionId,
     ) as unknown as TypedWSContext<MessageTypes>;
@@ -118,6 +145,8 @@ const routes = router
     if (!sessionId) {
       throw new Error("No session ID found in context");
     }
+
+    if (await refuseIfLocked(c, sessionId, "session:abort")) return;
 
     await abortSession(sessionId);
 

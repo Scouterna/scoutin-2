@@ -36,6 +36,14 @@ export const messageTypes = createMessageRegistry()
     }),
   )
   .register("step:started")
+  .register(
+    "session:navigation",
+    type({
+      // A goBack would be allowed by barriers (independent of the lock).
+      canGoBack: "boolean",
+      locked: "boolean",
+    }),
+  )
   .register("session:terminated")
   .register("session:completed")
   .register(

@@ -13,6 +13,8 @@ type StepMeta = {
 type SessionEntry = {
   connections: Set<ConnectionSend>;
   lastScreen: ScreenData | null;
+  /** In-memory only: a step re-locks in onStepStart after a restart. */
+  navigationLocked: boolean;
   stepState: Record<string, unknown>;
   stepMeta: StepMeta | null;
   hasShownScreen: boolean;
@@ -26,6 +28,7 @@ function getOrCreate(sessionId: string): SessionEntry {
     entry = {
       connections: new Set(),
       lastScreen: null,
+      navigationLocked: false,
       stepState: {},
       stepMeta: null,
       hasShownScreen: false,
@@ -115,6 +118,19 @@ export function registerConnection(
 
 export function getConnectionCount(sessionId: string): number {
   return registry.get(sessionId)?.connections.size ?? 0;
+}
+
+export function isNavigationLocked(sessionId: string): boolean {
+  return registry.get(sessionId)?.navigationLocked ?? false;
+}
+
+export function setNavigationLock(sessionId: string): void {
+  getOrCreate(sessionId).navigationLocked = true;
+}
+
+export function clearNavigationLock(sessionId: string): void {
+  const entry = registry.get(sessionId);
+  if (entry) entry.navigationLocked = false;
 }
 
 export function getLastScreen(sessionId: string): ScreenData | null {

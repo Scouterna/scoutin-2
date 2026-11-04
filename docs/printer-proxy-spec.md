@@ -1062,7 +1062,7 @@ finish", not for the queue.
   - **There is no timeout.** While waiting, the step **locks navigation**, and staff
     free a stuck kiosk with the admin abort. See
     [step-navigation-spec.md](step-navigation-spec.md) §3 and §5.
-- **`printer:print` is a barrier** (`noGoBack: true`). Once its jobs exist, nobody
+- **`printer:print` is a barrier** (`preventGoBack: true`). Once its jobs exist, nobody
   can go back past it, so there's no "cancel jobs on go-back" case. `undoCheckin`
   leaves print jobs alone. See [step-navigation-spec.md](step-navigation-spec.md) §2.
 

@@ -1,19 +1,95 @@
 import { prisma } from "../../app/prisma.ts";
 import {
+  type CompletedStep,
   deleteStepData,
-  findLastCompletedStep,
   getCurrentStep,
+  listCompletedSteps,
   type ResolvedStepDefinition,
 } from "../../domains/workflows/step.service.ts";
 import { stepRegistry } from "../../domains/workflows/steps.ts";
 import { getLogger } from "../logging/logger.ts";
 import {
+  clearNavigationLock,
   clearScreenTracking,
+  createBroadcastWs,
+  isNavigationLocked,
   setStepMeta,
 } from "../websocket/sessionRegistry.ts";
 import type { TypedWSContext } from "../websocket/socketRouter.ts";
 import type { TypedContext } from "../websocket/types.ts";
 import { createStepContext } from "./stepContext.ts";
+
+type GoBackPlan =
+  | {
+      allowed: true;
+      /** Steps to roll back, nearest first, ending with the target step. */
+      steps: CompletedStep[];
+      /** Nothing left to land on: the whole session unwinds. */
+      terminates: boolean;
+    }
+  | { allowed: false; barrier: CompletedStep };
+
+/**
+ * Works out what a goBack would roll back without touching anything. Rolling
+ * back as we walk would leave the session half-unwound when a barrier turns up
+ * behind skipOnGoBack steps, so the decision is made up front.
+ */
+async function planGoBack(sessionId: string): Promise<GoBackPlan> {
+  const completed = await listCompletedSteps(sessionId);
+  const steps: CompletedStep[] = [];
+
+  for (const entry of [...completed].reverse()) {
+    const impl = stepRegistry.get(entry.def.uses);
+    if (!impl) {
+      throw new Error(`Step implementation ${entry.def.uses} not found`);
+    }
+    // If we find a step that prevents going back, stop here and prevent going
+    // back entirely.
+    if (impl.preventGoBack) {
+      return { allowed: false, barrier: entry };
+    }
+    steps.push(entry);
+    // If we find a step that should not be skipped, we can go there assuming
+    // it's not been auto completed since that would mean the user never
+    // interacted with it in the first place.
+    if (!impl.skipOnGoBack && !entry.data.autoCompleted) {
+      return { allowed: true, steps, terminates: false };
+    }
+  }
+  // We did not find any steps and got to the start. Terminate.
+  return { allowed: true, steps, terminates: true };
+}
+
+/**
+ * Whether a goBack would currently be allowed by barriers. Shares the planner
+ * with goBack so the flag sent to clients can't disagree with the action.
+ */
+export async function canGoBack(sessionId: string): Promise<boolean> {
+  const session = await prisma.checkinSession.findUniqueOrThrow({
+    where: { id: sessionId },
+    select: { completedAt: true, abortedAt: true },
+  });
+  if (session.completedAt || session.abortedAt) return false;
+  const { allowed } = await planGoBack(sessionId);
+  return allowed;
+}
+
+/**
+ * The navigation state for a session, derived on demand so it can't go stale.
+ * The flag is computed first and the lock read afterwards, so overlapping calls
+ * all report the latest lock.
+ */
+export async function getNavigationState(sessionId: string) {
+  const allowed = await canGoBack(sessionId);
+  return { canGoBack: allowed, locked: isNavigationLocked(sessionId) };
+}
+
+export async function sendNavigationState(sessionId: string): Promise<void> {
+  createBroadcastWs(sessionId).send({
+    name: "session:navigation",
+    data: await getNavigationState(sessionId),
+  });
+}
 
 // TODO: I'm unsure if this should live here or in the domains/workflows
 export async function startStep(
@@ -41,8 +117,11 @@ export async function startStep(
     language: stepDef.language,
   });
   clearScreenTracking(sessionId);
+  // A lock belongs to the step that took it; never carry it into the next one.
+  clearNavigationLock(sessionId);
 
   ws.send({ name: "step:started" });
+  await sendNavigationState(sessionId);
   await step.hooks?.onStepStart?.(ctx);
 }
 
@@ -99,37 +178,33 @@ export async function goBack(
     return;
   }
 
-  // Walk backwards, skipping steps marked skipOnGoBack.
-  const maxSteps = 100;
-  for (let i = 0; i < maxSteps; i++) {
-    const lastCompleted = await findLastCompletedStep(sessionId);
-    if (!lastCompleted) {
-      ws.send({ name: "session:terminated" });
-      return;
-    }
-
-    const step = stepRegistry.get(lastCompleted.def.uses);
-    if (!step) {
-      throw new Error(
-        `Step implementation ${lastCompleted.def.uses} not found`,
-      );
-    }
-
-    const ctx = createStepContext(c, ws, step);
-    await step.hooks?.onStepRollback?.(ctx);
-    await deleteStepData(lastCompleted.data.id);
-
-    if (step.skipOnGoBack || lastCompleted.data.autoCompleted) {
-      continue;
-    }
-
-    const currentStep = await getCurrentStep(sessionId);
-    if (!currentStep) {
-      getLogger(c).warn("No current step found for session");
-      return;
-    }
-    await startStep(c, ws, currentStep);
+  const plan = await planGoBack(sessionId);
+  if (!plan.allowed) {
+    getLogger(c).warn(
+      { barrier: plan.barrier.def.id ?? plan.barrier.def.uses },
+      "Refusing goBack: a completed step is a barrier",
+    );
+    await sendNavigationState(sessionId);
     return;
   }
-  throw new Error(`goBack exceeded ${maxSteps} steps — possible infinite loop`);
+
+  for (const { def, data } of plan.steps) {
+    // biome-ignore lint/style/noNonNullAssertion: planGoBack verified it exists
+    const step = stepRegistry.get(def.uses)!;
+    const ctx = createStepContext(c, ws, step);
+    await step.hooks?.onStepRollback?.(ctx);
+    await deleteStepData(data.id);
+  }
+
+  if (plan.terminates) {
+    ws.send({ name: "session:terminated" });
+    return;
+  }
+
+  const currentStep = await getCurrentStep(sessionId);
+  if (!currentStep) {
+    getLogger(c).warn("No current step found for session");
+    return;
+  }
+  await startStep(c, ws, currentStep);
 }

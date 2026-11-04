@@ -222,33 +222,31 @@ export async function getStepStatuses(
   return statuses;
 }
 
+export type CompletedStep = {
+  def: StepDefinition;
+  data: CheckinSessionStepDataModel;
+};
+
 /**
- * Finds the last completed step for a session, in stepConfig order.
- * Returns null if no steps have been completed.
+ * All completed steps for a session, in stepConfig order. Read-only: used to
+ * plan a goBack before anything is rolled back.
  */
-export async function findLastCompletedStep(
+export async function listCompletedSteps(
   sessionId: string,
-): Promise<{ def: StepDefinition; data: CheckinSessionStepDataModel } | null> {
+): Promise<CompletedStep[]> {
   const session = await prisma.checkinSession.findUniqueOrThrow({
     where: { id: sessionId },
     include: { stepData: true },
   });
   const stepConfig = await getStepConfig(session.configFile);
 
-  let result: {
-    def: StepDefinition;
-    data: CheckinSessionStepDataModel;
-  } | null = null;
-
+  const result: CompletedStep[] = [];
   for (const stepDefinition of stepConfig.steps) {
     const data = session.stepData.find(
       (s) => matchesStepData(s, stepDefinition) && s.completedAt != null,
     );
-    if (data) {
-      result = { def: stepDefinition, data };
-    }
+    if (data) result.push({ def: stepDefinition, data });
   }
-
   return result;
 }
 

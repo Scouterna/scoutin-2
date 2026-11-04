@@ -96,6 +96,6 @@ export const sessionsAdminRouter = new Hono<AppEnv>()
       return c.json({ error: "Session not found" }, 404);
     }
 
-    const token = await createSessionToken(id);
+    const token = await createSessionToken(id, "staff");
     return c.json({ token });
   });
