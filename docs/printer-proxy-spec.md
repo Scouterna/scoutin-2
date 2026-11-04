@@ -51,7 +51,7 @@ settings.
 | Template format | TSX rendered via **Satori → resvg → 1-bit PNG**; files next to the config |
 | Wire image | **1-bit PNG.** The relay validates, packs and sends it as ZPL `^GFA` |
 | Ambiguous outcome | Job becomes **`unknown`**, is never auto-reprinted, and staff decide |
-| Step behavior | `wait: queued` (default) or `wait: printed`. **No timeout** |
+| Step behavior | `behavior: queue` (default) or `behavior: wait`. **No timeout** |
 | Kiosk without a pool | Attendee sees an error screen and tells staff. No job is created |
 | Pool without healthy printers | Attendee sees nothing; jobs queue and staff are alerted |
 | Reprint | Admin only. Always creates a **new** job |
@@ -1038,18 +1038,23 @@ at lease time in the hub (§10.3), so the step only creates the job and waits.
     template: badge
     # One job is created per item, with the item as the template's values.
     values: ${{ session.subjects }}
-    # queued (default): continue once all jobs are durably queued.
-    # printed: wait until every job has reached a terminal state.
-    wait: queued
+    # queue (default): continue once all jobs are durably queued.
+    # wait: continue only after every job has reached a terminal state
+    #       (printed, failed, unknown or canceled).
+    behavior: queue
 ```
+
+`behavior` is declared like any step option, as `"behavior?": "'queue' | 'wait'"`
+in the step's `inputs` schema. `wait` is shorthand for "wait for the printing to
+finish", not for the queue.
 
 ### 9.1 Behavior
 
 - **Kiosk has no pool:** show the "kiosk not connected to a printer" error screen.
   No jobs are created.
-- **`wait: queued`:** create the jobs in one transaction, then `setCompleted()`.
+- **`behavior: queue`:** create the jobs in one transaction, then `setCompleted()`.
   This is effectively instant and doesn't depend on any printer.
-- **`wait: printed`:** create the jobs, then show a "printing" screen with progress
+- **`behavior: wait`:** create the jobs, then show a "printing" screen with progress
   ("2 of 5"). The step completes when every job is terminal:
   - all `printed`: a success screen, or just continue
   - any `failed`, `unknown` or `canceled`: a friendly "please ask staff at the
@@ -1065,13 +1070,13 @@ at lease time in the hub (§10.3), so the step only creates the job and waits.
 
 `idempotencyKey = sessionId + ":" + stepIdInFlow + ":" + index`. If `onStepStart`
 runs again (kiosk reconnect, `restartStep`), the existing jobs are found and reused,
-and in `wait: printed` mode the step resumes waiting on them. A step running twice
+and in `behavior: wait` mode the step resumes waiting on them. A step running twice
 must never produce two badges.
 
 ### 9.3 Completing from outside a request — SPIKE
 
 Steps currently complete from within a WebSocket message handler
-(`ctx.setCompleted()`). `wait: printed` has to complete when a *job* changes state,
+(`ctx.setCompleted()`). `behavior: wait` has to complete when a *job* changes state,
 which happens outside any kiosk request. To verify:
 
 - whether a step context can be obtained for a session from a job event (via the

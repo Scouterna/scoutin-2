@@ -206,10 +206,10 @@ A new server → client message, registered in
   is refused, so the question of canceling queued jobs on go-back never comes up.
   `undoCheckin` leaves print jobs alone; staff cancel queued ones in admin if
   needed.
-- `wait: printed` locks navigation (`reason: "printing"`) from job creation until
+- `behavior: wait` locks navigation (`reason: "printing"`) from job creation until
   every job is terminal, then unlocks and completes.
-- `wait: queued` completes immediately, so it never needs a lock.
-- A kiosk stuck in `wait: printed` (pool stalled) is freed by staff with the admin
+- `behavior: queue` completes immediately, so it never needs a lock.
+- A kiosk stuck in `behavior: wait` (pool stalled) is freed by staff with the admin
   abort (§3.3). Its jobs keep going, because they live in the DB, not in the
   session.
 
