@@ -1,7 +1,7 @@
 import { ScoutCard } from "@scouterna/ui-react";
 import { useAtomValue } from "jotai";
 import { useEffect, useRef, useState } from "react";
-import { currentScreenAtom } from "@/store/session";
+import { currentScreenAtom, navigationAtom } from "@/store/session";
 import { socketAtom } from "@/store/socket";
 import { startIdleTimer } from "./idleTimer";
 
@@ -18,6 +18,7 @@ const ACTIVITY_EVENTS = ["pointerdown", "keydown", "touchstart"] as const;
  */
 export function IdleTimeout() {
   const currentScreen = useAtomValue(currentScreenAtom);
+  const navigation = useAtomValue(navigationAtom);
   const socket = useAtomValue(socketAtom);
   const [msRemaining, setMsRemaining] = useState<number | null>(null);
 
@@ -26,10 +27,12 @@ export function IdleTimeout() {
   const socketRef = useRef(socket);
   socketRef.current = socket;
 
-  const inSession = currentScreen != null;
+  // A locked step is waiting on something outside the kiosk (for example a
+  // print), so it must not time the kiosk out.
+  const timerActive = currentScreen != null && !navigation.locked;
 
   useEffect(() => {
-    if (!inSession) {
+    if (!timerActive) {
       setMsRemaining(null);
       return;
     }
@@ -55,7 +58,7 @@ export function IdleTimeout() {
         window.removeEventListener(eventName, handleActivity);
       }
     };
-  }, [inSession]);
+  }, [timerActive]);
 
   if (msRemaining === null) return null;
 

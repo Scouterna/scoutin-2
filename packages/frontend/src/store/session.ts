@@ -32,3 +32,19 @@ export const sessionInfoAtom = atom<SessionInfo | null>(null);
 export const languageAtom = atom<Language>(DEFAULT_LANGUAGE);
 
 export const pendingAutoRestartAtom = atom(false);
+
+// Reported by the server via `session:navigation`.
+export type NavigationState = {
+  /** A barrier would not refuse a go-back. Independent of the lock. */
+  canGoBack: boolean;
+  /** The current step holds the navigation lock. */
+  locked: boolean;
+};
+
+// Matches the behavior before the server says otherwise.
+export const DEFAULT_NAVIGATION: NavigationState = {
+  canGoBack: true,
+  locked: false,
+};
+
+export const navigationAtom = atom<NavigationState>(DEFAULT_NAVIGATION);

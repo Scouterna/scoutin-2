@@ -3,6 +3,10 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
@@ -40,6 +44,8 @@ export function AdminSessionOverview({ sessionId }: { sessionId: string }) {
     setCurrentScreen(screen);
   };
   const [messageLog, setMessageLog] = useState<LogEntry[]>([]);
+  const [locked, setLocked] = useState(false);
+  const [confirmAbortOpen, setConfirmAbortOpen] = useState(false);
   const socketRef = useRef<TypedSocket<Listeners, MessageTypes> | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const currentScreenRef = useRef<CurrentScreen | null>(null);
@@ -98,7 +104,17 @@ export function AdminSessionOverview({ sessionId }: { sessionId: string }) {
             name: "session:terminated",
           });
           updateCurrentScreen(null);
+          setLocked(false);
           forward("session:terminated");
+        });
+        s.on("session:navigation", (data) => {
+          appendLog({
+            ts: new Date(),
+            direction: "in",
+            name: "session:navigation",
+            data,
+          });
+          setLocked(data.locked);
         });
         s.on("heartbeat", () => {
           appendLog({ ts: new Date(), direction: "in", name: "heartbeat" });
@@ -144,6 +160,7 @@ export function AdminSessionOverview({ sessionId }: { sessionId: string }) {
         setConnectionState("idle");
         setSocket(null);
         updateCurrentScreen(null);
+        setLocked(false);
         socketRef.current = null;
       };
 
@@ -165,6 +182,11 @@ export function AdminSessionOverview({ sessionId }: { sessionId: string }) {
   const disconnect = () => {
     intentionalClose.current = true;
     socketRef.current?.close();
+  };
+
+  const abortSession = () => {
+    socketRef.current?.send({ name: "session:abort" });
+    setConfirmAbortOpen(false);
   };
 
   useEffect(() => {
@@ -218,12 +240,41 @@ export function AdminSessionOverview({ sessionId }: { sessionId: string }) {
         {connectionState === "connected" && (
           <>
             <Chip label="Connected" color="success" size="small" />
+            {locked && <Chip label="Låst" size="small" />}
+            <Button
+              variant="outlined"
+              color="error"
+              size="small"
+              onClick={() => setConfirmAbortOpen(true)}
+            >
+              Avsluta session
+            </Button>
             <Button variant="outlined" size="small" onClick={disconnect}>
               Disconnect
             </Button>
           </>
         )}
       </Box>
+
+      <Dialog
+        open={confirmAbortOpen}
+        onClose={() => setConfirmAbortOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Avsluta session?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Deltagarens session avslutas direkt. Det går inte att ångra.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmAbortOpen(false)}>Avbryt</Button>
+          <Button onClick={abortSession} variant="contained" color="error">
+            Avsluta session
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>

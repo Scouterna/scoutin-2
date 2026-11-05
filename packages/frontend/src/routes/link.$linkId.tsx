@@ -3,12 +3,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { authenticateSocket, prepareLinkSocket } from "../api/session";
+import { showBackButton } from "../components/kiosk/backButton";
 import { LinkLandingContent } from "../components/link/LinkLandingContent";
 import { ScreenRenderer } from "../screens/ScreenRenderer";
 import { setupSocket } from "../socket/socketLogic";
 import {
   currentScreenAtom,
   languageAtom,
+  navigationAtom,
   screenHistoryAtom,
   sessionInfoAtom,
 } from "../store/session";
@@ -34,7 +36,9 @@ function RouteComponent() {
   const [stylesLoaded, setStylesLoaded] = useState(false);
   const [socket, setSocket] = useAtom(socketAtom);
   const [currentScreen, setCurrentScreen] = useAtom(currentScreenAtom);
+  const screenHistory = useAtomValue(screenHistoryAtom);
   const setScreenHistory = useSetAtom(screenHistoryAtom);
+  const navigation = useAtomValue(navigationAtom);
   const sessionInfo = useAtomValue(sessionInfoAtom);
   const language = useAtomValue(languageAtom);
   const t = (key: keyof (typeof dict)["sv"]) => dict[language][key];
@@ -119,11 +123,17 @@ function RouteComponent() {
     <div className="flex flex-col h-full min-h-screen">
       <div className="flex items-center justify-between p-4 border-b border-gray-100">
         <div>
-          {currentScreen != null && (
-            <ScoutButton variant="text" onClick={handleBack}>
-              {t("back")}
-            </ScoutButton>
-          )}
+          {currentScreen != null &&
+            showBackButton({
+              locked: navigation.locked,
+              canGoBack: navigation.canGoBack,
+              historyLength: screenHistory.length,
+              staff: false,
+            }) && (
+              <ScoutButton variant="text" onClick={handleBack}>
+                {t("back")}
+              </ScoutButton>
+            )}
         </div>
         {sessionInfo?.actor && (
           <span className="text-sm text-gray-600">

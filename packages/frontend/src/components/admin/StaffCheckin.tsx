@@ -1,6 +1,7 @@
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 import type { Listeners, MessageTypes } from "@scouterna/scoutin-backend";
@@ -8,10 +9,12 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createAdminSession } from "@/api/session";
 import type { TypedSocket } from "@/api/typedSocket";
+import { showBackButton } from "@/components/kiosk/backButton";
 import { ScreenRenderer } from "@/screens/ScreenRenderer";
 import { SocketLoader } from "@/socket/SocketLoader";
 import {
   currentScreenAtom,
+  navigationAtom,
   pendingAutoRestartAtom,
   screenHistoryAtom,
   sessionCredentialsAtom,
@@ -39,6 +42,7 @@ export function StaffCheckin() {
   const [screenHistory, setScreenHistory] = useAtom(screenHistoryAtom);
   const setCurrentScreen = useSetAtom(currentScreenAtom);
   const currentScreen = useAtomValue(currentScreenAtom);
+  const navigation = useAtomValue(navigationAtom);
   const pendingAutoRestart = useAtomValue(pendingAutoRestartAtom);
   const setPendingAutoRestart = useSetAtom(pendingAutoRestartAtom);
   const setSessionInfo = useSetAtom(sessionInfoAtom);
@@ -141,11 +145,19 @@ export function StaffCheckin() {
           <Typography variant="h6" sx={{ flex: 1 }}>
             Incheckning
           </Typography>
-          {currentScreen != null && !sessionEnded && (
-            <Button size="small" onClick={handleBackClick}>
-              Tillbaka
-            </Button>
-          )}
+          {navigation.locked && <Chip label="Låst" size="small" />}
+          {currentScreen != null &&
+            !sessionEnded &&
+            showBackButton({
+              locked: navigation.locked,
+              canGoBack: navigation.canGoBack,
+              historyLength: screenHistory.length,
+              staff: true,
+            }) && (
+              <Button size="small" onClick={handleBackClick}>
+                Tillbaka
+              </Button>
+            )}
           <Button size="small" variant="outlined" onClick={startNewSession}>
             Ny incheckning
           </Button>

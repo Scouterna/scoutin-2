@@ -7,7 +7,9 @@ import type { TypedSocket } from "@/api/typedSocket";
 import { showErrorToast } from "@/lib/errors";
 import {
   currentScreenAtom,
+  DEFAULT_NAVIGATION,
   languageAtom,
+  navigationAtom,
   pendingAutoRestartAtom,
   screenHistoryAtom,
   sessionInfoAtom,
@@ -29,6 +31,7 @@ export function setupSocket(socket: TypedSocket<Listeners, MessageTypes>) {
     store.set(screenHistoryAtom, []);
     store.set(sessionInfoAtom, null);
     store.set(languageAtom, DEFAULT_LANGUAGE);
+    store.set(navigationAtom, DEFAULT_NAVIGATION);
   });
 
   socket.on("session:completed", () => {
@@ -36,7 +39,15 @@ export function setupSocket(socket: TypedSocket<Listeners, MessageTypes>) {
     store.set(screenHistoryAtom, []);
     store.set(sessionInfoAtom, null);
     store.set(languageAtom, DEFAULT_LANGUAGE);
+    store.set(navigationAtom, DEFAULT_NAVIGATION);
     store.set(pendingAutoRestartAtom, true);
+  });
+
+  socket.on("session:navigation", (data) => {
+    store.set(navigationAtom, {
+      canGoBack: data.canGoBack,
+      locked: data.locked,
+    });
   });
 
   socket.on("session:info", (data) => {
