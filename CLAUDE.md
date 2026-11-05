@@ -86,3 +86,7 @@ Hand the coding off to a Sonnet or Haiku agent (the Agent tool, `model: "haiku"`
 - **Split by layer when one depends on the other:** build the backend first so the frontend agent can use the typed client.
 - **Verify the result yourself** before reporting: typecheck, tests, Biome, and a read of the diff for additions that weren't in the brief. Drop what isn't needed.
 - **Do tiny edits directly** (a one-line fix, a rename) instead of spinning up an agent.
+
+## Progress
+
+Several agents and the owner work in this repo, so progress is kept in one file: `docs/PROGRESS.md`. Read it before starting work, put yourself under **Now** while you work, and update it before you finish. Its own rules say how.
