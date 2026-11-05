@@ -76,3 +76,13 @@ PORT                      # Server port (default: 3000)
 ```
 
 See `.env.example` in `packages/backend` for full reference.
+
+## Delegating the coding
+
+Hand the coding off to a Sonnet or Haiku agent (the Agent tool, `model: "haiku"` or `"sonnet"`) as much as possible. Keep the main session for design, specs, review and checks.
+
+- **Brief it precisely:** the goal, the files to read, the API shapes, what is out of scope, and the rules it must follow (no commits or branches, American English, `pnpm exec`, which checks to run). A vague brief produces extras nobody asked for.
+- **Pick the model by difficulty:** Haiku for UI work and mechanical edits, Sonnet for fiddly logic (state machines, concurrency, anything where the order of effects matters).
+- **Split by layer when one depends on the other:** build the backend first so the frontend agent can use the typed client.
+- **Verify the result yourself** before reporting: typecheck, tests, Biome, and a read of the diff for additions that weren't in the brief. Drop what isn't needed.
+- **Do tiny edits directly** (a one-line fix, a rename) instead of spinning up an agent.
