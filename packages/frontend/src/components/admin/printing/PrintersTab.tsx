@@ -52,7 +52,7 @@ const actionCopy: Record<ActionKind, ActionCopy> = {
   },
   cancelBuffer: {
     title: "Rensa bufferten?",
-    body: "Rensa bufferten tar bort allt som skrivaren redan har tagit emot men inte skrivit ut. De badgerna kommer inte ut.",
+    body: "Rensa bufferten tar bort allt som skrivaren redan har tagit emot men inte skrivit ut. De utskrifterna kommer inte ut.",
     confirm: "Rensa bufferten",
     done: "Bufferten är rensad",
   },
