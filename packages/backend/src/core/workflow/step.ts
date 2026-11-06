@@ -1,3 +1,4 @@
+import type { StepImplementation } from "@scouterna/scoutin-plugin-api/backend";
 import { prisma } from "../../app/prisma.ts";
 import {
   type CompletedStep,
@@ -91,6 +92,26 @@ export async function sendNavigationState(sessionId: string): Promise<void> {
   });
 }
 
+/**
+ * Runs the step's `inputs` schema over its resolved `with` block, so defaults
+ * apply and a bad config fails here with a clear message and not somewhere
+ * inside the step. Steps without a schema get the block as written.
+ */
+async function resolveInputs(
+  step: StepImplementation,
+  stepDef: ResolvedStepDefinition,
+): Promise<Record<string, unknown> | undefined> {
+  if (!step.inputs) return stepDef.with;
+  const result = await step.inputs["~standard"].validate(stepDef.with ?? {});
+  if (result.issues) {
+    const problems = result.issues.map((issue) => issue.message).join("; ");
+    throw new Error(
+      `Invalid inputs for step ${stepDef.id ?? stepDef.uses}: ${problems}`,
+    );
+  }
+  return result.value;
+}
+
 // TODO: I'm unsure if this should live here or in the domains/workflows
 export async function startStep(
   c: TypedContext,
@@ -103,6 +124,8 @@ export async function startStep(
     throw new Error(`Step implementation ${stepDef.uses} not found`);
   }
 
+  const evaluatedInputs = await resolveInputs(step, stepDef);
+
   const ctx = createStepContext(c, ws, step);
   ctx.clearState();
 
@@ -113,7 +136,7 @@ export async function startStep(
   }
   setStepMeta(sessionId, {
     idInFlow: stepDef.id,
-    evaluatedInputs: stepDef.with,
+    evaluatedInputs,
     language: stepDef.language,
   });
   clearScreenTracking(sessionId);

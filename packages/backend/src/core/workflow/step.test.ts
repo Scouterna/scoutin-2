@@ -24,9 +24,15 @@ vi.mock("./stepContext.ts", () => ({
   createStepContext: () => ({ clearState: vi.fn() }),
 }));
 
+const { type } = await import("arktype");
 const { canGoBack, goBack, startStep } = await import("./step.ts");
-const { isNavigationLocked, registerConnection, setNavigationLock } =
-  await import("../websocket/sessionRegistry.ts");
+const {
+  getStepMeta,
+  isNavigationLocked,
+  registerConnection,
+  setNavigationLock,
+  setStepMeta,
+} = await import("../websocket/sessionRegistry.ts");
 
 type Impl = {
   id: string;
@@ -253,5 +259,51 @@ describe("navigation lock lifecycle", () => {
       canGoBack: true,
       locked: false,
     });
+  });
+});
+
+describe("startStep inputs", () => {
+  const start = (def: object) =>
+    startStep(
+      c,
+      { send: vi.fn() } as never,
+      { language: "sv", ...def } as never,
+    );
+
+  const seen = () => getStepMeta("s1")?.evaluatedInputs;
+
+  beforeEach(() => setStepMeta("s1", {}));
+
+  it("applies the schema's defaults to the inputs the step sees", async () => {
+    Object.assign(impl("print"), {
+      inputs: type({
+        template: "string",
+        behavior: "'queue' | 'wait' = 'queue'",
+      }),
+    });
+
+    await start({ uses: "print", with: { template: "badge" } });
+
+    expect(seen()).toEqual({
+      template: "badge",
+      behavior: "queue",
+    });
+  });
+
+  it("fails before the step starts when the inputs do not match", async () => {
+    Object.assign(impl("print"), { inputs: type({ template: "string" }) });
+
+    await expect(
+      start({ uses: "print", id: "badges", with: { template: 3 } }),
+    ).rejects.toThrow(
+      /Invalid inputs for step badges: template must be a string/,
+    );
+    expect(seen()).toBeUndefined();
+  });
+
+  it("passes the block through for a step without a schema", async () => {
+    await start({ uses: "target", with: { anything: 1 } });
+
+    expect(seen()).toEqual({ anything: 1 });
   });
 });
