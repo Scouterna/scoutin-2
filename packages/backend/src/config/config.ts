@@ -44,6 +44,9 @@ const Config = type({
   SHUTDOWN_GRACE_MS: type("string.integer>=0")
     .pipe((value) => Number.parseInt(value, 10))
     .default("30000"),
+  // The step config (a file in config/) that kiosk sessions and new links run
+  // unless they name another one.
+  DEFAULT_STEP_CONFIG: type("string").default("stepConfig.yml"),
   // The print relay version this server expects (git tree hash of
   // printer-proxy/) and its bundle's SHA-256, set by the image build. Unset:
   // relays aren't told to update. See docs/printer-proxy-spec.md §8.10.

@@ -1,4 +1,5 @@
 import { prisma } from "../../app/prisma.ts";
+import config from "../../config/config.ts";
 import { coerceLanguage } from "../../core/i18n/localized.ts";
 import type { MessageTypes } from "../../core/websocket/messageTypes.ts";
 import { clearNavigationLock } from "../../core/websocket/sessionRegistry.ts";
@@ -10,8 +11,6 @@ export type SessionTokenPayload = {
   sessionId: string;
 };
 
-const DEFAULT_CONFIG_FILE = "stepConfig.yml";
-
 export async function createSession(options?: {
   configFile?: string;
   params?: Record<string, unknown>;
@@ -22,7 +21,7 @@ export async function createSession(options?: {
 
   return await prisma.checkinSession.create({
     data: {
-      configFile: options?.configFile ?? DEFAULT_CONFIG_FILE,
+      configFile: options?.configFile ?? config.DEFAULT_STEP_CONFIG,
       params: JSON.parse(JSON.stringify(options?.params ?? {})),
       kioskId: options?.kioskId,
     },

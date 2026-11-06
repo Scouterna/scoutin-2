@@ -1,8 +1,7 @@
 import { type } from "arktype";
 import { Hono } from "hono";
 import { prisma } from "../../app/prisma.ts";
-
-const DEFAULT_CONFIG_FILE = "stepConfig.yml";
+import config from "../../config/config.ts";
 
 const CreateLinkBody = type({
   "configFile?": "string",
@@ -19,7 +18,7 @@ export const linksAdminRouter = new Hono()
 
     const link = await prisma.checkinLink.create({
       data: {
-        configFile: parsed.configFile ?? DEFAULT_CONFIG_FILE,
+        configFile: parsed.configFile ?? config.DEFAULT_STEP_CONFIG,
         params: JSON.parse(JSON.stringify(parsed.params ?? {})),
       },
     });
