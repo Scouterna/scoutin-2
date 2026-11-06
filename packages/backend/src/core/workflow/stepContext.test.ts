@@ -47,6 +47,21 @@ beforeEach(() => {
   setStepMeta("s2", {});
 });
 
+describe("ctx.stepKey", () => {
+  it("is the step's config id, or its implementation id without one", () => {
+    expect(ctx().stepKey).toBe("t:step");
+
+    setStepMeta("s2", { idInFlow: "badge" });
+    expect(ctx().stepKey).toBe("badge");
+  });
+
+  it("sees the id when the metadata is stored after the context is made", () => {
+    const context = ctx();
+    setStepMeta("s2", { idInFlow: "badge" });
+    expect(context.stepKey).toBe("badge");
+  });
+});
+
 describe("ctx.lockNavigation", () => {
   it("holds the lock and has broadcast by the time it resolves", async () => {
     const context = ctx();

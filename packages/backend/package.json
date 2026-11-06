@@ -28,6 +28,7 @@
     "@scouterna/scoutin-plugin-base": "workspace:^",
     "@scouterna/scoutin-plugin-jamboree26": "workspace:^",
     "@scouterna/scoutin-plugin-malcolm-test": "workspace:^",
+    "@scouterna/scoutin-plugin-printer": "workspace:^",
     "@scouterna/scoutin-plugin-scoutnet": "workspace:^",
     "@scouterna/scoutin-print-templates": "workspace:^",
     "@scouterna/scoutnet": "^0.3.26",

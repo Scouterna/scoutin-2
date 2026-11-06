@@ -28,6 +28,8 @@ async function main() {
     { templates: listTemplates().map((t) => t.name) },
     "Templates loaded",
   );
+  const { startPlugins } = await import("./domains/workflows/steps.ts");
+  await startPlugins();
   const { startDispatch, stopDispatch } = await import(
     "./domains/printing/dispatch.service.ts"
   );

@@ -37,6 +37,8 @@ Nobody. (Format: `- <who>: <what> (<doc or file>)`)
 
 - Split the oversized `setCompleted` in `stepContext.ts`, as its own commit with tests
   first.
+- Step config registry: scan `config/` once at boot and reject an unknown `configFile`
+  on link and session creation (`listStepConfigs` re-reads the directory today).
 - Make `tokens.ts` the only place that knows the `urn:scoutin:*` claim names.
 - Printer profiles on the server, relay self-update from the server, Prometheus
   metrics, Swedish error messages for the printing UI, and the other small items in
@@ -45,7 +47,8 @@ Nobody. (Format: `- <who>: <what> (<doc or file>)`)
 
 ## Recently done
 
-- Core support for `printer:print` (part 1; part 2 is the `plugins/printer` step): `CheckinSession.kioskId`, `createJobsForStep`/`listJobsForStep`/`onJobTerminal`/`isTerminalJobState` and `withStepContext` on `plugin-services`.
+- `printer:print` plugin (part 2, `plugins/printer`): queue or wait behavior, printing and needs-help screens, startup template check; core gets `stepKey`, `onStartup`, `listStepConfigs`.
+- Core support for `printer:print` (part 1; part 2 is the `plugins/printer` step): `CheckinSession.kioskId`, `createJobsForStep`/`listJobsForStep`/`onJobFinished`/`isFinishedJobState` and `withStepContext` on `plugin-services`.
 - `a1eb122` frontend for the navigation lock: back button rules, idle timer, "Låst"
   chip, "Avsluta session" button.
 - `1581f9a` step barrier (`preventGoBack`) and navigation lock, backend and plugin API.

@@ -16,7 +16,7 @@ export const JOB_STATES = [
 ] as const;
 export type JobState = (typeof JOB_STATES)[number];
 
-const TERMINAL_STATES: readonly string[] = [
+const FINISHED_STATES: readonly string[] = [
   "printed",
   "unknown",
   "failed",
@@ -24,34 +24,34 @@ const TERMINAL_STATES: readonly string[] = [
 ];
 
 /** A job in one of these states will not change again by itself. */
-export function isTerminalJobState(state: string): boolean {
-  return TERMINAL_STATES.includes(state);
+export function isFinishedJobState(state: string): boolean {
+  return FINISHED_STATES.includes(state);
 }
 
-export type JobTerminalEvent = {
+export type JobFinishedEvent = {
   jobId: string;
   sessionId: string | null;
   state: JobState;
 };
-type JobTerminalListener = (event: JobTerminalEvent) => void | Promise<void>;
+type JobFinishedListener = (event: JobFinishedEvent) => void | Promise<void>;
 
-const terminalListeners = new Set<JobTerminalListener>();
+const finishedListeners = new Set<JobFinishedListener>();
 
 /**
- * Registers an in-process listener for jobs reaching a terminal state.
+ * Registers an in-process listener for jobs reaching a finished state.
  * Returns an unsubscribe function.
  */
-export function onJobTerminal(listener: JobTerminalListener): () => void {
-  terminalListeners.add(listener);
-  return () => terminalListeners.delete(listener);
+export function onJobFinished(listener: JobFinishedListener): () => void {
+  finishedListeners.add(listener);
+  return () => finishedListeners.delete(listener);
 }
 
-async function emitJobTerminal(event: JobTerminalEvent) {
-  for (const listener of [...terminalListeners]) {
+async function emitJobFinished(event: JobFinishedEvent) {
+  for (const listener of [...finishedListeners]) {
     try {
       await listener(event);
     } catch (err) {
-      logger.error({ err, ...event }, "Job terminal listener failed");
+      logger.error({ err, ...event }, "Job finished listener failed");
     }
   }
 }
@@ -77,7 +77,7 @@ type Transition = {
  * carries `leaseId`). Returns whether it moved. A stale message changes
  * nothing.
  *
- * Terminal listeners (`onJobTerminal`) fire after the transaction this call
+ * Finished listeners (`onJobFinished`) fire after the transaction this call
  * opens has committed. No caller passes `tx` today; if one does, the listeners
  * would fire before the caller's own transaction commits, so a caller that
  * passes `tx` must not rely on listeners seeing the committed state.
@@ -117,8 +117,8 @@ export async function transition(t: Transition, tx?: Tx): Promise<boolean> {
   };
   const result = tx ? await run(tx) : await prisma.$transaction(run);
   if (!result.moved) return false;
-  if (isTerminalJobState(t.to)) {
-    await emitJobTerminal({
+  if (isFinishedJobState(t.to)) {
+    await emitJobFinished({
       jobId: t.jobId,
       sessionId: result.sessionId,
       state: t.to,

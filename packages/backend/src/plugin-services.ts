@@ -22,8 +22,11 @@ export {
 } from "./domains/participants/data.service.ts";
 export {
   createJobsForStep,
-  isTerminalJobState,
+  isFinishedJobState,
   listJobsForStep,
-  onJobTerminal,
+  onJobFinished,
+  parseStepJobKey,
 } from "./domains/printing/step-print.service.ts";
+export { getTemplate } from "./domains/printing/templates.service.ts";
+export { listStepConfigs } from "./domains/workflows/step.service.ts";
 export type { Participant } from "./generated/prisma/client.ts";

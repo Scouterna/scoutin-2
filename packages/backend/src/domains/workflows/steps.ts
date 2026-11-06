@@ -1,4 +1,7 @@
-import type { BackendPluginContext } from "@scouterna/scoutin-plugin-api/backend";
+import type {
+  BackendPlugin,
+  BackendPluginContext,
+} from "@scouterna/scoutin-plugin-api/backend";
 import pluginsJson from "../../../plugins.json" with { type: "json" };
 import { EnricherRegistry } from "../../core/workflow/enricherRegistry.ts";
 import { StepRegistry } from "../../core/workflow/stepRegistry.ts";
@@ -11,9 +14,18 @@ const pluginContext: BackendPluginContext = {
   registerImportEnricher: (enricher) => enricherRegistry.register(enricher),
 };
 
+const loadedPlugins: BackendPlugin[] = [];
+
 export async function loadPlugins() {
   for (const packageName of pluginsJson.plugins) {
     const { plugin } = await import(`${packageName}/backend`);
     plugin.setup(pluginContext);
+    loadedPlugins.push(plugin);
+  }
+}
+
+export async function startPlugins() {
+  for (const plugin of loadedPlugins) {
+    await plugin.onStartup?.();
   }
 }

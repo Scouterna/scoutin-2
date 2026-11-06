@@ -4,33 +4,43 @@ import { prisma } from "../../app/prisma.ts";
 import type { Prisma } from "../../generated/prisma/client.ts";
 import { createJobs } from "./jobs.service.ts";
 
-export { isTerminalJobState, onJobTerminal } from "./jobs.service.ts";
+export { isFinishedJobState, onJobFinished } from "./jobs.service.ts";
 
 const keyPrefix = (sessionId: string, stepKey: string) =>
   `${sessionId}:${stepKey}:`;
 
 /**
- * The jobs of one step in one session, ordered by item index. The key format
- * is `<sessionId>:<stepKey>:<index>`; matching the trailing digits keeps a step
- * "badge" from matching the jobs of "badge2".
+ * Reads a step job's key back into its parts, or null if it isn't one. The
+ * stepKey may contain colons; the sessionId (a UUID) never does.
+ */
+export function parseStepJobKey(
+  idempotencyKey: string | null,
+): { sessionId: string; stepKey: string; index: number } | null {
+  const match = idempotencyKey?.match(/^([^:]+):(.+):(\d+)$/);
+  if (!match) return null;
+  const [, sessionId = "", stepKey = "", index = ""] = match;
+  return { sessionId, stepKey, index: Number(index) };
+}
+
+/**
+ * The jobs of one step in one session, ordered by item index. The query only
+ * narrows by prefix; the exact step is decided by parsing each key, so a step
+ * key that contains colons ("badge:extra") never leaks into the jobs of "badge".
  */
 export async function listJobsForStep(sessionId: string, stepKey: string) {
-  const prefix = keyPrefix(sessionId, stepKey);
   const jobs = await prisma.printJob.findMany({
-    where: { idempotencyKey: { startsWith: prefix } },
+    where: { idempotencyKey: { startsWith: keyPrefix(sessionId, stepKey) } },
     omit: { values: true },
   });
-  const itemIndexFromKey = (key: string | null) => {
-    const rest = key?.slice(prefix.length) ?? "";
-    return /^\d+$/.test(rest) ? Number(rest) : null;
-  };
   return jobs
-    .filter((job) => itemIndexFromKey(job.idempotencyKey) !== null)
-    .sort(
-      (a, b) =>
-        (itemIndexFromKey(a.idempotencyKey) ?? 0) -
-        (itemIndexFromKey(b.idempotencyKey) ?? 0),
-    );
+    .flatMap((job) => {
+      const parsed = parseStepJobKey(job.idempotencyKey);
+      return parsed?.sessionId === sessionId && parsed.stepKey === stepKey
+        ? [{ job, index: parsed.index }]
+        : [];
+    })
+    .sort((a, b) => a.index - b.index)
+    .map(({ job }) => job);
 }
 
 /**

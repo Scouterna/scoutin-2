@@ -47,6 +47,9 @@ export function createStepContext(
 
   return {
     sessionId,
+    get stepKey() {
+      return getStepMeta(sessionId)?.idInFlow ?? stepImplementation.id;
+    },
     logger: getLogger(c),
     // A getter, not a captured value: `setLanguage()` can change this
     // mid-step, and the step may read it again afterwards.

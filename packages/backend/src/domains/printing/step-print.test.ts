@@ -40,10 +40,10 @@ vi.mock("../../core/logging/logger.ts", () => ({
   logger: { error: vi.fn() },
 }));
 
-const { createJobsForStep, listJobsForStep } = await import(
+const { createJobsForStep, listJobsForStep, parseStepJobKey } = await import(
   "./step-print.service.ts"
 );
-const { onJobTerminal, transition } = await import("./jobs.service.ts");
+const { onJobFinished, transition } = await import("./jobs.service.ts");
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -107,6 +107,13 @@ describe("listJobsForStep", () => {
     expect(await listJobsForStep("s1", "badge2")).toHaveLength(2);
   });
 
+  it("does not match a step whose key continues with a colon", async () => {
+    await createJobsForStep(args("badge", [{}]));
+    await createJobsForStep(args("badge:extra", [{}, {}]));
+    expect(await listJobsForStep("s1", "badge")).toHaveLength(1);
+    expect(await listJobsForStep("s1", "badge:extra")).toHaveLength(2);
+  });
+
   it("orders by index numerically", async () => {
     await createJobsForStep(
       args(
@@ -123,7 +130,7 @@ describe("listJobsForStep", () => {
   });
 });
 
-describe("onJobTerminal", () => {
+describe("onJobFinished", () => {
   beforeEach(() => {
     jobFindFirst.mockResolvedValue({
       state: "sending",
@@ -134,9 +141,9 @@ describe("onJobTerminal", () => {
     jobUpdateMany.mockResolvedValue({ count: 1 });
   });
 
-  it("fires on terminal transitions only", async () => {
+  it("fires on finishing transitions only", async () => {
     const listener = vi.fn();
-    const off = onJobTerminal(listener);
+    const off = onJobFinished(listener);
     await transition({ jobId: "j", from: ["queued"], to: "leased" });
     expect(listener).not.toHaveBeenCalled();
     await transition({ jobId: "j", from: ["sending"], to: "printed" });
@@ -152,7 +159,7 @@ describe("onJobTerminal", () => {
 
   it("does not fire when the transition did not move", async () => {
     const listener = vi.fn();
-    const off = onJobTerminal(listener);
+    const off = onJobFinished(listener);
     jobFindFirst.mockResolvedValue(null);
     expect(
       await transition({ jobId: "j", from: ["sending"], to: "printed" }),
@@ -164,13 +171,38 @@ describe("onJobTerminal", () => {
   it("a throwing listener breaks neither the transition nor the others", async () => {
     const bad = vi.fn().mockRejectedValue(new Error("boom"));
     const good = vi.fn();
-    const offBad = onJobTerminal(bad);
-    const offGood = onJobTerminal(good);
+    const offBad = onJobFinished(bad);
+    const offGood = onJobFinished(good);
     expect(
       await transition({ jobId: "j", from: ["sending"], to: "canceled" }),
     ).toBe(true);
     expect(good).toHaveBeenCalledTimes(1);
     offBad();
     offGood();
+  });
+});
+
+describe("parseStepJobKey", () => {
+  it("parses a step key with colons", () => {
+    expect(parseStepJobKey("s1:printer:print:3")).toEqual({
+      sessionId: "s1",
+      stepKey: "printer:print",
+      index: 3,
+    });
+  });
+
+  it("returns null without trailing digits or for null", () => {
+    expect(parseStepJobKey("s1:badge:x")).toBeNull();
+    expect(parseStepJobKey("s1:badge")).toBeNull();
+    expect(parseStepJobKey(null)).toBeNull();
+  });
+
+  it("round-trips the key createJobsForStep writes", async () => {
+    await createJobsForStep(args("a:b", [{ a: 1 }, { a: 2 }]));
+    expect(parseStepJobKey(rows[1]?.idempotencyKey ?? null)).toEqual({
+      sessionId: "s1",
+      stepKey: "a:b",
+      index: 1,
+    });
   });
 });

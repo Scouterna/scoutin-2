@@ -37,6 +37,13 @@ export type StepLogger = {
 
 export type StepMethodContext<TState = Record<string, unknown>> = {
   sessionId: string;
+  /**
+   * What identifies this step in the session's flow: its config `id`, or its
+   * `uses` when it has none. The same value `withStepContext` expects, and the
+   * natural key for anything a step stores about itself outside the session
+   * (for example print jobs).
+   */
+  readonly stepKey: string;
   logger: StepLogger;
   /**
    * The language this session is being conducted in (e.g. `"sv"`, `"en"`).
@@ -220,4 +227,9 @@ export type BackendPluginContext = {
 
 export type BackendPlugin = {
   setup(ctx: BackendPluginContext): void;
+  /**
+   * Runs once after the configurations are loaded, just before the server
+   * starts listening. Throwing aborts startup (fail fast).
+   */
+  onStartup?(): void | Promise<void>;
 };

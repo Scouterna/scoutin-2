@@ -70,7 +70,7 @@ export function withStepContext(
     ) {
       return false;
     }
-    
+
     const impl = stepRegistry.get(currentStep.uses);
     if (!impl) {
       throw new Error(`Step implementation ${currentStep.uses} not found`);

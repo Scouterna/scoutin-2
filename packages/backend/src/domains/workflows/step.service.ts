@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type } from "arktype";
 import { prisma } from "../../app/prisma.ts";
@@ -34,6 +34,26 @@ async function getStepConfig(configFile: string): Promise<StepConfig> {
   }
   // biome-ignore lint/style/noNonNullAssertion: We just set it
   return configCache.get(configFile)!;
+}
+
+/** Every stepConfig*.yml in the config directory, loaded (and validated). */
+export async function listStepConfigs(): Promise<
+  { file: string; config: StepConfig }[]
+> {
+  const files = (await readdir("config"))
+    .filter((name) => /^stepConfig.*\.yml$/.test(name))
+    .sort();
+  return Promise.all(
+    files.map(async (file) => {
+      try {
+        return { file, config: await getStepConfig(file) };
+      } catch (error) {
+        throw new Error(
+          `${file}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }),
+  );
 }
 
 export const StepOutputs = type("Record<string, unknown>");
