@@ -10,6 +10,7 @@
 
 export { prisma } from "./app/prisma.ts";
 export { evaluateExpression } from "./core/expressions/expressions.ts";
+export { withStepContext } from "./core/workflow/withStepContext.ts";
 export { isBlocked } from "./domains/blocklist/blocklist.service.ts";
 export {
   dataSourceConfig,
@@ -19,4 +20,10 @@ export {
   NO_IMPORT_ERROR_WHERE,
   normalizeIdentifier,
 } from "./domains/participants/data.service.ts";
+export {
+  createJobsForStep,
+  isTerminalJobState,
+  listJobsForStep,
+  onJobTerminal,
+} from "./domains/printing/step-print.service.ts";
 export type { Participant } from "./generated/prisma/client.ts";

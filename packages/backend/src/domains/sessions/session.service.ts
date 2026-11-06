@@ -15,6 +15,7 @@ const DEFAULT_CONFIG_FILE = "stepConfig.yml";
 export async function createSession(options?: {
   configFile?: string;
   params?: Record<string, unknown>;
+  kioskId?: string;
 }): Promise<CheckinSessionModel> {
   // Simulate delay for testing purposes
   // await new Promise((resolve) => setTimeout(resolve, 1500));
@@ -23,6 +24,7 @@ export async function createSession(options?: {
     data: {
       configFile: options?.configFile ?? DEFAULT_CONFIG_FILE,
       params: JSON.parse(JSON.stringify(options?.params ?? {})),
+      kioskId: options?.kioskId,
     },
   });
 }

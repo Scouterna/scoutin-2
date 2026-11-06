@@ -60,19 +60,26 @@ export async function activateKiosk(rawCode: string, name: string) {
   return { success: true, key, kioskId: kiosk.id } as const;
 }
 
-export async function validateKioskKey(key: string): Promise<boolean> {
+/**
+ * Validates a kiosk key and updates the last seen timestamp if valid. Returns
+ * the kiosk ID if successful, or `null` if the key is invalid.
+ */
+export async function authenticateKioskKey(
+  key: string,
+): Promise<string | null> {
   const keyHash = hashKey(key);
   try {
-    await prisma.kiosk.update({
+    const kiosk = await prisma.kiosk.update({
       where: { keyHash },
       data: { lastSeenAt: new Date() },
       select: { id: true },
     });
-    return true;
+    return kiosk.id;
   } catch (e) {
-    if (!isNotFound(e))
-      logger.error({ err: e }, "Unexpected error in validateKioskKey");
-    return false;
+    if (!isNotFound(e)) {
+      logger.error({ err: e }, "Unexpected error in authenticateKioskKey");
+    }
+    return null;
   }
 }
 

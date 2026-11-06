@@ -25,7 +25,7 @@ Nobody. (Format: `- <who>: <what> (<doc or file>)`)
    (`plugins/printer`, narrow print API on `plugin-services`). See the handoff, 6.2.
 2. ~~Spike~~ **Done 2026-11-05**, result in printer-proxy-spec 9.3: completing from a
    job event works via a core `withStepContext` service. `session.subjects` is now in
-   the expression context (uncommitted, tsc and Biome clean).
+   the expression context (`60b96bb`).
 3. **Build `printer:print`**: `behavior: queue | wait` (default `queue`), one job per
    item with an `idempotencyKey`, the "kiosk has no pool" screen, reprints, and the
    startup check that every `printer:print` step names an existing template. It is a
@@ -45,6 +45,7 @@ Nobody. (Format: `- <who>: <what> (<doc or file>)`)
 
 ## Recently done
 
+- Core support for `printer:print` (part 1; part 2 is the `plugins/printer` step): `CheckinSession.kioskId`, `createJobsForStep`/`listJobsForStep`/`onJobTerminal`/`isTerminalJobState` and `withStepContext` on `plugin-services`.
 - `a1eb122` frontend for the navigation lock: back button rules, idle timer, "Låst"
   chip, "Avsluta session" button.
 - `1581f9a` step barrier (`preventGoBack`) and navigation lock, backend and plugin API.

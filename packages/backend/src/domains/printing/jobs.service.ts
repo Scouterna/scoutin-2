@@ -2,6 +2,7 @@
 // transition is a compare-and-set on (id, state, leaseId) and is recorded as a
 // PrintJobEvent.
 import { prisma } from "../../app/prisma.ts";
+import { logger } from "../../core/logging/logger.ts";
 import type { Prisma } from "../../generated/prisma/client.ts";
 
 export const JOB_STATES = [
@@ -13,7 +14,47 @@ export const JOB_STATES = [
   "failed",
   "canceled",
 ] as const;
-type JobState = (typeof JOB_STATES)[number];
+export type JobState = (typeof JOB_STATES)[number];
+
+const TERMINAL_STATES: readonly string[] = [
+  "printed",
+  "unknown",
+  "failed",
+  "canceled",
+];
+
+/** A job in one of these states will not change again by itself. */
+export function isTerminalJobState(state: string): boolean {
+  return TERMINAL_STATES.includes(state);
+}
+
+export type JobTerminalEvent = {
+  jobId: string;
+  sessionId: string | null;
+  state: JobState;
+};
+type JobTerminalListener = (event: JobTerminalEvent) => void | Promise<void>;
+
+const terminalListeners = new Set<JobTerminalListener>();
+
+/**
+ * Registers an in-process listener for jobs reaching a terminal state.
+ * Returns an unsubscribe function.
+ */
+export function onJobTerminal(listener: JobTerminalListener): () => void {
+  terminalListeners.add(listener);
+  return () => terminalListeners.delete(listener);
+}
+
+async function emitJobTerminal(event: JobTerminalEvent) {
+  for (const listener of [...terminalListeners]) {
+    try {
+      await listener(event);
+    } catch (err) {
+      logger.error({ err, ...event }, "Job terminal listener failed");
+    }
+  }
+}
 
 // A lease that isn't begun within this goes back to the queue.
 const LEASE_TTL_MS = 15_000;
@@ -35,6 +76,11 @@ type Transition = {
  * Moves a job from one of `from` to `to`, if it's still there (and still
  * carries `leaseId`). Returns whether it moved. A stale message changes
  * nothing.
+ *
+ * Terminal listeners (`onJobTerminal`) fire after the transaction this call
+ * opens has committed. No caller passes `tx` today; if one does, the listeners
+ * would fire before the caller's own transaction commits, so a caller that
+ * passes `tx` must not rely on listeners seeing the committed state.
  */
 export async function transition(t: Transition, tx?: Tx): Promise<boolean> {
   const run = async (db: Tx) => {
@@ -44,9 +90,9 @@ export async function transition(t: Transition, tx?: Tx): Promise<boolean> {
         state: { in: t.from },
         ...(t.leaseId !== undefined && { leaseId: t.leaseId }),
       },
-      select: { state: true, printerId: true, leaseId: true },
+      select: { state: true, printerId: true, leaseId: true, sessionId: true },
     });
-    if (!before) return false;
+    if (!before) return { moved: false as const };
     const { count } = await db.printJob.updateMany({
       where: {
         id: t.jobId,
@@ -55,7 +101,7 @@ export async function transition(t: Transition, tx?: Tx): Promise<boolean> {
       },
       data: { ...t.data, state: t.to },
     });
-    if (count !== 1) return false;
+    if (count !== 1) return { moved: false as const };
     await db.printJobEvent.create({
       data: {
         jobId: t.jobId,
@@ -67,9 +113,18 @@ export async function transition(t: Transition, tx?: Tx): Promise<boolean> {
         actor: t.actor ?? null,
       },
     });
-    return true;
+    return { moved: true as const, sessionId: before.sessionId };
   };
-  return tx ? run(tx) : prisma.$transaction(run);
+  const result = tx ? await run(tx) : await prisma.$transaction(run);
+  if (!result.moved) return false;
+  if (isTerminalJobState(t.to)) {
+    await emitJobTerminal({
+      jobId: t.jobId,
+      sessionId: result.sessionId,
+      state: t.to,
+    });
+  }
+  return true;
 }
 
 /** Back to the queue: proven not written. */

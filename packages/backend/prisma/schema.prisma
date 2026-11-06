@@ -39,6 +39,8 @@ model Kiosk {
   // "no printer" error instead.
   printPoolId String?    @db.Uuid
   printPool   PrintPool? @relation(fields: [printPoolId], references: [id], onDelete: SetNull)
+
+  sessions CheckinSession[]
 }
 
 model KioskSetupToken {
@@ -93,6 +95,10 @@ model CheckinSession {
   configFile String
   params     Json                     @default("{}")
   stepData   CheckinSessionStepData[]
+
+  // The kiosk that started this session. Null for sessions from links.
+  kioskId String? @db.Uuid
+  kiosk   Kiosk?  @relation(fields: [kioskId], references: [id], onDelete: SetNull)
 
   // The language this session is conducted in. Drives resolution of
   // `{ sv, en }` text maps in the step config and the kiosk/link UI. Set by

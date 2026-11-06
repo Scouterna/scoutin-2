@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { prisma } from "../../app/prisma.ts";
-import { validateKioskKey } from "../kiosks/kiosk.service.ts";
+import { authenticateKioskKey } from "../kiosks/kiosk.service.ts";
 import { createSession, createSessionToken } from "./session.service.ts";
 
 export const sessionRouter = new Hono()
@@ -10,11 +10,12 @@ export const sessionRouter = new Hono()
       return c.json({ error: "Unauthorized" }, 401);
     }
     const key = authHeader.slice(7);
-    if (!(await validateKioskKey(key))) {
+    const kioskId = await authenticateKioskKey(key);
+    if (!kioskId) {
       return c.json({ error: "Unauthorized" }, 401);
     }
 
-    const session = await createSession();
+    const session = await createSession({ kioskId });
     const token = await createSessionToken(session.id);
 
     return c.json({ sessionId: session.id, token });
