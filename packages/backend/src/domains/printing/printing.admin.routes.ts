@@ -345,7 +345,6 @@ export const printingAdminRouter = new Hono<AppEnv>()
       { jobs: jobs.length, ...target },
       "Admin print jobs queued",
     );
-    dispatch();
     return c.json(
       { jobs: jobs.map((j) => ({ id: j.id, state: j.state })) },
       201,
@@ -384,7 +383,6 @@ export const printingAdminRouter = new Hono<AppEnv>()
         { jobs: jobs.length, template: body.template, ...target },
         "Admin print jobs queued",
       );
-      dispatch();
       return c.json(
         { jobs: jobs.map((j) => ({ id: j.id, state: j.state })) },
         201,

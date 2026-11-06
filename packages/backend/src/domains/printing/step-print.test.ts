@@ -39,6 +39,8 @@ vi.mock("../../app/prisma.ts", () => ({
 vi.mock("../../core/logging/logger.ts", () => ({
   logger: { error: vi.fn() },
 }));
+const dispatch = vi.fn();
+vi.mock("./dispatch.service.ts", () => ({ dispatch }));
 
 const { createJobsForStep, listJobsForStep, parseStepJobKey } = await import(
   "./step-print.service.ts"
@@ -87,6 +89,11 @@ describe("createJobsForStep", () => {
       "s1:badge:0",
       "s1:badge:1",
     ]);
+  });
+
+  it("offers the new jobs to waiting printers", async () => {
+    await createJobsForStep(args());
+    expect(dispatch).toHaveBeenCalledTimes(1);
   });
 
   it("creates no duplicates when run twice, and returns all jobs", async () => {

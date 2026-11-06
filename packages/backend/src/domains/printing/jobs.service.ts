@@ -4,6 +4,7 @@
 import { prisma } from "../../app/prisma.ts";
 import { logger } from "../../core/logging/logger.ts";
 import type { Prisma } from "../../generated/prisma/client.ts";
+import { dispatch } from "./dispatch.service.ts";
 
 export const JOB_STATES = [
   "queued",
@@ -244,7 +245,14 @@ export type NewJob = {
   idempotencyKey?: string;
 } & ({ poolId: string } | { targetPrinterId: string });
 
+/** Queues the jobs, then offers them to any printer already waiting. */
 export async function createJobs(jobs: NewJob[], actor?: string) {
+  const created = await insertJobs(jobs, actor);
+  dispatch();
+  return created;
+}
+
+async function insertJobs(jobs: NewJob[], actor?: string) {
   return prisma.$transaction(async (tx) => {
     const created = [];
     for (const job of jobs) {

@@ -47,6 +47,7 @@ Nobody. (Format: `- <who>: <what> (<doc or file>)`)
 
 ## Recently done
 
+- `createJobs` now calls `dispatch()` itself (step jobs sat queued next to a ready printer); admin routes no longer call it after `createJobs`. Uncommitted.
 - `printer:print` plugin (part 2, `plugins/printer`): queue or wait behavior, printing and needs-help screens, startup template check; core gets `stepKey`, `onStartup`, `listStepConfigs`.
 - Core support for `printer:print` (part 1; part 2 is the `plugins/printer` step): `CheckinSession.kioskId`, `createJobsForStep`/`listJobsForStep`/`onJobFinished`/`isFinishedJobState` and `withStepContext` on `plugin-services`.
 - `a1eb122` frontend for the navigation lock: back button rules, idle timer, "Låst"
