@@ -1073,7 +1073,29 @@ runs again (kiosk reconnect, `restartStep`), the existing jobs are found and reu
 and in `behavior: wait` mode the step resumes waiting on them. A step running twice
 must never produce two badges.
 
-### 9.3 Completing from outside a request — SPIKE
+### 9.3 Completing from outside a request — SPIKE RESULT (2026-11-05)
+
+**Result.** It works without nudging the kiosk. All step state (meta, state, lock,
+last screen, connections) lives in `sessionRegistry` per session, not per connection.
+`createStepContext(c, ws, step)` reads only `wsSessionId`, a logger and, for
+`overrideSession`, `wsSend`/`wsUnregister`/`connId` from `c`. So core can build a
+context from a minimal stand-in `c` plus `createBroadcastWs(sessionId)`.
+Core should expose that as a plugin service, e.g. `withStepContext(sessionId,
+expectedStepId, fn)`, which runs `fn` only if (a) the session's current step is still
+that step (not gone back, aborted or completed) and (b) at least one connection is
+registered. With no connection it does nothing: on reconnect `startStep` runs
+`onStepStart` again, which finds the jobs terminal and completes (the second bullet
+below). Two job events racing must not complete twice; check the current step inside
+the call.
+
+**Gap found, fixed (2026-11-05).** The expression context lacked `session.subjects`.
+`createContext` in `step.service.ts` now provides it: one object per subject with
+the participant's `id`, `firstName`, `lastName`, `subGroup`, `dataSource`,
+`idInDataSource`, `metadata` and `resultData` (no lookup hashes or timestamps), in
+creation order. `values: ${{ session.subjects }}` resolves to that array. A template
+maps what it needs (its `values` schema ignores extra keys).
+
+Original questions:
 
 Steps currently complete from within a WebSocket message handler
 (`ctx.setCompleted()`). `behavior: wait` has to complete when a *job* changes state,

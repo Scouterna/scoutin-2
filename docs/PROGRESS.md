@@ -21,12 +21,11 @@ Nobody. (Format: `- <who>: <what> (<doc or file>)`)
 
 ## Next, in order
 
-1. **Decide core or plugin for `printer:print`** (owner). 2026-10-23: first-class
-   backend domain, per the spec. 2026-11-04: a `plugins/printer` plugin was proposed,
-   not decided. Everything after this depends on it. See the handoff, section 6.2.
-2. **Spike: completing a step from a job event** (printer-proxy-spec section 9.3).
-   Also check that `values: ${{ session.subjects }}` is an expression the engine
-   resolves.
+1. ~~Core or plugin for `printer:print`~~ **Decided 2026-11-05 (owner): plugin**
+   (`plugins/printer`, narrow print API on `plugin-services`). See the handoff, 6.2.
+2. ~~Spike~~ **Done 2026-11-05**, result in printer-proxy-spec 9.3: completing from a
+   job event works via a core `withStepContext` service. `session.subjects` is now in
+   the expression context (uncommitted, tsc and Biome clean).
 3. **Build `printer:print`**: `behavior: queue | wait` (default `queue`), one job per
    item with an `idempotencyKey`, the "kiosk has no pool" screen, reprints, and the
    startup check that every `printer:print` step names an existing template. It is a

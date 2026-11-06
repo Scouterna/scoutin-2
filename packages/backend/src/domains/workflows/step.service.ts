@@ -13,7 +13,17 @@ import {
   type Language,
   resolveLocalizedInputs,
 } from "../../core/i18n/localized.ts";
+import type { Prisma } from "../../generated/prisma/client.ts";
 import type { CheckinSessionStepDataModel } from "../../generated/prisma/models.ts";
+
+/** What `createContext` needs loaded on the session. */
+const CONTEXT_INCLUDE = {
+  stepData: true,
+  subjects: {
+    include: { participant: true },
+    orderBy: { createdAt: "asc" },
+  },
+} as const;
 
 const configCache = new Map<string, StepConfig>();
 
@@ -34,10 +44,26 @@ export const ContextStepData = type({
 });
 export type ContextStepData = typeof ContextStepData.infer;
 
+/**
+ * A subject as expressions see it: the participant's own columns, without
+ * lookup hashes or timestamps (the context is serialized to JSON).
+ */
+export const ContextSubject = type({
+  id: "string",
+  firstName: "string",
+  lastName: "string",
+  subGroup: "string | null",
+  dataSource: "string",
+  idInDataSource: "string",
+  metadata: "unknown",
+  resultData: "unknown",
+});
+
 export const Context = type({
   sessionId: type.string,
   session: type({
     params: "Record<string, unknown>",
+    subjects: ContextSubject.array(),
   }),
   steps: type.Record(type.string, ContextStepData),
 });
@@ -71,12 +97,11 @@ export async function getCurrentStep(
 ): Promise<ResolvedStepDefinition | null> {
   const session = await prisma.checkinSession.findUniqueOrThrow({
     where: { id: sessionId },
-    include: { stepData: true },
+    include: CONTEXT_INCLUDE,
   });
-  const params = session.params as Record<string, unknown>;
   const language = coerceLanguage(session.language);
   const stepConfig = await getStepConfig(session.configFile);
-  const context = createContext(sessionId, session.stepData, params);
+  const context = createContext(session);
 
   const nextStepDefinition = findNextStepDefinition(
     context,
@@ -158,11 +183,10 @@ export async function getStepStatuses(
 ): Promise<SessionStepStatus[]> {
   const session = await prisma.checkinSession.findUniqueOrThrow({
     where: { id: sessionId },
-    include: { stepData: true },
+    include: CONTEXT_INCLUDE,
   });
-  const params = session.params as Record<string, unknown>;
   const stepConfig = await getStepConfig(session.configFile);
-  const context = createContext(sessionId, session.stepData, params);
+  const context = createContext(session);
   const statuses: SessionStepStatus[] = [];
   let foundActive = false;
 
@@ -282,11 +306,10 @@ export async function findUnmetRequiredSteps(
 ): Promise<string[]> {
   const session = await prisma.checkinSession.findUniqueOrThrow({
     where: { id: sessionId },
-    include: { stepData: true },
+    include: CONTEXT_INCLUDE,
   });
-  const params = session.params as Record<string, unknown>;
   const stepConfig = await getStepConfig(session.configFile);
-  const context = createContext(sessionId, session.stepData, params);
+  const context = createContext(session);
 
   const unmet: string[] = [];
 
@@ -340,13 +363,13 @@ export async function completeStep(
  * the context without any side effects.
  */
 function createContext(
-  sessionId: string,
-  stepData: CheckinSessionStepDataModel[],
-  params: Record<string, unknown>,
+  session: Prisma.CheckinSessionGetPayload<{
+    include: typeof CONTEXT_INCLUDE;
+  }>,
 ): Context {
   const steps: Record<string, ContextStepData> = {};
 
-  for (const data of stepData) {
+  for (const data of session.stepData) {
     if (!data.idInFlow) {
       continue;
     }
@@ -367,8 +390,20 @@ function createContext(
   }
 
   return {
-    sessionId,
-    session: { params },
+    sessionId: session.id,
+    session: {
+      params: session.params as Record<string, unknown>,
+      subjects: session.subjects.map(({ participant: p }) => ({
+        id: p.id,
+        firstName: p.firstName,
+        lastName: p.lastName,
+        subGroup: p.subGroup,
+        dataSource: p.dataSource,
+        idInDataSource: p.idInDataSource,
+        metadata: p.metadata,
+        resultData: p.resultData,
+      })),
+    },
     steps,
   };
 }
