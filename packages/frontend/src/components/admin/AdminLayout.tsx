@@ -93,12 +93,7 @@ export function AdminLayout({ children }: Props) {
 
   return (
     <Box sx={{ display: "flex" }}>
-      <AppBar
-        position="fixed"
-        sx={(theme) => ({
-          zIndex: theme.zIndex.drawer + 1,
-        })}
-      >
+      <AppBar position="fixed">
         <Toolbar>
           <IconButton
             color="inherit"
@@ -129,6 +124,9 @@ export function AdminLayout({ children }: Props) {
             duration: theme.transitions.duration.shorter,
           }),
           "& .MuiDrawer-paper": {
+            // Layer order, back to front: this sidebar, the app bar, then
+            // sheets and dialogs.
+            zIndex: theme.zIndex.appBar - 1,
             transform: sidebarOpen ? "none" : `translateX(-${drawerWidth}px)`,
             visibility: "visible",
             transition: theme.transitions.create("transform", {
