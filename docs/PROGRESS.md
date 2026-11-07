@@ -13,7 +13,7 @@ sessions. Read it before you start, update it before you finish.
 - Detail belongs in the linked docs, not here. Keep this file short; trim **Recently
   done** to about ten lines.
 
-Last updated: 2026-11-05.
+Last updated: 2026-11-07.
 
 ## Now
 
@@ -26,7 +26,7 @@ Nobody. (Format: `- <who>: <what> (<doc or file>)`)
 2. ~~Spike~~ **Done 2026-11-05**, result in printer-proxy-spec 9.3: completing from a
    job event works via a core `withStepContext` service. `session.subjects` is now in
    the expression context (`60b96bb`).
-3. **Build `printer:print`**: `behavior: queue | wait` (default `queue`), one job per
+3. ~~**Build `printer:print`**~~ **Done** (see Recently done): `behavior: queue | wait` (default `queue`), one job per
    item with an `idempotencyKey`, the "kiosk has no pool" screen, reprints, and the
    startup check that every `printer:print` step names an existing template. It is a
    barrier (`preventGoBack`) and takes the navigation lock in `wait` mode.
@@ -47,7 +47,8 @@ Nobody. (Format: `- <who>: <what> (<doc or file>)`)
 
 ## Recently done
 
-- `createJobs` now calls `dispatch()` itself (step jobs sat queued next to a ready printer); admin routes no longer call it after `createJobs`. Uncommitted.
+- `CheckinSession.printPoolId`: the printer:print pool comes from the session (kiosk sessions copy the kiosk's pool, admin picks one in the sessions table and the staff check-in chip, which restarts the session; links get one later).
+- `f8666c7` `createJobs` now calls `dispatch()` itself (step jobs sat queued next to a ready printer); admin routes no longer call it after `createJobs`.
 - `printer:print` plugin (part 2, `plugins/printer`): queue or wait behavior, printing and needs-help screens, startup template check; core gets `stepKey`, `onStartup`, `listStepConfigs`.
 - Core support for `printer:print` (part 1; part 2 is the `plugins/printer` step): `CheckinSession.kioskId`, `createJobsForStep`/`listJobsForStep`/`onJobFinished`/`isFinishedJobState` and `withStepContext` on `plugin-services`.
 - `a1eb122` frontend for the navigation lock: back button rules, idle timer, "Låst"
