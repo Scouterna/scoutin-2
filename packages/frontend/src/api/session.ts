@@ -38,11 +38,13 @@ export async function create() {
  * it, using the admin API. Intended for the staff-operated check-in view -
  * unlike `create()`, this doesn't require a kiosk key.
  */
-export async function createAdminSession(): Promise<{
+export async function createAdminSession(printPoolId?: string): Promise<{
   id: string;
   token: string;
 }> {
-  const createRes = await api.admin.sessions.$post({});
+  const createRes = await api.admin.sessions.$post({
+    json: printPoolId === undefined ? {} : { printPoolId },
+  });
   if (!createRes.ok) throw new Error("Failed to create session");
   const { id } = await createRes.json();
 

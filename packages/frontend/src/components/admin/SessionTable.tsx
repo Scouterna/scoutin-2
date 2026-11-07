@@ -17,9 +17,15 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { useStore } from "jotai";
 import { useRef } from "react";
 import { toast } from "sonner";
 import { api } from "@/api/api";
+import { adminPrintPoolIdAtom } from "@/store/adminPrintPool";
+import {
+  PrintPoolSelect,
+  resolveAdminPrintPoolId,
+} from "./printing/PrintPoolSelect";
 
 type SessionRow = {
   id: string;
@@ -77,6 +83,7 @@ const columns = [
 export function SessionTable() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const jotaiStore = useStore();
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["admin", "sessions"],
@@ -88,7 +95,10 @@ export function SessionTable() {
 
   const createSession = useMutation({
     mutationFn: async () => {
-      const res = await api.admin.sessions.$post({});
+      const printPoolId = await resolveAdminPrintPoolId(
+        jotaiStore.get(adminPrintPoolIdAtom),
+      );
+      const res = await api.admin.sessions.$post({ json: { printPoolId } });
       if (!res.ok) throw new Error("Failed to create session");
       return res.json();
     },
@@ -133,10 +143,11 @@ export function SessionTable() {
 
   return (
     <Box>
-      <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+      <Box sx={{ display: "flex", alignItems: "center", mb: 2, gap: 2 }}>
         <Typography variant="h6" sx={{ flex: 1 }}>
           Sessions
         </Typography>
+        <PrintPoolSelect />
         <Button
           variant="contained"
           onClick={() => createSession.mutate()}

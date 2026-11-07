@@ -5,13 +5,14 @@ import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 import type { Listeners, MessageTypes } from "@scouterna/scoutin-backend";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createAdminSession } from "@/api/session";
 import type { TypedSocket } from "@/api/typedSocket";
 import { showBackButton } from "@/components/kiosk/backButton";
 import { ScreenRenderer } from "@/screens/ScreenRenderer";
 import { SocketLoader } from "@/socket/SocketLoader";
+import { adminPrintPoolIdAtom } from "@/store/adminPrintPool";
 import {
   currentScreenAtom,
   navigationAtom,
@@ -21,6 +22,8 @@ import {
   sessionInfoAtom,
 } from "@/store/session";
 import { socketAtom } from "@/store/socket";
+import { PrintPoolControl } from "./printing/PrintPoolControl";
+import { resolveAdminPrintPoolId } from "./printing/PrintPoolSelect";
 import { StaffInfoPanel } from "./StaffInfoPanel";
 
 async function loadKioskStyles() {
@@ -46,6 +49,7 @@ export function StaffCheckin() {
   const pendingAutoRestart = useAtomValue(pendingAutoRestartAtom);
   const setPendingAutoRestart = useSetAtom(pendingAutoRestartAtom);
   const setSessionInfo = useSetAtom(sessionInfoAtom);
+  const jotaiStore = useStore();
 
   useEffect(() => {
     loadKioskStyles().finally(() => setStylesLoaded(true));
@@ -65,7 +69,10 @@ export function StaffCheckin() {
     setScreenHistory([]);
     setSessionInfo(null);
     try {
-      const { id, token } = await createAdminSession();
+      const printPoolId = await resolveAdminPrintPoolId(
+        jotaiStore.get(adminPrintPoolIdAtom),
+      );
+      const { id, token } = await createAdminSession(printPoolId);
       setCredentials({ id, token });
       setSessionEpoch((prev) => prev + 1);
       setSessionId(id);
@@ -74,7 +81,13 @@ export function StaffCheckin() {
         err instanceof Error ? err.message : "Kunde inte starta session",
       );
     }
-  }, [setCredentials, setCurrentScreen, setScreenHistory, setSessionInfo]);
+  }, [
+    setCredentials,
+    setCurrentScreen,
+    setScreenHistory,
+    setSessionInfo,
+    jotaiStore,
+  ]);
 
   // Guards against StrictMode's dev-only double-invoke of effects (mount ->
   // cleanup -> mount) - without it, the first mount creates a session, and
@@ -141,10 +154,10 @@ export function StaffCheckin() {
       <Box sx={{ flex: 1, minWidth: 0 }}>
         {startError && <Alert severity="error">{startError}</Alert>}
 
-        <Box sx={{ display: "flex", alignItems: "center", mb: 1, gap: 1 }}>
-          <Typography variant="h6" sx={{ flex: 1 }}>
-            Incheckning
-          </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", mb: 1, gap: 2 }}>
+          <Typography variant="h6">Incheckning</Typography>
+          <PrintPoolControl onChanged={startNewSession} />
+          <Box sx={{ flex: 1 }} />
           {navigation.locked && <Chip label="Låst" size="small" />}
           {currentScreen != null &&
             !sessionEnded &&
