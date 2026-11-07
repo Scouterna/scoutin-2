@@ -47,6 +47,9 @@ const Config = type({
   // The step config (a file in config/) that kiosk sessions and new links run
   // unless they name another one.
   DEFAULT_STEP_CONFIG: type("string").default("stepConfig.yml"),
+  // The data source config (a file in config/) describing the event's
+  // Scoutnet project(s) and participant sources.
+  DATASOURCE_CONFIG: type("string").default("dataSourceConfig.yml"),
   // The print relay version this server expects (git tree hash of
   // printer-proxy/) and its bundle's SHA-256, set by the image build. Unset:
   // relays aren't told to update. See docs/printer-proxy-spec.md §8.10.

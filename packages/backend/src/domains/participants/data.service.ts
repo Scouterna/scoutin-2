@@ -1,5 +1,6 @@
 import { createHmac } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { lookupHashSeconds } from "../../app/metrics.ts";
 import { prisma } from "../../app/prisma.ts";
 import type { EnrichWithEntry } from "../../config/baseDataSource.ts";
@@ -71,9 +72,8 @@ export function mergeJsonKey(
   return JSON.parse(JSON.stringify(base));
 }
 
-// TODO: Don't just load it from an arbitrary file, but have it configurable
 export const dataSourceConfig = await loadDataSourceConfig(
-  await readFile("./config/dataSourceConfig.yml", "utf-8"),
+  await readFile(join("config", config.DATASOURCE_CONFIG), "utf-8"),
 );
 
 const secret = Buffer.from(config.DATASOURCE_HASHING_SECRET);
