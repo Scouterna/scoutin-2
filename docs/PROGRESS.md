@@ -30,7 +30,8 @@ Nobody. (Format: `- <who>: <what> (<doc or file>)`)
    item with an `idempotencyKey`, the "kiosk has no pool" screen, reprints, and the
    startup check that every `printer:print` step names an existing template. It is a
    barrier (`preventGoBack`) and takes the navigation lock in `wait` mode.
-4. **Look at the lock UI in a browser** (admin session overview, staff check-in,
+4. **DJ26 badge**: look at a real render of the new `dj26` template (studio), confirm type labels and meal lines, check `metadata.group.name` fills from Scoutnet.
+5. **Look at the lock UI in a browser** (admin session overview, staff check-in,
    kiosk back button, idle timer). Only checked with tsc, tests and Biome so far.
 
 ## Later
@@ -47,6 +48,8 @@ Nobody. (Format: `- <who>: <what> (<doc or file>)`)
 
 ## Recently done
 
+- Scanner modes for the identify screen (`useBarcodeScanner`): `VITE_SCANNER_MARKERS` (default on, `¤data¤`; set either to `false` to disable) and `VITE_SCANNER_ENTER` (default on, fast type-then-Enter, keys <50 ms apart, min 3 chars); tests in `plugins/base`. Not tried on a real scanner.
+- `570deef` `33829e0` Demokratijamboree26 setup (project 73677, individuals only, read-only while testing): `config/dataSourceConfig.dj26.yml` (7 subgroups from question 105667, `badge.*` answers, `group.name`), `config/stepConfig.dj26.yml`, `scoutnet:formAnswers` and `scoutnet:primaryGroup` enrichers. The `dj26` template (git-excluded) now takes `session.subjects` and builds the badge itself (`toBadge`). Not booted against the real project; VoteIT (delegates only) and verification are TODO comments in the step config.
 - `CheckinSession.printPoolId`: the printer:print pool comes from the session (kiosk sessions copy the kiosk's pool, admin picks one in the sessions table and the staff check-in chip, which restarts the session; links get one later).
 - `f8666c7` `createJobs` now calls `dispatch()` itself (step jobs sat queued next to a ready printer); admin routes no longer call it after `createJobs`.
 - `printer:print` plugin (part 2, `plugins/printer`): queue or wait behavior, printing and needs-help screens, startup template check; core gets `stepKey`, `onStartup`, `listStepConfigs`.
