@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.backend.json"
+    "build": "tsc -p tsconfig.backend.json",
+    "test": "vitest run"
   },
   "exports": {
     "./backend": {
@@ -27,6 +28,7 @@
     "@types/react": "^19.2.14",
     "jotai": "^2.19.1",
     "react": "^19.2.5",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
   }
 }
