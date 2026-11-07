@@ -143,6 +143,7 @@ const ScoutnetParticipant = type({
   "ssno?": "string",
   "date_of_birth?": "string",
   "cancelled?": "boolean",
+  "questions?": type.Record("string", "string | string[] | null"),
   "group_registration_info?": {
     "group_id?": type("number | string | null"),
   },
