@@ -44,9 +44,10 @@ export async function listJobsForStep(sessionId: string, stepKey: string) {
 }
 
 /**
- * Creates one job per item for the session's kiosk pool. Items that already
- * have a job (same session, step and index) are skipped, so running the step
- * again never prints a second badge. Returns all of the step's jobs.
+ * Creates one job per item for the session's print pool (set when the session
+ * was created, so admin sessions without a kiosk can print). Items that
+ * already have a job (same session, step and index) are skipped, so running
+ * the step again never prints a second badge. Returns all of the step's jobs.
  */
 export async function createJobsForStep(args: {
   sessionId: string;
@@ -57,11 +58,11 @@ export async function createJobsForStep(args: {
   const { sessionId, stepKey, template, items } = args;
   const session = await prisma.checkinSession.findUnique({
     where: { id: sessionId },
-    select: { kioskId: true, kiosk: { select: { printPoolId: true } } },
+    select: { kioskId: true, printPoolId: true },
   });
-  const kioskId = session?.kioskId;
-  const poolId = session?.kiosk?.printPoolId;
-  if (!kioskId || !poolId) return { ok: false, reason: "no-pool" } as const;
+  const kioskId = session?.kioskId ?? undefined;
+  const poolId = session?.printPoolId;
+  if (!poolId) return { ok: false, reason: "no-pool" } as const;
 
   const existing = await listJobsForStep(sessionId, stepKey);
   const taken = new Set(existing.map((job) => job.idempotencyKey));

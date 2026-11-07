@@ -15,15 +15,26 @@ export async function createSession(options?: {
   configFile?: string;
   params?: Record<string, unknown>;
   kioskId?: string;
+  printPoolId?: string;
 }): Promise<CheckinSessionModel> {
   // Simulate delay for testing purposes
   // await new Promise((resolve) => setTimeout(resolve, 1500));
+
+  let printPoolId = options?.printPoolId;
+  if (options?.kioskId && !printPoolId) {
+    const kiosk = await prisma.kiosk.findUnique({
+      where: { id: options.kioskId },
+      select: { printPoolId: true },
+    });
+    printPoolId = kiosk?.printPoolId ?? undefined;
+  }
 
   return await prisma.checkinSession.create({
     data: {
       configFile: options?.configFile ?? config.DEFAULT_STEP_CONFIG,
       params: JSON.parse(JSON.stringify(options?.params ?? {})),
       kioskId: options?.kioskId,
+      printPoolId,
     },
   });
 }

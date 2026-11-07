@@ -161,9 +161,14 @@ model Printer {
   createdAt    DateTime   @default(now())
 }
 
-// Added to the existing Kiosk model:
+// Added to the existing Kiosk model (the pool its new sessions start with):
 //   printPoolId String?    @db.Uuid
 //   printPool   PrintPool? @relation(fields: [printPoolId], references: [id])
+//
+// Added to the existing CheckinSession model (the pool its jobs go to; copied
+// from the kiosk, chosen by the admin, or null):
+//   printPoolId String?    @db.Uuid
+//   printPool   PrintPool? @relation(fields: [printPoolId], references: [id], onDelete: SetNull)
 
 model PrintJob {
   id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -207,8 +212,12 @@ Admin needs this to answer "what happened to this badge?".
   unassigned, so putting a printer in a pool is the single step that brings it into
   service.
 - **Each kiosk is in at most one pool.**
-- **A job is bound to a pool when it is created**, using the kiosk's pool at that
-  moment. Reassigning a kiosk later does not move jobs that are already queued.
+- **A job is bound to a pool when it is created**, using the session's pool
+  (`CheckinSession.printPoolId`). A session gets its pool when it starts: a kiosk
+  session copies the kiosk's pool, an admin session takes the pool the admin picked
+  (the staff check-in view and the sessions table; changing it there restarts the
+  session), and a link session has none yet. Reassigning a kiosk later does not move
+  sessions already running or jobs already queued.
 - **Rerouting is explicit.** Admin can move queued jobs from one pool to another, in
   bulk or one by one.
 - **Moving or unassigning a printer mid-job.** The printer finishes its in-flight
@@ -1050,8 +1059,9 @@ finish", not for the queue.
 
 ### 9.1 Behavior
 
-- **Kiosk has no pool:** show the "kiosk not connected to a printer" error screen.
-  No jobs are created.
+- **Session has no pool** (a kiosk without a pool, an admin session where none was
+  chosen, or a link session): show the "kiosk not connected to a printer" error
+  screen. No jobs are created.
 - **`behavior: queue`:** create the jobs in one transaction, then `setCompleted()`.
   This is effectively instant and doesn't depend on any printer.
 - **`behavior: wait`:** create the jobs, then show a "printing" screen with progress

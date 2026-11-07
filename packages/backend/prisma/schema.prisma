@@ -35,8 +35,8 @@ model Kiosk {
   lastSeenAt DateTime?
   createdAt  DateTime  @default(now())
 
-  // The print pool its badges go to. Null: the printer:print step shows a
-  // "no printer" error instead.
+  // The print pool its sessions start with (copied onto each new session).
+  // Null: the printer:print step shows a "no printer" error instead.
   printPoolId String?    @db.Uuid
   printPool   PrintPool? @relation(fields: [printPoolId], references: [id], onDelete: SetNull)
 
@@ -99,6 +99,12 @@ model CheckinSession {
   // The kiosk that started this session. Null for sessions from links.
   kioskId String? @db.Uuid
   kiosk   Kiosk?  @relation(fields: [kioskId], references: [id], onDelete: SetNull)
+
+  // The pool the printer:print step sends this session's badges to. Copied
+  // from the kiosk when a kiosk session starts, chosen by the admin for admin
+  // sessions, null for link sessions.
+  printPoolId String?    @db.Uuid
+  printPool   PrintPool? @relation(fields: [printPoolId], references: [id], onDelete: SetNull)
 
   // The language this session is conducted in. Drives resolution of
   // `{ sv, en }` text maps in the step config and the kiosk/link UI. Set by
@@ -280,6 +286,7 @@ model PrintPool {
   profile   String?
   printers  Printer[]
   kiosks    Kiosk[]
+  sessions  CheckinSession[]
   jobs      PrintJob[]
   createdAt DateTime   @default(now())
 }

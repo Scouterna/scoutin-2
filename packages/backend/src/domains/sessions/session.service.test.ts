@@ -2,12 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const checkinSessionFindUnique = vi.fn();
 const checkinSubjectFindMany = vi.fn();
+const checkinSessionCreate = vi.fn();
+const kioskFindUnique = vi.fn();
 
 vi.mock("../../app/prisma.ts", () => ({
   prisma: {
     checkinSession: {
       findUnique: checkinSessionFindUnique,
+      create: checkinSessionCreate,
     },
+    kiosk: { findUnique: kioskFindUnique },
     checkinSubject: {
       findMany: checkinSubjectFindMany,
     },
@@ -20,7 +24,9 @@ vi.mock("../../config/config.ts", () => ({
   default: { TOKEN_SECRET: "test-secret" },
 }));
 
-const { getSessionContext } = await import("./session.service.ts");
+const { createSession, getSessionContext } = await import(
+  "./session.service.ts"
+);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -206,5 +212,30 @@ describe("getSessionContext", () => {
     expect(context?.subjects.map((s) => s.id)).toEqual(["p1", "p2"]);
     expect(context?.subjects[0]?.history).toHaveLength(1);
     expect(context?.subjects[1]?.history).toEqual([]);
+  });
+});
+
+describe("createSession print pool", () => {
+  beforeEach(() => {
+    checkinSessionCreate.mockResolvedValue({ id: "s1" });
+  });
+
+  const createdData = () => checkinSessionCreate.mock.calls[0]?.[0].data;
+
+  it("copies the kiosk's pool when none is given", async () => {
+    kioskFindUnique.mockResolvedValueOnce({ printPoolId: "p1" });
+    await createSession({ kioskId: "k1" });
+    expect(createdData()).toMatchObject({ kioskId: "k1", printPoolId: "p1" });
+  });
+
+  it("prefers an explicit pool over the kiosk's", async () => {
+    await createSession({ kioskId: "k1", printPoolId: "p2" });
+    expect(kioskFindUnique).not.toHaveBeenCalled();
+    expect(createdData().printPoolId).toBe("p2");
+  });
+
+  it("stores no pool for a session without kiosk or pool", async () => {
+    await createSession();
+    expect(createdData().printPoolId).toBeUndefined();
   });
 });

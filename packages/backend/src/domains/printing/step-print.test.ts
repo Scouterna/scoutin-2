@@ -53,7 +53,7 @@ beforeEach(() => {
   nextId = 0;
   sessionFindUnique.mockResolvedValue({
     kioskId: "k1",
-    kiosk: { printPoolId: "p1" },
+    printPoolId: "p1",
   });
 });
 
@@ -65,8 +65,8 @@ const args = (stepKey = "badge", items: object[] = [{ a: 1 }, { a: 2 }]) => ({
 });
 
 describe("createJobsForStep", () => {
-  it("returns no-pool without a kiosk", async () => {
-    sessionFindUnique.mockResolvedValue({ kioskId: null, kiosk: null });
+  it("returns no-pool without a pool", async () => {
+    sessionFindUnique.mockResolvedValue({ kioskId: null, printPoolId: null });
     expect(await createJobsForStep(args())).toEqual({
       ok: false,
       reason: "no-pool",
@@ -74,13 +74,18 @@ describe("createJobsForStep", () => {
     expect(rows).toHaveLength(0);
   });
 
-  it("returns no-pool when the kiosk has no pool", async () => {
-    sessionFindUnique.mockResolvedValue({
-      kioskId: "k1",
-      kiosk: { printPoolId: null },
-    });
+  it("returns no-pool when the session has a kiosk but no pool", async () => {
+    sessionFindUnique.mockResolvedValue({ kioskId: "k1", printPoolId: null });
     expect((await createJobsForStep(args())).ok).toBe(false);
     expect(rows).toHaveLength(0);
+  });
+
+  it("creates jobs for a session with a pool but no kiosk", async () => {
+    sessionFindUnique.mockResolvedValue({ kioskId: null, printPoolId: "p1" });
+    const r = await createJobsForStep(args());
+    expect(r.ok).toBe(true);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ poolId: "p1", kioskId: undefined });
   });
 
   it("creates one job per item", async () => {

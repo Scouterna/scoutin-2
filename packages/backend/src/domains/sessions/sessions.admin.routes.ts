@@ -1,3 +1,5 @@
+import { arktypeValidator } from "@hono/arktype-validator";
+import { type } from "arktype";
 import { Hono } from "hono";
 import { prisma } from "../../app/prisma.ts";
 import { getLogger } from "../../core/logging/logger.ts";
@@ -9,9 +11,21 @@ import {
   getSessionContext,
 } from "./session.service.ts";
 
+const CreateBody = type({
+  "printPoolId?": "string.uuid",
+});
+
 export const sessionsAdminRouter = new Hono<AppEnv>()
-  .post("/", async (c) => {
-    const session = await createSession();
+  .post("/", arktypeValidator("json", CreateBody), async (c) => {
+    const { printPoolId } = c.req.valid("json");
+    if (printPoolId) {
+      const pool = await prisma.printPool.findUnique({
+        where: { id: printPoolId },
+        select: { id: true },
+      });
+      if (!pool) return c.json({ error: "Print pool not found" }, 400);
+    }
+    const session = await createSession({ printPoolId });
     return c.json({ id: session.id }, 201);
   })
   .get("/", async (c) => {
