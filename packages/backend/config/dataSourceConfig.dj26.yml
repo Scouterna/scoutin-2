@@ -1,0 +1,92 @@
+# Demokratijamboree 2026. Select with DATASOURCE_CONFIG=dataSourceConfig.dj26.yml.
+#
+# While testing the Scoutnet project is READ ONLY for us: keep DRY_RUN=true so
+# the check-in write-back is blocked, and leave the `checkin` key empty. At the
+# event, set DRY_RUN=false and fill in the checkin key.
+dataSources:
+  participants:
+    name:
+      sv: deltagare
+      en: participant
+    provider: scoutnet
+    # Extra form answers needed on the badge, in participant metadata under
+    # `badge`. Choice IDs are translated to their label text.
+    enrichWith:
+      # The scout group's name, in metadata.group.name.
+      group: scoutnet:primaryGroup
+      badge:
+        name: scoutnet:formAnswers
+        options:
+          questions:
+            # "I vilken roll deltar du?" (volunteer / national working group)
+            role: "111244"
+            # Ombud only: shown on the badge as "Ombud - <number>".
+            delegateNumber: "105712"
+            # "Beredningsgrupp" (multiple choice, used as text).
+            preparationGroup: "105679"
+            # Meals (not for Dagsdeltagare).
+            lunchSaturday: "112081"  # "Till lördag lunch önskar jag"
+            lunchSunday: "112082"    # "Till söndag lunch önskar jag:"
+            dinnerChoice: "105680"   # "Middagsval"
+            # "Jag önskar äta middag i:" (Sittning 1 ca 18.00 / Sittning 2 ca
+            # 19.00). Imported but not printed yet.
+            dinnerSeating: "112305"
+          # "Annan roll" (74291) is replaced by the free text in 111280
+          # "Ange vilken roll:".
+          otherAnswers:
+            role:
+              choice: "74291"
+              question: "111280"
+    subGroups:
+      delegate:
+        name:
+          sv: Ombud
+          en: Delegate
+      participant:
+        name:
+          sv: Deltagare
+          en: Participant
+      staff:
+        name:
+          sv: Funktionär
+          en: Staff
+      volunteer:
+        name:
+          sv: Min vanliga ideella roll/nationella arbetsgrupp
+          en: Regular volunteer role / national working group
+      office:
+        name:
+          sv: Anställd Scouternas kansli
+          en: Scouterna office employee
+      exhibitor:
+        name:
+          sv: Utställare/Panelsamtalshållare
+          en: Exhibitor / panel speaker
+      dayVisitor:
+        name:
+          sv: Dagsdeltagare
+          en: Day participant
+    providerOptions:
+      projectId: 73677
+      includeIndividuals: true
+      includeGroups: false
+      subGroupConditions:
+        delegate:
+          condition: ${{ participant.questions['105667'] == '70859' }} # Ombud
+        participant:
+          condition: ${{ participant.questions['105667'] == '70860' }} # Deltagare
+        staff:
+          condition: ${{ participant.questions['105667'] == '70861' }} # Funktionär
+        volunteer:
+          condition: ${{ participant.questions['105667'] == '70862' }} # Min vanliga ideella roll/nationella arbetsgrupp
+        office:
+          condition: ${{ participant.questions['105667'] == '70857' }} # Anställd Scouternas kansli
+        exhibitor:
+          condition: ${{ participant.questions['105667'] == '72466' }} # Utställare/Panelsamtalshållare
+        dayVisitor:
+          condition: ${{ participant.questions['105667'] == '70863' }} # Dagsdeltagare
+      keys:
+        groups: ""  # unused: individual attendees only (includeGroups: false)
+        participants: ${SCOUTNET_DJ26_PARTICIPANTS_KEY}
+        checkin: ""  # event: ${SCOUTNET_DJ26_CHECKIN_KEY}
+        questions: ${SCOUTNET_DJ26_QUESTIONS_KEY}
