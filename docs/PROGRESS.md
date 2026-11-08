@@ -65,8 +65,6 @@ Nobody. (Format: `- <who>: <what> (<doc or file>)`)
 
 ## Where the detail is
 
-- Printing overall: `docs/printing-handoff.md` (rules, state, decisions, how to run
-  and verify).
 - Relay, wire protocol and the `printer:print` step: `docs/printer-proxy-spec.md`.
 - Barrier and lock: `docs/step-navigation-spec.md`.
 - Template authoring and the studio: `docs/printing-templates.md`.
