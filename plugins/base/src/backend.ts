@@ -7,6 +7,7 @@ import { identify } from "./identify/backend/identify.ts";
 import { markConfirmedCheckedIn } from "./markConfirmedCheckedIn/backend/markConfirmedCheckedIn.ts";
 import { markPreliminaryCheckedIn } from "./markPreliminaryCheckedIn/backend/markPreliminaryCheckedIn.ts";
 import { message } from "./message/backend/message.ts";
+import { script } from "./script/backend/script.ts";
 import { selectLanguage } from "./selectLanguage/backend/selectLanguage.ts";
 import { selectSubjects } from "./selectSubjects/backend/selectSubjects.ts";
 import { setActorAsSubject } from "./setActorAsSubject/backend/setActorAsSubject.ts";
@@ -24,5 +25,6 @@ export const plugin: BackendPlugin = {
     ctx.registerStep(markPreliminaryCheckedIn);
     ctx.registerStep(markConfirmedCheckedIn);
     ctx.registerStep(message);
+    ctx.registerStep(script);
   },
 };
