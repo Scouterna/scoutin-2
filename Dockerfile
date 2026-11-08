@@ -3,6 +3,8 @@ FROM node:24-alpine AS builder
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
+# Prisma needs OpenSSL to pick and run the musl schema engine.
+RUN apk add --no-cache openssl
 
 WORKDIR /app
 
@@ -14,6 +16,7 @@ COPY packages/plugin-api/package.json ./packages/plugin-api/
 COPY packages/print-templates/package.json ./packages/print-templates/
 COPY plugins/base/package.json ./plugins/base/
 COPY plugins/malcolm-test/package.json ./plugins/malcolm-test/
+COPY plugins/printer/package.json ./plugins/printer/
 COPY plugins/scoutnet/package.json ./plugins/scoutnet/
 COPY plugins/jamboree26/package.json ./plugins/jamboree26/
 RUN pnpm install --frozen-lockfile
@@ -28,7 +31,7 @@ RUN DATABASE_URL=postgresql://build-placeholder \
     pnpm --filter @scouterna/scoutin-backend exec prisma generate
 
 # Build the frontend SPA → packages/frontend/dist/
-RUN VITE_API_URL=/_services/scoutin-2 pnpm --filter frontend exec vite build --base=/_services/scoutin-2/ && \
+RUN VITE_API_URL=/ pnpm --filter frontend exec vite build && \
     pnpm --filter frontend exec tsc
 
 # Compile plugin backend TypeScript to JS so pnpm deploy can include them
@@ -37,6 +40,7 @@ RUN pnpm --filter @scouterna/scoutin-plugin-api run build
 RUN pnpm --filter @scouterna/scoutin-print-templates run build
 RUN pnpm --filter @scouterna/scoutin-plugin-base run build
 RUN pnpm --filter @scouterna/scoutin-plugin-malcolm-test run build
+RUN pnpm --filter @scouterna/scoutin-plugin-printer run build
 RUN pnpm --filter @scouterna/scoutin-plugin-scoutnet run build
 RUN pnpm --filter @scouterna/scoutin-plugin-jamboree26 run build
 
@@ -44,11 +48,16 @@ RUN pnpm --filter @scouterna/scoutin-plugin-jamboree26 run build
 # Workspace packages (@scouterna/scoutin-plugin-*) are bundled in as well.
 RUN pnpm deploy --filter @scouterna/scoutin-backend --prod --legacy /deploy
 
+# `prisma migrate deploy` needs the schema engine in the image: it runs as
+# non-root on a read-only filesystem and can't download it then.
+RUN find /deploy/node_modules -name 'schema-engine-*' | grep -q . || \
+    (echo "Prisma schema engine missing from /deploy" >&2; exit 1)
+
 # ── Stage 2: production image ─────────────────────────────────────────────────
 FROM node:24-alpine AS runner
+RUN apk add --no-cache openssl
 WORKDIR /app
 ENV NODE_ENV=production
-ENV BASE_PATH=/_services/scoutin-2
 
 # Self-contained backend: source files + production node_modules (from pnpm deploy)
 COPY --from=builder /deploy ./

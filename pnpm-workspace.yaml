@@ -4,3 +4,8 @@ packages:
 catalog:
   '@scouterna/ui-react': 4.5.1
   '@scouterna/ui-webc': 4.5.1
+# Prisma's schema engine (used by `prisma migrate deploy`) is fetched by this
+# package's postinstall. Without it the image downloads it at runtime, which
+# fails as non-root on a read-only filesystem.
+onlyBuiltDependencies:
+  - '@prisma/engines'
