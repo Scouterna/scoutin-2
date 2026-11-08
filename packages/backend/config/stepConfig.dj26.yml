@@ -15,12 +15,43 @@ steps:
   #     uses: voteit:grantVoterRole
   # TODO: verification step (does not exist yet)
 
+  # Turns the subject into the flat values the dj26 template takes. The
+  # template decides what to show for each participant type.
+  - uses: base:script
+    id: badges
+    with:
+      variables:
+        # There is always exactly one subject.
+        subject: ${{ session.subjects[0] }}
+      script: |
+        // A text answer, or the choices joined; undefined when empty.
+        const text = (answer) => {
+          const joined = Array.isArray(answer) ? answer.join(", ") : answer;
+          return (joined ?? "").trim() || undefined;
+        };
+        const answers = subject.metadata?.badge ?? {};
+        // printer:print takes a list: one badge.
+        return [
+          {
+            firstName: subject.firstName,
+            lastName: subject.lastName,
+            group: text(subject.metadata?.group?.name),
+            memberNumber: subject.idInDataSource,
+            participantType: subject.subGroup,
+            participantSubtype: text(answers.role),
+            delegateNumber: text(answers.delegateNumber),
+            preparationGroup: text(answers.preparationGroup),
+            lunchSaturday: text(answers.lunchSaturday),
+            lunchSunday: text(answers.lunchSunday),
+            dinnerSaturday: text(answers.dinnerSaturday),
+          },
+        ];
+
   - uses: printer:print
     id: printBadges
     with:
-      # The template takes each subject as it is and builds the badge text.
       template: dj26
-      values: ${{ session.subjects }}
+      values: ${{ steps.badges.outputs.result }}
       behavior: queue
 
   - uses: base:markConfirmedCheckedIn
