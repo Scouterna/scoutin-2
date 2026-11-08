@@ -36,6 +36,7 @@ Nobody. (Format: `- <who>: <what> (<doc or file>)`)
 
 ## Later
 
+- Rename the `printer:print` behavior `queue` to `enqueue` (step, startup check, configs, docs).
 - Split the oversized `setCompleted` in `stepContext.ts`, as its own commit with tests
   first.
 - Step config registry: scan `config/` once at boot and reject an unknown `configFile`
@@ -48,6 +49,7 @@ Nobody. (Format: `- <who>: <what> (<doc or file>)`)
 
 ## Recently done
 
+- `base:script` step (plugins/base): inline JS from the step config (`variables` + `script`, output `result`), run by `node:vm` with a 1 s timeout behind `runScript` in `runner.ts`. `stepConfig.dj26.yml` uses it to build flat badge values; the `dj26` template is flat again so the admin print form works for walk-ups. Tests (including one that runs the DJ26 badge script from the YAML): `plugins/base/src/script`. Not booted against the real project. Uncommitted.
 - Scanner modes for the identify screen (`useBarcodeScanner`): `VITE_SCANNER_MARKERS` (default on, `¤data¤`; set either to `false` to disable) and `VITE_SCANNER_ENTER` (default on, fast type-then-Enter, keys <50 ms apart, min 3 chars); tests in `plugins/base`. Not tried on a real scanner.
 - `570deef` `33829e0` Demokratijamboree26 setup (project 73677, individuals only, read-only while testing): `config/dataSourceConfig.dj26.yml` (7 subgroups from question 105667, `badge.*` answers, `group.name`), `config/stepConfig.dj26.yml`, `scoutnet:formAnswers` and `scoutnet:primaryGroup` enrichers. The `dj26` template (git-excluded) now takes `session.subjects` and builds the badge itself (`toBadge`). Not booted against the real project; VoteIT (delegates only) and verification are TODO comments in the step config.
 - `CheckinSession.printPoolId`: the printer:print pool comes from the session (kiosk sessions copy the kiosk's pool, admin picks one in the sessions table and the staff check-in chip, which restarts the session; links get one later).
