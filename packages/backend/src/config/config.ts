@@ -1,6 +1,7 @@
 /** biome-ignore-all lint/style/noProcessEnv: This is the only file in the whole project where we should access process.env */
 
 import { type } from "arktype";
+import { assertNoSchemaConflict } from "./databaseSchema.ts";
 
 const Config = type({
   "+": "delete",
@@ -13,6 +14,8 @@ const Config = type({
     "'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent'",
   ),
   DATABASE_URL: type("string"),
+  // Postgres schema for all tables, used by both the app and migrations.
+  DATABASE_SCHEMA: type("string > 0").default("public"),
   // Signs the admin session cookie (and the kiosk session tokens).
   TOKEN_SECRET: type("string"),
   // Bootstrap admin, seeded on first boot only if the user table is empty.
@@ -68,6 +71,11 @@ export function loadConfig() {
       `Configuration validation failed:\n${parsedConfig.summary}`,
     );
   }
+
+  assertNoSchemaConflict(
+    parsedConfig.DATABASE_URL,
+    parsedConfig.DATABASE_SCHEMA,
+  );
 
   rawConfig = parsedConfig;
 }
