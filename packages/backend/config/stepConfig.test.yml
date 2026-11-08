@@ -1,0 +1,24 @@
+# Barebones flow for testing the printer:print step on a kiosk. Not for the
+# event. Run it by setting DEFAULT_STEP_CONFIG=stepConfig.test.yml in .env.
+#
+# Deliberately left out: base:markConfirmedCheckedIn, so a test run never
+# writes check-in state back to Scoutnet.
+steps:
+  - uses: base:identify
+    id: identify
+    with:
+      scannerSide: right
+
+  # Makes the person who identified the only subject, so one job is created.
+  # Needs an actor that is a participant, i.e. identify as staff or a leader.
+  - uses: base:setActorAsSubject
+
+  - uses: printer:print
+    id: printBadges
+    with:
+      # Built-in template that accepts any values. The dj26 template needs
+      # participantType, which session.subjects does not carry.
+      template: _test
+      values: ${{ session.subjects }}
+      # queue: continue at once. wait: show progress and the needs-help screen.
+      behavior: wait
