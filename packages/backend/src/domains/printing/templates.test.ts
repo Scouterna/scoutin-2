@@ -132,7 +132,7 @@ import { type } from "arktype";
 export const values = type({ name: "string" });
 export default (v: { name: string }, label: { width: number; height: number }) => (
   <div style={{ display: "flex", width: label.width, height: label.height, backgroundColor: "black" }}>
-    <FitText width={label.width} max={60} min={20} fontFamily="Roboto" fontWeight={700}>{v.name}</FitText>
+    <FitText width={label.width} max={60} min={20} fontFamily="Inter" fontWeight={700}>{v.name}</FitText>
   </div>
 );
 `;
@@ -288,7 +288,7 @@ export default (v: { name: string }) => (
         }),
       );
       expect(getFonts().map((f) => `${f.name}/${f.weight}`)).toEqual(
-        expect.arrayContaining(["Roboto/400", "Roboto/700", "Brand/700"]),
+        expect.arrayContaining(["Inter/400", "Inter/700", "Brand/700"]),
       );
     });
 
@@ -778,19 +778,18 @@ describe("folder templates", () => {
     afterEach(() => stopTemplateWatcher());
 
     // A real, parseable font is needed because FitText measures with it.
-    const ROBOTO = join(
+    const INTER = join(
       dirname(fileURLToPath(import.meta.url)),
       "assets",
       "fonts",
     );
-    const regular = () =>
-      readFile(join(ROBOTO, "roboto-latin-400-normal.woff"));
-    const bold = () => readFile(join(ROBOTO, "roboto-latin-700-normal.woff"));
+    const regular = () => readFile(join(INTER, "inter-latin-400-normal.woff"));
+    const bold = () => readFile(join(INTER, "inter-latin-700-normal.woff"));
     const tpl = (family: string, weight = 400) =>
-      VALID_TSX.replace(
-        'fontFamily="Roboto"',
-        `fontFamily="${family}"`,
-      ).replace("fontWeight={700}", `fontWeight={${weight}}`);
+      VALID_TSX.replace('fontFamily="Inter"', `fontFamily="${family}"`).replace(
+        "fontWeight={700}",
+        `fontWeight={${weight}}`,
+      );
     const names = (t: string) =>
       getFonts(t).map((f) => `${f.name}/${f.weight}/${f.style}`);
 
@@ -806,7 +805,7 @@ describe("folder templates", () => {
         }),
       );
       expect(names("brand")).toContain("Local/400/normal");
-      expect(names("brand")).toContain("Roboto/700/normal");
+      expect(names("brand")).toContain("Inter/700/normal");
       expect(names("plain")).not.toContain("Local/400/normal");
       expect(names("single")).not.toContain("Local/400/normal");
       expect(getFonts().some((f) => f.name === "Local")).toBe(false);
@@ -831,7 +830,7 @@ describe("folder templates", () => {
         "own/own.tsx": tpl("Brand"),
         "own/fonts/fonts.yml":
           "- { file: l.woff, family: Brand, weight: 400 }\n" +
-          "- { file: r.woff, family: Roboto, weight: 700 }\n",
+          "- { file: r.woff, family: Inter, weight: 700 }\n",
         "own/fonts/l.woff": await regular(),
         "own/fonts/r.woff": await regular(),
         "other/other.tsx": tpl("Brand"),
@@ -847,8 +846,8 @@ describe("folder templates", () => {
       expect(data("own", "Brand", 400).equals(await regular())).toBe(true);
       expect(data("other", "Brand", 400).equals(await bold())).toBe(true);
       // A built-in is replaced too, for that template only.
-      expect(data("own", "Roboto", 700).equals(await regular())).toBe(true);
-      expect(data("other", "Roboto", 700).equals(await bold())).toBe(true);
+      expect(data("own", "Inter", 700).equals(await regular())).toBe(true);
+      expect(data("other", "Inter", 700).equals(await bold())).toBe(true);
     });
 
     it("leave the global fonts working in the template", async () => {

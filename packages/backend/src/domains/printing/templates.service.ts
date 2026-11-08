@@ -483,7 +483,7 @@ function parseSize(raw: unknown): TemplateSize | string {
 
 /**
  * A configured font replaces one with the same family, weight and style, so a
- * brand can supply its own "Roboto" and a template its own version of a
+ * brand can supply its own "Inter" and a template its own version of a
  * global font.
  */
 function layerFonts(base: RenderFont[], extra: RenderFont[]): RenderFont[] {

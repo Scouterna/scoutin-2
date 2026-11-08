@@ -38,7 +38,7 @@ config/templates/
   studio").
 - **Real brand fonts, logos and templates live only in the runtime-mounted
   `config/templates` and must never be committed to this repo.** The committed
-  `example-name-tag.tsx` is neutral and only uses the built-in Roboto.
+  `example-name-tag.tsx` is neutral and only uses the built-in Inter.
 
 ## The module
 
@@ -144,7 +144,8 @@ classes go last.
 
 ## Fonts
 
-Roboto 400 and 700 are always there, as the family `Roboto`. More go in
+Inter 400 and 700 are always there, as the family `Inter`, and are the default
+when a template sets no font. More go in
 `fonts/fonts.yml`:
 
 ```yaml
@@ -162,7 +163,7 @@ built-in replaces it. Use the family in `style.fontFamily` or `fontFamily` on
 A folder template can add fonts that only it can use, in
 `<name>/fonts/fonts.yml` (same format, `file` relative to `<name>/fonts/`).
 Other templates don't see them, and `FitText` and `fontFamily` find them in
-that template only. A template renders with Roboto, then the global
+that template only. A template renders with Inter, then the global
 `fonts/fonts.yml`, then its own, and a later entry with the same family, weight
 and style replaces an earlier one. Template fonts are checked at load like the
 global ones: a missing file or bad manifest is a load problem and the previous

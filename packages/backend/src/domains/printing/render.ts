@@ -108,16 +108,15 @@ const FONT_DIR = join(
   "fonts",
 );
 
-/** Roboto Regular and Bold, the default font for tests and the test label. */
+/** Inter Regular and Bold: the default font for every print, listed first so
+ * Satori falls back to it when no fontFamily is set. */
 export async function loadBuiltinFonts(): Promise<RenderFont[]> {
   return Promise.all(
     ([400, 700] as const).map(async (weight) => ({
-      name: "Roboto",
+      name: "Inter",
       weight,
       style: "normal" as const,
-      data: await readFile(
-        join(FONT_DIR, `roboto-latin-${weight}-normal.woff`),
-      ),
+      data: await readFile(join(FONT_DIR, `inter-latin-${weight}-normal.woff`)),
     })),
   );
 }

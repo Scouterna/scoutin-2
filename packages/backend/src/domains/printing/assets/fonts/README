@@ -1,6 +1,7 @@
-Roboto Regular (400) and Bold (700), latin subset, from @fontsource/roboto.
-Copyright Google LLC, licensed under the Apache License 2.0
-(https://www.apache.org/licenses/LICENSE-2.0). These are the built-in default
-fonts for tests and the built-in test label. Static WOFF, because FitText
-measures text with opentype.js, which can't read WOFF2, and Satori renders a
-variable font only as its default instance.
+Inter Regular (400) and Bold (700), latin subset, from @fontsource/inter 5.3.0.
+Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter),
+licensed under the SIL Open Font License 1.1 (https://openfontlicense.org).
+These are the built-in default fonts for every print: Satori falls back to
+them when no fontFamily is set, and the built-in test label uses them. Static
+WOFF, because FitText measures text with opentype.js, which can't read WOFF2,
+and Satori renders a variable font only as its default instance.
