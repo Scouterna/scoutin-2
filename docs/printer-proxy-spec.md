@@ -1038,7 +1038,8 @@ The updater and the CI job are built; the server endpoint isn't yet.
 
 ## 9. The `printer:print` step
 
-A built-in step, registered by the backend's printing domain. Rendering happens
+A step provided by the `printer` plugin (`plugins/printer`), on top of the
+printing domain's services. Rendering happens
 at lease time in the hub (§10.3), so the step only creates the job and waits.
 
 ```yaml
