@@ -13,7 +13,7 @@ sessions. Read it before you start, update it before you finish.
 - Detail belongs in the linked docs, not here. Keep this file short; trim **Recently
   done** to about ten lines.
 
-Last updated: 2026-11-08.
+Last updated: 2026-11-09.
 
 ## Now
 
@@ -36,6 +36,7 @@ Nobody. (Format: `- <who>: <what> (<doc or file>)`)
 
 ## Later
 
+- CI check that schema and migrations agree: `prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma --exit-code` (needs a shadow DB).
 - Rename the `printer:print` behavior `queue` to `enqueue` (step, startup check, configs, docs).
 - Split the oversized `setCompleted` in `stepContext.ts`, as its own commit with tests
   first.
@@ -49,6 +50,7 @@ Nobody. (Format: `- <who>: <what> (<doc or file>)`)
 
 ## Recently done
 
+- Missing migration `20261109120000_add_session_kiosk` for `CheckinSession.kioskId` (added to the schema in `50803d9` without a migration; prod `sha-a3ffd13` returned 500 on every session create, P2022). Verified with `prisma dev` (no Docker): all migrations apply and `migrate diff` against the schema shows no difference. Uncommitted.
 - Optional `DATABASE_SCHEMA` (default `public`) picks the Postgres schema for both `prisma migrate` (`prisma.config.ts` sets `?schema=` on the URL) and the app (`PrismaPg` `schema` option; the adapter ignores the URL param). Separate variable because the deployed `DATABASE_URL` comes from an infra-owned secret. A `?schema=` in the URL that differs from it fails startup and migrations (`src/config/databaseSchema.ts`). Verified `migrate deploy` + reads/writes into a non-public schema.
 - Built-in print font is now Inter 400/700 (latin WOFF, @fontsource/inter, OFL) instead of Roboto: the default for every print and the test label (`printing/assets/fonts`, `render.ts`, docs/printing-templates.md). Printing tests pass.
 - Docker image fixes: copy/build `plugins/printer` (every build since 6 Nov failed on it), and ship the Prisma schema engine (`onlyBuiltDependencies: @prisma/engines`, `openssl` in both stages, build fails if the engine is missing) so `prisma migrate deploy` runs as non-root on a read-only FS; image now serves at `/` (no `/_services/scoutin-2`), making the path configurable is for later. Image build not run yet. (`8f50e45`)
