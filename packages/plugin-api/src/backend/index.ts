@@ -66,8 +66,8 @@ export type StepMethodContext<TState = Record<string, unknown>> = {
     payload?: Record<string, unknown>,
   ): Promise<void>;
   getInputs(): Record<string, unknown>;
-  setState(key: keyof TState, value: TState[keyof TState]): void;
-  getState(key: keyof TState): TState[keyof TState];
+  setState<K extends keyof TState>(key: K, value: TState[K]): void;
+  getState<K extends keyof TState>(key: K): TState[K];
   clearState(): void;
   setActor(options: SetActorOptions): Promise<void>;
   clearActor(): Promise<void>;
