@@ -66,6 +66,12 @@ async function main() {
     handler: writeBackAllDataSources,
   });
   jobRunner.start();
+  // Import once on boot so a fresh deploy doesn't wait a full interval for
+  // data. Skipped when the import is manual-only (interval 0). Runs in the
+  // background; failures are logged and shown on the admin Jobs page.
+  if (config.DATA_IMPORT_INTERVAL_MS > 0) {
+    jobRunner.runNow(DATA_IMPORT_JOB).catch(() => {});
+  }
   startRelaySockets();
   startDispatch();
   // Template edits show up without a restart while developing.
