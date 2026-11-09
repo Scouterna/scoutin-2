@@ -8,6 +8,9 @@ const Inputs = type({
 });
 type Inputs = typeof Inputs.infer;
 
+// setCompleted keeps only declared outputs; without this, `result` is dropped.
+const Outputs = type({ result: "unknown" });
+
 /**
  * Runs a short synchronous inline JavaScript snippet and exposes its return
  * value as `outputs.result`. `variables` become globals of the script.
@@ -15,19 +18,23 @@ type Inputs = typeof Inputs.infer;
 export const script: StepImplementation = {
   id: "base:script",
   inputs: Inputs,
+  outputs: Outputs,
   hooks: {
     async onStepStart(ctx) {
       const inputs = ctx.getInputs() as Inputs;
+      let result: unknown;
       try {
-        const result = runScript({
+        result = runScript({
           code: inputs.script,
           variables: inputs.variables ?? {},
         });
-        await ctx.setCompleted({ result });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         throw new Error(`base:script step "${ctx.stepKey}": ${message}`);
       }
+      // Outside the try: setCompleted starts the next step, whose errors
+      // aren't this script's.
+      await ctx.setCompleted({ result });
     },
   },
 };

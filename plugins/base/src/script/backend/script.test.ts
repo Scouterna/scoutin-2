@@ -24,6 +24,19 @@ describe("base:script", () => {
     expect(ctx.setCompleted).toHaveBeenCalledWith({ result: { double: 4 } });
   });
 
+  it("declares result as an output, so core keeps it", async () => {
+    const validated = await script.outputs?.["~standard"].validate({
+      result: [{ firstName: "A" }],
+    });
+    expect(validated).toEqual({ value: { result: [{ firstName: "A" }] } });
+  });
+
+  it("does not label the next step's errors as script errors", async () => {
+    const ctx = makeCtx({ script: "return 1;" });
+    ctx.setCompleted.mockRejectedValue(new Error("next step failed"));
+    await expect(start(ctx)).rejects.toThrow(/^next step failed$/);
+  });
+
   it("wraps errors with the step key", async () => {
     const ctx = makeCtx({ script: "throw new Error('boom');" });
     await expect(start(ctx)).rejects.toThrow('base:script step "badges": boom');
