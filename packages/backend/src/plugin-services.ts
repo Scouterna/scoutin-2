@@ -11,6 +11,7 @@
 export { prisma } from "./app/prisma.ts";
 export { evaluateExpression } from "./core/expressions/expressions.ts";
 export { withStepContext } from "./core/workflow/withStepContext.ts";
+export { recordAudit } from "./domains/audit/audit.service.ts";
 export { isBlocked } from "./domains/blocklist/blocklist.service.ts";
 export {
   dataSourceConfig,

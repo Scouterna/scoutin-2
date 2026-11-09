@@ -22,6 +22,7 @@
     "@scouterna/scoutin-plugin-jamboree26": "workspace:^",
     "@scouterna/scoutin-plugin-malcolm-test": "workspace:^",
     "@scouterna/scoutin-plugin-printer": "workspace:^",
+    "@scouterna/scoutin-plugin-voteit": "workspace:^",
     "@scouterna/scoutin-plugin-scoutnet": "workspace:^",
     "@scouterna/ui-react": "catalog:",
     "@scouterna/ui-webc": "catalog:",

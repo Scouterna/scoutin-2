@@ -1,389 +1,171 @@
 # VoteIT integration — design spec
 
-Target: a new **`voteit`** plugin for Demokratijamboree 2026, granting the *potential
-voter* (`pv`) role in VoteIT when a participant checks in on-site.
+Target: a **`voteit`** plugin for Demokratijamboree 2026 that grants the *potential
+voter* role (`pv`) in VoteIT when a delegate checks in on site.
 
-This is a living design document, not a config file. It records the API contract as
-currently understood, the decisions already made, and the questions still open with
-VoteIT. Sections marked **OPEN** are unresolved and must not be guessed at during
-implementation.
+Rewritten 2026-11-09 against the finished VoteIT token API, read from its source
+([VoteIT/voteit](https://github.com/VoteIT/voteit), `voteit/token_api/`). The first
+draft (`45c0026`) designed around a POST that upserted invites and replaced their
+roles. That endpoint still exists, but we don't use it, and most of the draft's
+machinery (list cache, single-flight refetch, dev email map, read-modify-write
+guards) is gone with it.
 
 ---
 
 ## 1. Context
 
-Participants in VoteIT do **not** hold the voter role when they are added to the event.
-They receive it only on physical check-in, and Scoutin is the system that grants it.
+- Delegates are invited to the VoteIT meeting beforehand without `pv`. They get it
+  only when they check in on site, and Scoutin is what grants it.
+- `pv` is an eligibility flag, not a credential. Voting still needs a ScoutID login,
+  so granting `pv` never lets anyone but the invitee vote.
+- Check-in is per person. Check-in also hands out a physical voting card; a vote is
+  digital or physical, and VoteIT, not Scoutin, keeps those apart.
+- Identity is the Scoutnet membership number. In Scoutin it is the participant's
+  `idInDataSource`; in VoteIT it is the invite's `user_data.member_id`, the same key
+  ScoutID logins are matched on.
 
-Identity is governed by **membership number** (medlemsnummer).
+## 2. The VoteIT token API
 
-Facts that shape the whole design — established before implementation, and the reason
-the threat model in §8 lands where it does:
+Hosts:
 
-- **Check-in is per-person.** Participants check themselves in. No group check-in, so no
-  path where one actor enfranchises a delegation.
-- **`pv` is an eligibility flag, not a credential.** It marks a user as holding voting
-  rights. To actually vote, the person signs in to VoteIT with **ScoutID**. Scoutin never
-  confers the ability to vote, only the entitlement.
-- **The POST can create invites, and must never be allowed to.** If no invite matches the
-  identifier, VoteIT **creates one**. Scoutin's job is to grant `pv` to people who are
-  already invited; minting invites is not a capability we want and not one we should be
-  able to exercise by accident. See §2.3 — this constraint is ours to enforce, and it is
-  the single most important invariant in the integration.
-- **Two voting channels, mutually exclusive.** Check-in also hands over a physical voting
-  card, as it always has. A given vote is either digital or physical, never both.
-  Scoutin neither enforces nor observes that exclusivity — we depend on VoteIT for it.
-
----
-
-## 2. The VoteIT API
-
-Base: `https://scouterna.voteit.se/token-api/`
-
-**Trailing slashes matter.** Every path below ends in `/` and must be sent that way.
-
-Auth: `Authorization: Api-Key <key>`. A single key for the whole event.
-
-| Method | Path | Purpose |
+| Environment | Base URL | Meeting |
 | --- | --- | --- |
-| `GET` | `/token-api/invites/` | List all invites. How we resolve a membership number to a pk. |
-| `GET` | `/token-api/invites/:pk/` | Fetch a single invite — current roles and `user_data`. |
-| `POST` | `/token-api/invites/` | Update an invite. |
+| Test | `https://d1.betahaus.net` | 81, "Labbmöte Scouterna 2026" |
+| Production | `https://scouterna.voteit.se` | the DJ26 meeting |
 
-### 2.1 The POST is really a PUT
+Auth: `Authorization: Api-Key <key>`. A key belongs to exactly one meeting, so no
+meeting id is ever sent. Paths end in `/`.
 
-It is idempotent, but it **replaces** rather than merges. The `roles` array must contain
-every role the invite already has *plus* `pv`. Read-modify-write is mandatory; sending
-`["pv"]` alone strips the participant's other roles.
+Endpoints we use:
+
+| Call | Scope | Purpose |
+| --- | --- | --- |
+| `GET /token-api/invites/?member_id=<no>&state=open,accepted` | `invites.list` | Find the delegate's invite. Filtered on the server; not paginated. |
+| `POST /token-api/invites/<pk>/add-roles/` `{"roles": ["pv"]}` | `invites.add_roles` | Grant. Returns the invite. |
+| `POST /token-api/invites/<pk>/remove-roles/` `{"roles": ["pv"]}` | `invites.remove_roles` | Revoke. Returns the invite. |
+
+Behavior that matters (verified in the source):
+
+- **add-roles merges on the server**, inside a transaction with the row locked.
+  Roles the invite already has are kept; required roles follow (`pv` brings `pa`).
+  Granting twice is a no-op.
+- **add-roles is addressed by pk, so it can't create an invite.** We never call
+  `POST /token-api/invites/` (create). It *does* upsert: an unknown identifier
+  creates a new invite. The key must not have the `invites.create` scope, so that
+  mistake is impossible rather than merely avoided.
+- **Moderators are off limits.** Changing an invite that carries `mo`, or one
+  accepted by a moderator, returns 400.
+- `member_id` is a string, whitespace-trimmed. The filter normalizes the value the
+  same way.
+- Invite `state` is one of `open`, `accepted`, `rejected`, `revoked`, `expired`.
+  An accepted invite's roles are synced to the user in the meeting.
+- Throttle: the default is 60 requests/min per key. One check-in is two requests,
+  so about 30 check-ins a minute. **Ask VoteIT what the production rate is.**
+
+Invite as returned (relevant fields):
 
 ```json
-{
-  "roles": ["pa", "di", "pr", "pv"],
-  "data": [
-    { "email": "malcolm.nihlen+voteittest@gmail.com" }
-  ]
-}
+{ "pk": 123, "meeting": 81, "state": "open",
+  "user_data": { "member_id": "3001234" }, "roles": ["pa", "pv"],
+  "used_by": null, "has_annotations": false }
 ```
 
-### 2.2 Identifier
+## 3. The step: `voteit:grantVoterRole`
 
-`data` currently supports **email only**. VoteIT will add **membership number** as an
-identifier before the event. See §5 — we build membership-number-native regardless.
-
-### 2.3 The POST is upsert, not update
-
-**If the identifier in `data` matches no existing invite, VoteIT creates a new invite
-with the roles given.** There is no create-vs-update distinction at the API level and no
-way to ask for update-only semantics. A single POST with a wrong identifier does not fail
-— it silently produces a brand-new invite carrying `pv`.
-
-So the "only touch existing invites" rule lives entirely in Scoutin. The flow in §3
-already enforces it structurally: we only ever POST after resolving a pk from the list
-*and* confirming the invite with a fresh single-invite `GET`. Every identifier we write
-is one VoteIT just handed us.
-
-Three consequences worth stating plainly, because each is a way to lose the invariant:
-
-1. **The error branch must never POST.** Not found after a fresh list fetch means show an
-   error — never "create it so they can vote." That shortcut will look extremely
-   attractive at 08:30 on event day with a queue building and someone insisting they were
-   invited. It must not be reachable from Scoutin at all; if a genuine invite is missing,
-   that is VoteIT's side to fix.
-2. **Never construct an identifier.** No identifier may come from Scoutin's own
-   participant record, from the dev map, or from user input — only from a VoteIT response
-   in the same operation. See §5.2, which is now load-bearing rather than hygiene.
-3. **Enforce it in the type signature, not in a rule.** The write function should take
-   the fetched invite object and extract the identifier internally:
-
-   ```
-   grantPotentialVoter(invite: FetchedInvite): Promise<void>
-   ```
-
-   No overload accepting a bare membership number, email, or pk. Then "we only write
-   identifiers we just read" is impossible to violate without deliberately constructing a
-   fake `FetchedInvite`, rather than being a convention that erodes under deadline.
-
-### 2.4 Known characteristics
-
-- No pagination on the list endpoint (to be confirmed — see §6).
-- Two invites should not be able to share a membership number.
-- No atomic-update / precondition mechanism is known to exist (see §6).
-
----
-
-## 3. Check-in flow
-
-```
-membership_number
-  → cache lookup (list of invites)  ── miss ──> refetch list ── miss ──> error
-  → pk
-  → GET /invites/:pk/               (fresh roles + user_data)
-  → assert user_data.membership_number == the number we started check-in with
-  → POST /invites/  { ...existing roles, "pv" }
+```yaml
+- if: ${{ session.subjects[0].subGroup == 'delegate' }}
+  uses: voteit:grantVoterRole
+  id: voteit
+  with:
+    memberId: ${{ session.subjects[0].idInDataSource }}
 ```
 
-Rules:
+Flow on step start:
 
-1. **Never trust cached roles.** The pk comes from the cached list; the roles always come
-   from a fresh single-invite `GET`. A stale role set would be clobbered back on write.
-2. **The mismatch gate.** Before writing, confirm the fetched invite's membership number
-   is the one the check-in started with. The cached pk may be stale.
-3. **A mismatch is treated as a cache miss, not an error.** A pk resolving to the wrong
-   membership number is evidence of the same staleness a miss indicates. Refetch the
-   list, retry once, then error. This keeps the two staleness paths consistent.
-4. **One retry, then fail.** If the participant is absent after a fresh list fetch, show
-   an error. Do not loop.
+1. `GET invites/?member_id=<memberId>&state=open,accepted`.
+2. Zero invites: **not invited** (error screen). More than one: **ambiguous** (error
+   screen). Never fall back to creating anything.
+3. One invite, `roles` already has `pv`: complete as `alreadyGranted`.
+4. Otherwise `POST invites/<pk>/add-roles/ {"roles": ["pv"]}`.
+5. Check the response: same `pk`, same `user_data.member_id`, `roles` contains `pv`
+   and everything the invite had before. Anything else is an error.
+6. Complete as `granted`.
 
-**Blocking: OPEN, and it is the highest-stakes decision in the spec.** The step is
-expected to block, because downstream steps depend on its outcome. But blocking makes
-VoteIT's availability a hard dependency of the check-in queue — see §8.2, which argues
-this is the most likely event-day failure by some margin. Decide it explicitly, not by
-default.
+The membership number is read from an invite through one accessor
+(`inviteMemberId(invite)`), so a change on VoteIT's side is a one-line fix.
 
----
+**Outputs:** `{ status: "granted" | "alreadyGranted" | "skipped", invitePk?: number }`.
 
-## 4. Caching and single-flight
+**Result data** (`writeResultData`, on the subject): the same object plus a
+timestamp, so staff can list who was skipped and grant them later.
 
-The full invite list is cached. It is **only refetched on a miss** — so the first
-check-in of the event triggers the first fetch.
+**Barrier:** `preventGoBack: true`. The grant is a side effect outside Scoutin.
 
-### 4.1 Use the existing JobRunner
+### 3.1 Failure: block, with a skip
 
-`packages/backend/src/core/jobs/jobRunner.ts` already provides exactly the needed
-primitive. It enforces a single-in-flight run per named job, isolates errors, and drains
-on shutdown.
+Decided 2026-11-09 (owner): the step blocks, and the person can skip.
 
-Its `fresh` option is the important part. A plain `runNow` **coalesces** onto an
-in-flight run; `fresh: true` guarantees a run that *starts after* the call, queueing one
-follow-up behind the current run and sharing it among all callers.
+Every failure (network error, timeout, 4xx/5xx, not invited, ambiguous, failed
+response check) shows one error screen with:
 
-This distinction is load-bearing. On a cache miss we must not coalesce onto a fetch that
-started before our lookup — that fetch may be the very one whose response lacked our
-participant. Cache misses therefore use `fresh: true`, then re-check the cache.
+- **Try again**: reruns the flow.
+- **Continue without digital voting**: completes the step as `skipped`. The screen
+  tells the person to see the staff desk; they still get a physical voting card.
 
-The doors-open stampede (many kiosks missing a cold cache at once) collapses to a single
-follow-up fetch for free.
+The skip needs no staff gate. It can only cost the person their digital vote, never
+give one. It is audited and recorded on the participant like a grant.
 
-### 4.2 Plugins cannot register jobs today
+Requests time out after 10 s.
 
-`BackendPluginContext` (`packages/plugin-api/src/backend/index.ts`) exposes exactly two
-methods: `registerStep` and `registerImportEnricher`. There is no route registration, no
-admin-UI contribution, and no job registration. `plugin-services.ts` — the escape hatch
-plugins use to reach host internals — does not export the job runner either.
+## 4. Audit
 
-**Proposed:** add `registerJob` to `BackendPluginContext`. JobRunner already handles
-scheduling, error isolation and shutdown drain, and the admin API already surfaces
-`JobStatus`, so a plugin-registered job appears in the existing jobs UI with no new admin
-surface. This is a far smaller lift than general plugin admin pages, and it buys both
-cache warming and a manual "refresh invites" trigger.
+Every outcome writes an audit row through `recordAudit` (exported to plugins via
+`plugin-services`): action `voteit.grant`, `voteit.alreadyGranted`, `voteit.skip` or
+`voteit.revoke`, with session id, participant id, membership number, invite pk,
+roles before and after, and for a skip the error that caused it.
 
-Without it, the cache stays lazy and the first participant of the event waits for the
-full list download at the desk.
+## 5. Configuration and the key
 
----
+- `VOTEIT_BASE_URL` and `VOTEIT_API_KEY`. If a loaded step config uses a `voteit:`
+  step and either is missing, startup fails.
+- Key scopes: `invites.list`, `invites.add_roles`, `invites.remove_roles`. **Not**
+  `invites.create` or `invites.*`.
+- The key is never logged. Errors are built from status and body only, never from
+  the request or headers. Don't put it in `bruno/`.
+- No encryption at rest: the process has to read it either way. Rotate after the
+  event.
 
-## 5. Identity: the membership-number gap
+## 6. Revoke
 
-VoteIT will support membership numbers before the event, but **today the field is not
-present in `user_data` at all** — the gap is in the data, not just in the write
-identifier.
+Decided 2026-11-09 (owner): no revoke tool in Scoutin. Scoutin is not the source of
+truth for `pv`: it grants once at check-in and never reads it back or re-syncs it.
+Revokes and late grants for skipped delegates are done by a VoteIT moderator in the
+VoteIT UI. The participant's result data then only records what check-in did.
+The key keeps `invites.remove_roles` but nothing in Scoutin uses it.
 
-### 5.1 Decision: decorate at the API boundary, do not map at the front
+## 7. Threat model, short
 
-A single `normalizeInvite()` is applied to every invite as it arrives, from **both** the
-list fetch and the single-invite `GET`. In development it fills in
-`user_data.membership_number` from a hard-coded reverse email → membership number map
-**when the field is absent**. In production it is a no-op, because the field is already
-there.
+The dangerous failure is a call that succeeds against the wrong invite, not one that
+errors.
 
-The placement is the point. A map at the front of the flow — membership number straight
-to email or pk — would leave the list search, pk resolution, mismatch gate and
-not-found→refetch→retry path as dead code until VoteIT ships. A decorator at the boundary
-lets every one of those run for real against real VoteIT data. An invite whose email is
-not in the map simply has no membership number, which is indistinguishable from a real
-invite that lacks one, so even the miss path is exercised honestly.
+- **Creating a voter who was never invited:** impossible. We only call add-roles by
+  a pk VoteIT just returned for that membership number, and the key has no create
+  scope.
+- **Stripping roles:** impossible. The server merges.
+- **Granting the wrong person:** the lookup is by membership number on VoteIT's
+  side, and the response check confirms the number. Duplicate invites for one number
+  are refused, not guessed between.
+- **Availability:** VoteIT down means each delegate sees the error screen and can
+  skip. The queue keeps moving and the skipped list says who to fix later.
+- **Presence fraud** (checking in an absent delegate who then votes digitally):
+  accepted. A membership number isn't secret, and kiosk-side verification would
+  slow every queue to stop only collusion between people who may vote anyway.
+  Reopen this if `pv` ever becomes enough to vote without ScoutID.
+- **Leaked key:** lets someone grant or revoke `pv` on any invite in the meeting,
+  still bounded by ScoutID. Audit plus revoke make it reversible.
 
-Filling only when absent also makes the switchover a non-event: real data wins
-automatically as it starts arriving. No flag day, no coordinated deploy.
+## 8. Testing
 
-### 5.2 Write identifier
-
-One function turns a membership number into the `data` entry — `[{ email }]` today,
-`[{ membership_number }]` once available. Nothing above that function handles an email.
-The mismatch gate is membership-number based in both worlds, so the safety logic is
-written against the final shape from day one.
-
-**Where today's email comes from — this is a hard rule, not a preference:** the freshly
-fetched invite, never Scoutin's participant record. We only ever write back an email
-VoteIT just told us about.
-
-Scoutin's own email may have drifted, and because the POST upserts (§2.3), writing a
-drifted email does not touch the wrong record — it **creates** a new invite carrying
-`pv`. That makes this the load-bearing control against phantom voters, which is why the
-write function takes a `FetchedInvite` rather than an identifier: the rule is enforced by
-the type signature instead of by remembering it.
-
-### 5.3 Guards
-
-- The dev map must be **structurally incapable of reaching production**: config-gated,
-  with the service refusing to start if the map is populated outside development. Not a
-  comment saying "remove before the event."
-- Read the membership-number field through a **single accessor**, so a wrong guess about
-  its name or type is a one-line fix.
-- **Fixture-based tests for the mismatch gate**, built from a hand-written payload with
-  the field populated, so the safety logic has coverage independent of both the live API
-  and the map.
-
-### 5.4 Residual risk
-
-We are guessing the field's name, type and position in `user_data` (zero-padded string or
-integer? nested how?). A wrong guess passes in dev and matches nothing at the event.
-It would degrade into the not-found path and present as *every* participant failing —
-loud rather than silent, which is the better failure, but still an event-day outage.
-Get the exact shape from VoteIT before implementation.
-
----
-
-## 6. OPEN — questions for VoteIT
-
-1. ~~**What does the POST do with an identifier matching no invite — 404, or create?**~~
-   **ANSWERED: it creates.** Any drift between Scoutin's and VoteIT's records silently
-   mints a new invite carrying `pv`. Fully specified in §2.3; the invariant that prevents
-   it is ours to enforce.
-2. **What does the POST return?** If it echoes the resulting invite, we can assert the
-   returned membership number after the write and close most of the read-write window.
-3. **Is `data` a batch?** It is an array, but `roles` is a single shared array, so a
-   multi-entry call would mean "set identical roles on all these people" — incompatible
-   with read-modify-write. Assumed to be exactly one entry.
-4. **Exact shape of the membership number in `user_data`** — field name, type, nesting.
-5. **Any precondition mechanism** — ETag, `If-Match`, a `modified` timestamp? Determines
-   whether the lost-update window in §7 is closeable or merely accepted.
-6. **Is the list endpoint really unpaginated, and how large is the payload?** Determines
-   whether "fetch the whole list" stays viable at stämma scale.
-7. **Role vocabulary** — confirm the meanings and full set (`pa`, `di`, `pr`, `pv`), and
-   that `pv` is the only role Scoutin ever adds.
-
----
-
-## 7. Known gaps
-
-**Lost update on the roles array.** Between the single-invite `GET` and the `POST`,
-anything else that changes roles gets clobbered. Two kiosks will not collide (different
-people), but a VoteIT admin editing roles during check-in would. Closeable only if a
-precondition mechanism exists (§6.5); otherwise accepted knowingly.
-
-**Read key ≠ write key (until membership numbers ship).** We find and confirm by
-membership number, then write by email. The gate proves "the invite at this pk has the
-right membership number"; the write targets "whatever invite has this email". Mitigated
-by taking the email from the fetched invite (§5.2), and eliminated entirely once the
-write is keyed the same way as the read.
-
-Because the POST upserts (§2.3), the failure mode here is worse than touching the wrong
-record: an email that matches nothing **creates** a new invite with `pv`. This is why
-§5.2 is a hard rule and why the write takes a `FetchedInvite` rather than an identifier.
-It is also a second, independent argument for the boundary-decorator design in §5.1 — the
-dev map only ever influences *lookup*, never the identifier we write, so a stale entry in
-it can cause a failed match but cannot mint a voter.
-
----
-
-## 8. Threat model and failure modes
-
-The headline: **the dangerous failures here are not "the API call errored" but "the API
-call succeeded against the wrong record."** Availability and correctness dominate;
-malicious actors are a distant third. That conclusion is not an assumption — it follows
-from the three facts in §1, and it should be revisited if any of them change.
-
-### 8.1 Why the attack surface is narrower than it first appears
-
-Scoutin's identify step performs **identification, not authentication**.
-`base:identify` accepts an arbitrary string from the client, hashes it, and exact-matches
-it against `lookupValues` (`plugins/base/src/identify/backend/identify.ts`), which
-contain exactly two things: **membership number** and **personnummer**
-(`domains/participants/scoutnet.ts`). Both are hashed at rest — good against a database
-leak, irrelevant to someone at a kiosk who simply knows the number. Neither is a secret:
-membership numbers are on badges and in every leader's roster, and personnummer is not
-secret in Sweden.
-
-That would be alarming if check-in conferred the ability to vote. It does not:
-
-- **Impersonation transfers nothing usable.** Checking in as someone else grants `pv` to
-  *their* invite, which only *they* can exercise via ScoutID. The impersonator gains no
-  vote.
-- **No group amplification.** Check-in is per-person.
-- **No double-vote via the physical card**, because the channels are exclusive.
-
-**The residual risk is presence fraud, not identity theft.** A delegate who does not
-attend arranges to be checked in, then votes digitally from elsewhere. Note the shape:
-the "victim" is a willing collaborator, and the person voting is genuinely entitled to
-vote. It defeats the present-to-vote rule, and at scale a bloc could enfranchise its
-absent members.
-
-**Decision: do not build kiosk-side double-verification.** Badge-possession credentials,
-ID checks at the desk, or codes to a registered address would defend only against
-collusive proxy check-in by people already entitled to vote. That is a poor trade against
-slower queues and badge logistics. Membership number is a defensible identifier *given*
-that ScoutID gates the vote. **If that ever stops being true — if `pv` alone becomes
-sufficient to cast a ballot — this decision must be reopened immediately.**
-
-### 8.2 Ranked risks
-
-1. **Availability (highest).** If the step blocks and VoteIT is slow or down on the
-   morning of, the check-in queue stops and nobody gets enfranchised. Far more likely
-   than any attacker. Drives the §3 blocking decision, and argues for an explicit answer
-   to: should a VoteIT failure hard-stop check-in, or complete it, flag it, and retry?
-2. **Wrong-record writes, including phantom-voter creation.** The §7 gaps — read key ≠
-   write key, no atomic update — combined with the upsert semantics of §2.3. Writing
-   `pv` to the wrong invite enfranchises someone not entitled; writing an identifier that
-   matches nothing **creates an entitled voter who was never invited**. Neither needs an
-   adversary. This is a bug we could ship, which makes it the top *integrity* risk, and
-   the creation variant is qualitatively worse than anything in §8.1 — presence fraud
-   merely lets an entitled person vote while absent, whereas this manufactures
-   entitlement outright.
-3. **Role stripping.** The POST replaces rather than merges, so a bad read, a truncated
-   response or a logic error removes roles instead of adding one. Disenfranchisement is
-   as much a failure as false enfranchisement and is far easier to cause by accident.
-4. **Presence fraud.** Per §8.1 — accepted, not mitigated.
-5. **API key compromise.** A leaked key is a mass presence-fraud button: grant `pv` to
-   every invite at once. Bounded by ScoutID (each person still has to choose to vote)
-   and reversible if we have revoke and audit.
-
-### 8.3 Controls to build
-
-Prevention is not the lever here — a membership number cannot be made secret, and the
-top two risks are not adversarial at all. Detection, reversal and blast-radius control
-are.
-
-- **Make phantom-voter creation unrepresentable.** `grantPotentialVoter` takes a
-  `FetchedInvite`, never a bare identifier, and no code path constructs one (§2.3). This
-  is the highest-value control in the list, because it converts the integration's most
-  serious failure from a rule someone must follow into a thing the compiler refuses.
-- **Audit every grant.** `domains/audit/audit.service.ts` already provides `recordAudit`.
-  Record actor, membership number, kiosk, timestamp, and **roles before and after**. The
-  before/after pair is what makes an anomaly reconstructable rather than merely visible.
-- **Build a revoke path.** There is currently none, so a bad grant is permanent and any
-  incident becomes an argument instead of a fix. Mechanically trivial — the same POST
-  without `pv` — but it needs to exist and be operable under pressure.
-- **Assert supersets on write.** Refuse to send a roles array that is not a strict
-  superset of what the read returned, and refuse to write at all if the read looks empty
-  or malformed. This is the guard against risk 3.
-- **Verify after write, if the POST echoes the invite** (§6.2). Asserting the returned
-  membership number closes most of the read-write window.
-
-### 8.4 API key handling
-
-**Do not encrypt it at rest.** The process must decrypt it to use it, so an attacker who
-owns the host owns the key either way. It buys ceremony, not security. What actually
-matters:
-
-- **Never logged.** The realistic leak path is error handling that dumps request headers
-  or a whole fetch config. Redact `Authorization` explicitly in the plugin's error paths
-  rather than relying on nobody logging the wrong object.
-- **Never committed.** Check `bruno/` before this lands — API collections are a classic
-  place for keys to be committed by accident.
-- **Rotate after the event**, and confirm with VoteIT what rotation involves.
-- **Ask whether a narrower key exists.** One key for the whole event can modify roles on
-  every invite.
-
-Note that `DATASOURCE_HASHING_KEY` is not a precedent for encrypting this — it
-pseudonymizes lookup values at rest, a different purpose.
+- Unit tests with a stubbed `fetch`: not invited, ambiguous, already granted,
+  granted, response mismatch, HTTP error, timeout, skip.
+- Against the test meeting (81) with a test key, once the owner provides one.

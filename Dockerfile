@@ -17,6 +17,7 @@ COPY packages/print-templates/package.json ./packages/print-templates/
 COPY plugins/base/package.json ./plugins/base/
 COPY plugins/malcolm-test/package.json ./plugins/malcolm-test/
 COPY plugins/printer/package.json ./plugins/printer/
+COPY plugins/voteit/package.json ./plugins/voteit/
 COPY plugins/scoutnet/package.json ./plugins/scoutnet/
 COPY plugins/jamboree26/package.json ./plugins/jamboree26/
 RUN pnpm install --frozen-lockfile
@@ -41,6 +42,7 @@ RUN pnpm --filter @scouterna/scoutin-print-templates run build
 RUN pnpm --filter @scouterna/scoutin-plugin-base run build
 RUN pnpm --filter @scouterna/scoutin-plugin-malcolm-test run build
 RUN pnpm --filter @scouterna/scoutin-plugin-printer run build
+RUN pnpm --filter @scouterna/scoutin-plugin-voteit run build
 RUN pnpm --filter @scouterna/scoutin-plugin-scoutnet run build
 RUN pnpm --filter @scouterna/scoutin-plugin-jamboree26 run build
 

@@ -31,11 +31,13 @@ Nobody. (Format: `- <who>: <what> (<doc or file>)`)
    startup check that every `printer:print` step names an existing template. It is a
    barrier (`preventGoBack`) and takes the navigation lock in `wait` mode.
 4. **DJ26 badge**: look at a real render of the new `dj26` template (studio), confirm type labels and meal lines, check `metadata.group.name` fills from Scoutnet.
-5. **Look at the lock UI in a browser** (admin session overview, staff check-in,
+5. **VoteIT live grant test** on test meeting 81 (d1.betahaus.net, invite 282 has a `member_id` and only `pa`): one real `add-roles` through the step, then a moderator removes `pv` in VoteIT. Needs the owner's go-ahead.
+6. **Look at the lock UI in a browser** (admin session overview, staff check-in,
    kiosk back button, idle timer). Only checked with tsc, tests and Biome so far.
 
 ## Later
 
+- VoteIT key in the step config: `with: { baseUrl, apiKeyEnv: VOTEIT_DJ26_API_KEY }` (name the env var, never the key: `with` is stored as `evaluatedInputs` on every step row), replacing the global `VOTEIT_BASE_URL`/`VOTEIT_API_KEY`. Owner: wait.
 - CI check that schema and migrations agree: `prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma --exit-code` (needs a shadow DB).
 - Rename the `printer:print` behavior `queue` to `enqueue` (step, startup check, configs, docs).
 - Split the oversized `setCompleted` in `stepContext.ts`, as its own commit with tests
@@ -50,6 +52,8 @@ Nobody. (Format: `- <who>: <what> (<doc or file>)`)
 
 ## Recently done
 
+- Fix: `base:script` now declares its `result` output (core keeps only declared outputs, so `printBadges` got `values: null`), and errors from the next step are no longer labeled as script errors (`8b9009f`).
+- `voteit:grantVoterRole` (`plugins/voteit`): looks up the delegate's invite by `member_id`, grants `pv` with `add-roles`, checks the response, audits; on failure a kiosk screen with retry or skip (audited, recorded on the participant). Spec rewritten around the finished token API (docs/voteit-integration-spec.md); in the DJ26 step config for delegates. 22 tests, typechecks, Biome pass; read-only calls against test meeting 81 match. Uncommitted.
 - Data import now also runs once at boot (in the background, skipped when `DATA_IMPORT_INTERVAL_MS=0`), so a fresh deploy has data right away (`packages/backend/src/index.ts`).
 - Missing migration `20261109120000_add_session_kiosk` for `CheckinSession.kioskId` (added to the schema in `50803d9` without a migration; prod `sha-a3ffd13` returned 500 on every session create, P2022). Verified with `prisma dev` (no Docker): all migrations apply and `migrate diff` against the schema shows no difference. Uncommitted.
 - Optional `DATABASE_SCHEMA` (default `public`) picks the Postgres schema for both `prisma migrate` (`prisma.config.ts` sets `?schema=` on the URL) and the app (`PrismaPg` `schema` option; the adapter ignores the URL param). Separate variable because the deployed `DATABASE_URL` comes from an infra-owned secret. A `?schema=` in the URL that differs from it fails startup and migrations (`src/config/databaseSchema.ts`). Verified `migrate deploy` + reads/writes into a non-public schema.

@@ -10,9 +10,11 @@ steps:
 
   - uses: base:setActorAsSubject
 
-  # TODO: voteit step, delegates (Ombud) only (spec: docs/voteit-integration-spec.md):
-  #   - if: ${{ steps.identify.outputs.participant.subGroup == 'delegate' }}
-  #     uses: voteit:grantVoterRole
+  - if: ${{ session.subjects[0].subGroup == 'delegate' }}
+    uses: voteit:grantVoterRole
+    id: voteit
+    with:
+      participantId: ${{ session.subjects[0].id }}
   # TODO: verification step (does not exist yet)
 
   # Turns the subject into the flat values the dj26 template takes. The
