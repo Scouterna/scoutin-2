@@ -85,11 +85,24 @@ Flow on step start:
 1. `GET invites/?member_id=<memberId>&state=open,accepted`.
 2. Zero invites: **not invited** (error screen). More than one: **ambiguous** (error
    screen). Never fall back to creating anything.
-3. One invite, `roles` already has `pv`: complete as `alreadyGranted`.
+3. One invite, `roles` already has `pv`: `alreadyGranted` (see the confirmation below).
 4. Otherwise `POST invites/<pk>/add-roles/ {"roles": ["pv"]}`.
 5. Check the response: same `pk`, same `user_data.member_id`, `roles` contains `pv`
    and everything the invite had before. Anything else is an error.
-6. Complete as `granted`.
+6. `granted`.
+
+On success (`granted` or `alreadyGranted`) the audit and result data are written at
+once, but the step does not complete yet. It shows a confirmation, "Your voting rights
+are registered", the same for both. It describes what Scoutin did, not what VoteIT
+allows: the invite can carry `pv` while a moderator has removed it from the
+participant, and a second check-in then leaves it removed (VoteIT syncs invite roles
+to the participant only when the invite changes). Moderators revoke on the
+participant, not the invite; a revoke on the invite is undone by a second check-in. The screen keeps
+the spinner for at least 2 s, then shows the confirmation until the person presses
+"Continue", which calls the public method `continue` and completes the step with
+the outputs below. There is no auto-continue: the person should see that they got
+voting rights. `continue` is ignored unless the step is in the granted state, so a
+double press completes once.
 
 The membership number is read from an invite through one accessor
 (`inviteMemberId(invite)`), so a change on VoteIT's side is a one-line fix.

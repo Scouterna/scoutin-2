@@ -87,7 +87,7 @@ describe("voteit:grantVoterRole", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("completes alreadyGranted without a POST", async () => {
+  it("shows the granted screen for alreadyGranted without a POST", async () => {
     fetchMock.mockResolvedValueOnce(json([mkInvite({ roles: ["pa", "pv"] })]));
     const ctx = makeCtx();
     await start(ctx);
@@ -98,13 +98,19 @@ describe("voteit:grantVoterRole", () => {
         actor: null,
       }),
     );
+    expect(ctx.showScreen).toHaveBeenLastCalledWith("voteit:status", {
+      state: "granted",
+      result: "alreadyGranted",
+    });
+    expect(ctx.setCompleted).not.toHaveBeenCalled();
+    await call("continue", ctx);
     expect(ctx.setCompleted).toHaveBeenCalledWith({
       status: "alreadyGranted",
       invitePk: 7,
     });
   });
 
-  it("grants, audits, writes result data and completes", async () => {
+  it("grants, audits and writes result data, then completes on continue", async () => {
     fetchMock
       .mockResolvedValueOnce(json([mkInvite()]))
       .mockResolvedValueOnce(json(mkInvite({ roles: ["pa", "pv"] })));
@@ -130,6 +136,12 @@ describe("voteit:grantVoterRole", () => {
       invitePk: 7,
       at: expect.any(String),
     });
+    expect(ctx.showScreen).toHaveBeenLastCalledWith("voteit:status", {
+      state: "granted",
+      result: "granted",
+    });
+    expect(ctx.setCompleted).not.toHaveBeenCalled();
+    await call("continue", ctx);
     expect(ctx.setCompleted).toHaveBeenCalledWith({
       status: "granted",
       invitePk: 7,
@@ -183,6 +195,11 @@ describe("voteit:grantVoterRole", () => {
     await failWith(ctx);
     fetchMock.mockResolvedValueOnce(json([mkInvite({ roles: ["pv"] })]));
     await call("retry", ctx);
+    expect(ctx.showScreen).toHaveBeenLastCalledWith("voteit:status", {
+      state: "granted",
+      result: "alreadyGranted",
+    });
+    await call("continue", ctx);
     expect(ctx.setCompleted).toHaveBeenCalledWith({
       status: "alreadyGranted",
       invitePk: 7,
@@ -221,6 +238,44 @@ describe("voteit:grantVoterRole", () => {
       expect(ctx.showScreen).not.toHaveBeenCalled();
       expect(recordAudit).not.toHaveBeenCalled();
     }
+  });
+
+  it("ignores continue unless the step is granted", async () => {
+    const ctx = makeCtx();
+    await failWith(ctx);
+    for (const attempt of [
+      undefined,
+      { status: "working" },
+      ctx.state.attempt,
+    ]) {
+      ctx.state.attempt = attempt;
+      await call("continue", ctx);
+    }
+    expect(ctx.setCompleted).not.toHaveBeenCalled();
+  });
+
+  it("a second continue press completes only once", async () => {
+    fetchMock.mockResolvedValueOnce(json([mkInvite({ roles: ["pv"] })]));
+    const ctx = makeCtx();
+    await start(ctx);
+    await call("continue", ctx);
+    await call("continue", ctx);
+    expect(ctx.setCompleted).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores retry and skip when granted", async () => {
+    fetchMock.mockResolvedValueOnce(json([mkInvite({ roles: ["pv"] })]));
+    const ctx = makeCtx();
+    await start(ctx);
+    fetchMock.mockClear();
+    ctx.showScreen.mockClear();
+    recordAudit.mockClear();
+    await call("retry", ctx);
+    await call("skip", ctx);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(ctx.showScreen).not.toHaveBeenCalled();
+    expect(recordAudit).not.toHaveBeenCalled();
+    expect(ctx.setCompleted).not.toHaveBeenCalled();
   });
 
   it("a second skip press after the first is ignored", async () => {

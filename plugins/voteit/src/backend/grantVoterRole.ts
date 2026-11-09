@@ -26,6 +26,11 @@ type Reason = "notInvited" | "ambiguous" | "error";
 type State = {
   attempt?:
     | { status: "working" }
+    | {
+        status: "granted";
+        result: "granted" | "alreadyGranted";
+        invitePk: number;
+      }
     | { status: "failed"; reason: Reason; error: string };
 };
 
@@ -140,10 +145,12 @@ async function attempt(ctx: Ctx) {
       invitePk: result.invite.pk,
       at,
     });
-    await ctx.setCompleted({
-      status: result.status,
+    ctx.setState("attempt", {
+      status: "granted",
+      result: result.status,
       invitePk: result.invite.pk,
     });
+    await ctx.showScreen(SCREEN, { state: "granted", result: result.status });
   } catch (error) {
     const reason = error instanceof AttemptFailed ? error.reason : "error";
     const message = error instanceof Error ? error.message : String(error);
@@ -172,6 +179,18 @@ export const grantVoterRoleStep: StepImplementation<State> = {
         // Ignore a double press or a stale call: only a failed step may retry.
         if (ctx.getState("attempt")?.status !== "failed") return;
         await attempt(ctx);
+      },
+    },
+    continue: {
+      async handler(ctx) {
+        // Ignore a double press or a stale call: only a granted step may continue.
+        const granted = ctx.getState("attempt");
+        if (granted?.status !== "granted") return;
+        ctx.setState("attempt", { status: "working" });
+        await ctx.setCompleted({
+          status: granted.result,
+          invitePk: granted.invitePk,
+        });
       },
     },
     skip: {
