@@ -34,8 +34,15 @@ RUN DATABASE_URL=postgresql://build-placeholder \
 # Build the frontend SPA → packages/frontend/dist/
 # APP_VERSION is shown on the kiosk start screen: the tag for a tag build,
 # otherwise <branch>-<short sha>. Set in build-image.yml.
+# EVENT_NAME and START_TEXT are the kiosk texts, baked in at build time (required).
 ARG APP_VERSION=dev
-RUN VITE_API_URL=/ VITE_APP_VERSION=$APP_VERSION pnpm --filter frontend exec vite build && \
+ARG EVENT_NAME
+ARG START_TEXT
+RUN test -n "$EVENT_NAME" && test -n "$START_TEXT" || \
+      { echo "EVENT_NAME and START_TEXT build args are required" >&2; exit 1; }
+RUN VITE_API_URL=/ VITE_APP_VERSION=$APP_VERSION \
+    VITE_EVENT_NAME="$EVENT_NAME" VITE_START_TEXT="$START_TEXT" \
+    pnpm --filter frontend exec vite build && \
     pnpm --filter frontend exec tsc
 
 # Compile plugin backend TypeScript to JS so pnpm deploy can include them

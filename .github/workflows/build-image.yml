@@ -147,6 +147,8 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             APP_VERSION=${{ steps.app-version.outputs.version }}
+            EVENT_NAME=Demokratijamboree
+            START_TEXT=Klicka på knappen för att checka in.
             PRINT_RELAY_VERSION=${{ needs.relay.outputs.version }}
             PRINT_RELAY_SHA256=${{ needs.relay.outputs.sha256 }}
           cache-from: type=gha

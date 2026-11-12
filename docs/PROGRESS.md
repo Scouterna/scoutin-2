@@ -13,7 +13,7 @@ sessions. Read it before you start, update it before you finish.
 - Detail belongs in the linked docs, not here. Keep this file short; trim **Recently
   done** to about ten lines.
 
-Last updated: 2026-11-09.
+Last updated: 2026-11-12.
 
 ## Now
 
@@ -51,7 +51,7 @@ Nobody. (Format: `- <who>: <what> (<doc or file>)`)
 - First real test label on the Pi (owner's step).
 
 ## Recently done
-
+- Docker image now bakes in the kiosk texts: `EVENT_NAME` / `START_TEXT` build args → `VITE_EVENT_NAME` / `VITE_START_TEXT` (the image build fails if either is missing); values set in `build-image.yml`. Before this the image had neither, so the kiosk threw on load. Checked that a local `vite build` bakes them in; image build not run.
 - Kiosk diagnostics menu: 10 quick taps in the top-right corner show kiosk, session (id, screen, actor + idInDataSource), connection and print pool/printer states, with a reload button. Read-only, no auth; backed by `GET /api/kiosk/me` (kiosk key). Tests, tsc, Biome pass; not checked in a browser.
 - Fix: `base:script` now declares its `result` output (core keeps only declared outputs, so `printBadges` got `values: null`), and errors from the next step are no longer labeled as script errors (`8b9009f`).
 - `voteit:grantVoterRole` (`plugins/voteit`): looks up the delegate's invite by `member_id`, grants `pv` with `add-roles`, checks the response, audits; on failure a kiosk screen with retry or skip (audited, recorded on the participant). Spec rewritten around the finished token API (docs/voteit-integration-spec.md); in the DJ26 step config for delegates. 22 tests, typechecks, Biome pass; read-only calls against test meeting 81 match. Uncommitted.
