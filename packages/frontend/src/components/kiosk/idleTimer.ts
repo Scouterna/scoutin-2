@@ -14,6 +14,11 @@ export type IdleTimerCallbacks = {
   onCountdownCancel: () => void;
   /** Countdown reached zero — the session should be aborted. */
   onAbort: () => void;
+  /**
+   * Asked when the idle timeout elapses. Returning true skips the countdown
+   * and fires `onAbort` right away (e.g. when nobody has used the session).
+   */
+  shouldSkipCountdown?: () => boolean;
 };
 
 /**
@@ -44,6 +49,11 @@ export function startIdleTimer(
   };
 
   function startCountdown() {
+    if (callbacks.shouldSkipCountdown?.()) {
+      clearTimers();
+      callbacks.onAbort();
+      return;
+    }
     inCountdown = true;
     let msRemaining = countdownMs;
     callbacks.onCountdownStart();

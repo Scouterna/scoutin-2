@@ -33,6 +33,34 @@ describe("startIdleTimer", () => {
     expect(callbacks.onCountdownTick).toHaveBeenCalledWith(IDLE_COUNTDOWN_MS);
   });
 
+  it("aborts right away without a countdown when told to skip it", () => {
+    const callbacks = { ...createCallbacks(), shouldSkipCountdown: () => true };
+    startIdleTimer(callbacks);
+
+    vi.advanceTimersByTime(IDLE_TIMEOUT_MS);
+
+    expect(callbacks.onAbort).toHaveBeenCalledTimes(1);
+    expect(callbacks.onCountdownStart).not.toHaveBeenCalled();
+    expect(callbacks.onCountdownTick).not.toHaveBeenCalled();
+
+    // Nothing more fires afterwards.
+    vi.advanceTimersByTime(IDLE_TIMEOUT_MS + IDLE_COUNTDOWN_MS);
+    expect(callbacks.onAbort).toHaveBeenCalledTimes(1);
+  });
+
+  it("runs the countdown when not told to skip it", () => {
+    const callbacks = {
+      ...createCallbacks(),
+      shouldSkipCountdown: () => false,
+    };
+    startIdleTimer(callbacks);
+
+    vi.advanceTimersByTime(IDLE_TIMEOUT_MS);
+
+    expect(callbacks.onCountdownStart).toHaveBeenCalledTimes(1);
+    expect(callbacks.onAbort).not.toHaveBeenCalled();
+  });
+
   it("does not start the countdown if reset() is called before the idle timeout", () => {
     const callbacks = createCallbacks();
     const { reset } = startIdleTimer(callbacks);

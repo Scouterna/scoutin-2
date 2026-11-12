@@ -3,7 +3,11 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { idleCountdownAtom } from "@/store/idle";
-import { currentScreenAtom, navigationAtom } from "@/store/session";
+import {
+  currentScreenAtom,
+  navigationAtom,
+  sessionCredentialsAtom,
+} from "@/store/session";
 import { socketAtom } from "@/store/socket";
 import { IDLE_COUNTDOWN_MS, startIdleTimer } from "./idleTimer";
 
@@ -22,6 +26,17 @@ export function IdleTimeout() {
   const currentScreen = useAtomValue(currentScreenAtom);
   const navigation = useAtomValue(navigationAtom);
   const socket = useAtomValue(socketAtom);
+  const sessionId = useAtomValue(sessionCredentialsAtom)?.id;
+
+  // Whether anyone has touched the screen in this session. A session nobody
+  // has used (the scan screen a finished or aborted check-in starts by itself,
+  // or one "Checka in" opened before walking away) times out without the
+  // dialog: there is nobody to ask.
+  const usedRef = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: resets on every new session
+  useEffect(() => {
+    usedRef.current = false;
+  }, [sessionId]);
   const [msRemaining, setMsRemaining] = useState<number | null>(null);
   // A touch dismisses the dialog instantly; only a timeout animates it out.
   const [dismissedByTouch, setDismissedByTouch] = useState(false);
@@ -63,9 +78,13 @@ export function IdleTimeout() {
         setMsRemaining(null);
         socketRef.current?.send({ name: "session:abort" });
       },
+      shouldSkipCountdown: () => !usedRef.current,
     });
 
-    const handleActivity = () => reset();
+    const handleActivity = () => {
+      usedRef.current = true;
+      reset();
+    };
     for (const eventName of ACTIVITY_EVENTS) {
       window.addEventListener(eventName, handleActivity, { passive: true });
     }
