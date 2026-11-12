@@ -114,3 +114,6 @@ steps:
       message:
         sv: "Du är incheckad${{ case(steps.voteit.outputs.status == 'granted' || steps.voteit.outputs.status == 'alreadyGranted', ' och din rösträtt är registrerad', '') }}. Hämta din namnskylt och följ skyltarna vidare."
         en: "You are checked in${{ case(steps.voteit.outputs.status == 'granted' || steps.voteit.outputs.status == 'alreadyGranted', ' and your voting rights are registered', '') }}. Pick up your name badge and follow the signs."
+      buttonText:
+        sv: "OK"
+        en: "OK"
