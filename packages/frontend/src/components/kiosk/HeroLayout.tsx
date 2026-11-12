@@ -8,36 +8,49 @@ import {
   useState,
 } from "react";
 import { cn } from "@/utils";
-import ScouternaTagline from "../../../assets/scouterna_tagline.svg?react";
-import topography from "../../../assets/topography.png";
-import Wave from "../../../assets/wave.svg?react";
-
-const prefersReducedMotion = window.matchMedia(
-  `(prefers-reduced-motion: reduce)`,
-).matches;
+import ScouternaLogo from "../../../assets/scouterna_vit.svg?react";
 
 export type Props = {
   children: ReactNode;
   heroContent: ReactNode;
   progressed: boolean;
   showBackButton: boolean;
-  backgroundVideoUrl?: string;
   onBackClick: () => void;
 };
+
+type RidgeProps = { d: string; className?: string };
+
+// Mountain-ridge edges, drawn on a 400x1080 box filled from the left. Each
+// sits against the right side of its layer and scales to the screen height.
+const RIDGE_FRONT =
+  "M0 0H80L175 200L205 330L225 560L290 820L320 930L390 1080H0V0Z";
+// The same ridge with a quarter of the sideways travel, for the content panel's edge.
+const RIDGE_CONTENT =
+  "M0 0H80L104 200L111 330L116 560L133 820L140 930L158 1080H0V0Z";
+
+function Ridge({ d, className }: RidgeProps) {
+  return (
+    <svg
+      viewBox="0 0 400 1080"
+      preserveAspectRatio="xMinYMid"
+      className={cn(
+        "absolute top-0 left-full w-full h-full pointer-events-none -translate-x-0.5",
+        className,
+      )}
+      aria-hidden="true"
+    >
+      <path d={d} />
+    </svg>
+  );
+}
 
 export function HeroLayout({
   children,
   heroContent,
   progressed,
   showBackButton,
-  backgroundVideoUrl,
   onBackClick,
 }: Props) {
-  const showVideo = backgroundVideoUrl && !prefersReducedMotion;
-
-  const [videoLoaded, setVideoLoaded] = useState(false);
-  const video = useRef<HTMLVideoElement>(null);
-
   const [heroActive, setHeroActive] = useState(true);
   const [contentActive, setContentActive] = useState(false);
 
@@ -46,12 +59,10 @@ export function HeroLayout({
 
   const unloadHero = useCallback(() => {
     setHeroActive(false);
-    video.current?.pause();
   }, []);
 
   const loadHero = useCallback(() => {
     setHeroActive(true);
-    video.current?.play();
   }, []);
 
   const unloadContent = useCallback(() => {
@@ -93,27 +104,6 @@ export function HeroLayout({
 
   return (
     <div className="relative w-full h-full flex bg-background-brand-base overflow-hidden">
-      {showVideo && (
-        <video
-          ref={video}
-          key={backgroundVideoUrl}
-          className={cn(
-            "absolute top-0 left-0 w-full h-full object-cover pointer-events-none",
-            "transition-all duration-400",
-            videoLoaded
-              ? !progressed
-                ? "delay-600 opacity-30"
-                : "opacity-0"
-              : "opacity-0",
-          )}
-          src={backgroundVideoUrl}
-          autoPlay
-          muted
-          loop
-          onLoadedData={() => setVideoLoaded(true)}
-        />
-      )}
-
       <div
         className={cn(
           "absolute bottom-2 right-2 leading-none text-body-sm text-white",
@@ -123,53 +113,33 @@ export function HeroLayout({
       >
         0.0.0
       </div>
-
       <div
         className={cn(
-          "absolute top-0 h-full w-[45%] z-10 bg-white flex flex-col justify-center px-16",
+          "absolute top-0 h-full w-[35%] z-10 bg-white flex flex-col justify-center px-16",
           "transition-all duration-1000",
           !progressed ? "left-0" : "-left-full",
         )}
       >
-        {heroActive && heroContent}
+        {/* Keeps the text at its old width; past the panel it sits on the
+            white ridge, which is wide enough at text height. */}
+        <div className="relative z-10 w-[calc(45vw-8rem)]">
+          {heroActive && heroContent}
+        </div>
 
-        <Wave
-          className="absolute top-0 -right-full w-full h-full fill-white pointer-events-none -translate-x-0.5"
-          aria-hidden
-        />
+        <Ridge d={RIDGE_FRONT} className="fill-white" />
       </div>
-
       <div
         className={cn(
           "absolute top-0 h-full flex-1 px-16 flex justify-center items-center",
           "transition-all duration-1000",
-          !progressed ? "left-[45%] w-[55%]" : "left-0 w-[25%]",
+          !progressed
+            ? "left-[calc(35%+20.5vh)] w-[calc(65%-20.5vh)]"
+            : "left-0 w-[25%]",
         )}
       >
-        <img
-          src={topography}
-          alt="An illustration of the topography lines of a map, partially cut off by the corner of the screen."
+        <ScouternaLogo
           className={cn(
-            "pointer-events-none",
-            "absolute h-2/5 max-w-none top-0 left-full translate-x-[-60%] translate-y-[-20%]",
-            "transition-all duration-1000",
-            !progressed ? "duration-700 delay-700" : "opacity-0 duration-300",
-          )}
-        />
-        <img
-          src={topography}
-          alt="An illustration of the topography lines of a map, partially cut off by the corner of the screen."
-          className={cn(
-            "pointer-events-none",
-            "absolute h-[2/5] max-w-none top-full left-0 translate-x-[-40%] translate-y-[-68%]",
-            "transition-all duration-1000",
-            !progressed ? "opacity-0 duration-300" : "duration-700 delay-500",
-          )}
-        />
-
-        <ScouternaTagline
-          className={cn(
-            "w-[30vw] shrink-0",
+            "w-[36vw] shrink-0",
             "transition-all duration-200",
             !progressed ? "duration-700 delay-700" : "opacity-0 duration-300",
           )}
@@ -197,17 +167,16 @@ export function HeroLayout({
           )}
         </div>
       </div>
-
       <div
         className={cn(
-          "absolute top-0 h-full w-[77%] z-10 bg-white flex flex-col pt-40 px-32 pb-16",
+          "absolute top-0 h-full w-[75%] z-10 bg-white flex flex-col pt-40 px-32 pb-16",
           "transition-all duration-1000",
-          !progressed ? "left-[120%]" : "left-[23%]",
+          !progressed ? "left-[125%]" : "left-[25%]",
         )}
       >
-        <Wave
-          className="absolute top-0 -left-full w-full h-full fill-white pointer-events-none translate-x-0.5 rotate-180"
-          aria-hidden
+        <Ridge
+          d={RIDGE_CONTENT}
+          className="left-auto right-full translate-x-0.5 -scale-x-100 fill-white"
         />
         {contentActive && children}
       </div>

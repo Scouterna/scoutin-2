@@ -6,7 +6,13 @@ steps:
   - uses: base:identify
     id: identify
     with:
-      scannerSide: right
+      scannerSide: bottom
+      previewFields:
+        # From the scoutnet:primaryGroup enricher (dataSourceConfig.dj26.yml).
+        - label: { sv: Kår, en: Scout group }
+          value: participant.metadata.group.name
+        - label: { sv: Roll, en: Role }
+          value: participant.subGroupName
 
   - uses: base:setActorAsSubject
 

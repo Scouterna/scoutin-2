@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAtom } from "jotai";
 import { useCallback } from "react";
+import { eventName } from "@/lib/kioskConfig";
 import { socketAtom } from "@/store/socket";
 import * as session from "../../api/session";
 import { sessionCredentialsAtom } from "../../store/session";
@@ -69,7 +70,7 @@ function App() {
   return (
     <div className="flex flex-col justify-center items-center gap-8 mt-48">
       <h1 className="text-heading-base font-semibold">
-        Välkommen till Jamboree26!
+        Välkommen till {eventName}!
       </h1>
       {/* <pre className="overflow-x-auto max-w-screen">{sessionToken}</pre> */}
       <ScoutButton

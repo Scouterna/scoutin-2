@@ -1,7 +1,16 @@
 @import "tailwindcss";
 @import "@scouterna/tailwind-theme";
 
-@import "@fontsource-variable/source-sans-3";
+@import "@fontsource-variable/inter";
+
+/* Unreleased brand font: the file is git-excluded, never commit it. */
+@font-face {
+  font-family: "SeasonMix";
+  src: url("./assets/fonts/SeasonMix-SemiBold.otf") format("opentype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: block;
+}
 
 @source "../../../plugins/**/*.{ts,tsx}";
 @source "../../plugin-api/src/**/*.{ts,tsx}";
@@ -13,6 +22,44 @@
    not fit, e.g. `short:gap-y-3`. */
 @custom-variant short (@media (max-height: 56.25rem));
 
+/* New graphical profile. Doubled :root outranks the theme's and ui-webc's
+   runtime-injected :root declarations regardless of load order.
+   Blue scale: 700 is the brand color; the other steps keep the old scale's
+   OKLCH lightness, with the new hue and proportionally scaled chroma. */
+:root:root {
+  --color-blue-50: #e3f1f5;
+  --color-blue-100: #cbe5ed;
+  --color-blue-200: #95cbdc;
+  --color-blue-300: #53b2cc;
+  --color-blue-400: #1092af;
+  --color-blue-500: #0c748b;
+  --color-blue-600: #065769;
+  --color-blue-700: #003946;
+  --color-blue-800: #002934;
+  --color-blue-900: #00181f;
+  --color-blue-950: #001016;
+
+  /* Inter for text, Season Mix for headings. ui-webc builds its --type-*
+     shorthands from these, so headings inside its components follow too. */
+  --fontfamily-sans: "Inter Variable", sans-serif;
+  --fontfamily-heading: "SeasonMix", var(--fontfamily-sans);
+  --type-heading-xl: 600 var(--fontsize-6xl) / 1.2 var(--fontfamily-heading);
+  --type-heading-lg: 600 var(--fontsize-5xl) / 1.2 var(--fontfamily-heading);
+  --type-heading-base: 600 var(--fontsize-4xl) / 1.2 var(--fontfamily-heading);
+  --type-heading-sm: 600 var(--fontsize-3xl) / 1.2 var(--fontfamily-heading);
+  --type-heading-xs: 600 var(--fontsize-2xl) / 1.2 var(--fontfamily-heading);
+  font-family: var(--fontfamily-sans);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--fontfamily-heading);
+}
+
 html,
 body {
   overscroll-behavior: none;
@@ -20,7 +67,7 @@ body {
 }
 
 body {
-  font-family: "Source Sans 3 Variable", sans-serif;
+  font-family: var(--fontfamily-sans);
   font-size: var(--text-body-base);
   line-height: 1.5;
   color: var(--color-text-base);
@@ -29,6 +76,44 @@ body {
 @theme {
   --animate-oscillate-vertical: oscillate-vertical 1.5s ease-in-out infinite;
   --animate-oscillate-horizontal: oscillate-horizontal 1.5s ease-in-out infinite;
+  /* A 0.6s jerky twisting shake, then a pause, so it repeats every 5s. */
+  --animate-shake: shake 5s linear infinite;
+
+  @keyframes shake {
+    0%,
+    12%,
+    100% {
+      transform: rotate(0);
+    }
+
+    1.5% {
+      transform: rotate(-1.5deg);
+    }
+
+    3% {
+      transform: rotate(1.5deg);
+    }
+
+    4.5% {
+      transform: rotate(-1.5deg);
+    }
+
+    6% {
+      transform: rotate(1.25deg);
+    }
+
+    7.5% {
+      transform: rotate(-1deg);
+    }
+
+    9% {
+      transform: rotate(0.75deg);
+    }
+
+    10.5% {
+      transform: rotate(-0.5deg);
+    }
+  }
 
   @keyframes oscillate-vertical {
     0%,

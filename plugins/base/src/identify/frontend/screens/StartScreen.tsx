@@ -12,6 +12,7 @@ import { IconArrowDown, IconQrcode } from "@tabler/icons-react";
 import { type } from "arktype";
 import { useRef, useState } from "react";
 import { cn } from "../../../utils";
+import pointerUrl from "../assets/pointer.svg";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 
 function BackspaceButton({ onDelete }: { onDelete: () => void }) {
@@ -135,7 +136,8 @@ export function StartScreen({ payload }: { payload: object }) {
     return <ValidationError errors={validPayload} />;
   }
 
-  const arrowRotation = arrowRotations[validPayload.scannerSide || "bottom"];
+  const scannerSide = validPayload.scannerSide || "bottom";
+  const arrowRotation = arrowRotations[scannerSide];
 
   return (
     <div className="flex flex-col gap-6">
@@ -157,7 +159,22 @@ export function StartScreen({ payload }: { payload: object }) {
           </div>
         </div>
       )}
-      {!validPayload.hideScannerArrow && (
+      {!validPayload.hideScannerArrow && scannerSide === "bottom" && (
+        // Positioned in the sliding content panel (which spans to the right
+        // edge), 50vw from its right: the screen's horizontal center.
+        <div className="absolute bottom-4 right-[50vw] translate-x-1/2 pointer-events-none">
+          {/* The shadow sits on a wrapper so the image's rotation doesn't
+              flip its direction. */}
+          <span className="drop-shadow-[0_3px_2px_rgb(0_0_0/0.4)]">
+            <img
+              src={pointerUrl}
+              alt=""
+              className="h-40 w-auto rotate-180 animate-oscillate-vertical"
+            />
+          </span>
+        </div>
+      )}
+      {!validPayload.hideScannerArrow && scannerSide !== "bottom" && (
         <div
           className={cn(
             "flex gap-2 items-center",

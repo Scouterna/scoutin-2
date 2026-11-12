@@ -10,7 +10,6 @@ import {
   screenHistoryAtom,
 } from "@/store/session";
 import { socketAtom } from "@/store/socket";
-import heroVideoUrl from "../../../assets/hero_website.mp4";
 import { StartContent } from "../../components/kiosk/StartContent";
 import { ScreenRenderer } from "../../screens/ScreenRenderer";
 
@@ -50,7 +49,6 @@ function RouteComponent() {
           })
         }
         onBackClick={handleBackClick}
-        backgroundVideoUrl={heroVideoUrl}
       >
         <ScreenRenderer />
       </HeroLayout>

@@ -165,6 +165,7 @@ export async function findParticipantsByLookupValue(value: string) {
       deletedAt: null,
       ...NO_IMPORT_ERROR_WHERE,
     },
+    include: { participantGroup: { select: { name: true } } },
   });
 }
 

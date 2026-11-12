@@ -1,9 +1,9 @@
 import {
   dataSourceConfig,
+  evaluateExpression,
   findParticipantsByLookupValue,
   isBlocked,
   normalizeIdentifier,
-  type Participant,
 } from "@scouterna/scoutin-backend/plugin-services";
 import type {
   StepImplementation,
@@ -28,11 +28,20 @@ type Candidate = {
   dataSource: string;
   /** Already resolved for the session language, ready to render. */
   dataSourceName: string;
+  /** Rows for the confirmation screen, from the `previewFields` input. */
+  previewFields: PreviewField[];
 };
 
+type PreviewField = { label: string; value: string };
+
+type FoundParticipant = Awaited<
+  ReturnType<typeof findParticipantsByLookupValue>
+>[number];
+
 const participantToCandidate = (
-  p: Participant,
+  p: FoundParticipant,
   language: string,
+  previewFields: Inputs["previewFields"],
 ): Candidate => {
   const dataSource = dataSourceConfig.dataSources[p.dataSource];
 
@@ -42,20 +51,47 @@ const participantToCandidate = (
     );
   }
 
+  const subGroupName = p.subGroup
+    ? dataSource.subGroups?.[p.subGroup]?.name
+    : undefined;
+  const dataSourceName = resolveLocalized(dataSource.name, language);
+
+  const context = {
+    participant: {
+      id: p.id,
+      firstName: p.firstName,
+      lastName: p.lastName,
+      subGroup: p.subGroup,
+      subGroupName: subGroupName && resolveLocalized(subGroupName, language),
+      dataSource: p.dataSource,
+      dataSourceName,
+      idInDataSource: p.idInDataSource,
+      group: p.participantGroup,
+      metadata: p.metadata,
+    },
+  };
+
   return {
     id: p.id,
     firstName: p.firstName,
     lastName: p.lastName,
     subGroup: p.subGroup,
     dataSource: p.dataSource,
-    dataSourceName: resolveLocalized(dataSource.name, language),
+    dataSourceName,
+    previewFields: (previewFields ?? [])
+      .map((f) => ({
+        label: f.label,
+        value: evaluateExpression(f.value, context).coerceString(),
+      }))
+      // Leave out rows the participant has no value for.
+      .filter((f) => f.value !== ""),
   };
 };
 
 async function searchCandidates(
   query: string,
   language: string,
-  dataSources?: string[],
+  { dataSources, previewFields }: Inputs,
 ): Promise<Candidate[]> {
   const participants = await findParticipantsByLookupValue(query);
   const now = new Date();
@@ -73,7 +109,9 @@ async function searchCandidates(
 
     return true;
   });
-  return filtered.map((p) => participantToCandidate(p, language));
+  return filtered.map((p) =>
+    participantToCandidate(p, language, previewFields),
+  );
 }
 
 async function autoConfirm(
@@ -120,6 +158,14 @@ const Inputs = type({
   "hideScannerArrow?": "boolean",
   "manualEntryLabel?": "string",
   "largeManualEntryButton?": "boolean",
+  // Details under the name on the confirmation screen. Each value is a bare expression (NOT
+  // wrapped in ${{ }}, which the step engine would evaluate up front without a
+  // participant), evaluated per candidate with a `{ participant }` context:
+  // id, firstName, lastName, subGroup, subGroupName, dataSource,
+  // dataSourceName, idInDataSource, group (the linked group, with `name`) and
+  // metadata. Labels may be `{ sv, en }`. Rows that come out empty are hidden.
+  // Defaults to none: only the name is shown.
+  "previewFields?": type({ label: "string", value: "string" }).array(),
 });
 
 type Inputs = typeof Inputs.infer;
@@ -147,7 +193,6 @@ export const identify: StepImplementation<State> = {
       const {
         scannerSide,
         identifierHint,
-        dataSources,
         skipConfirmation,
         title,
         description,
@@ -166,7 +211,7 @@ export const identify: StepImplementation<State> = {
         const candidates = await searchCandidates(
           normalizeIdentifier(String(identifierHint)),
           ctx.language,
-          dataSources,
+          ctx.getInputs() as Inputs,
         );
         if (candidates.length > 0) {
           await showCandidates(ctx, candidates, skipConfirmation);
@@ -204,11 +249,11 @@ export const identify: StepImplementation<State> = {
           return;
         }
 
-        const { dataSources, skipConfirmation } = ctx.getInputs() as Inputs;
+        const stepInputs = ctx.getInputs() as Inputs;
         const candidates = await searchCandidates(
           normalizeIdentifier(typedInputs.query),
           ctx.language,
-          dataSources,
+          stepInputs,
         );
 
         if (candidates.length === 0) {
@@ -218,7 +263,7 @@ export const identify: StepImplementation<State> = {
           return;
         }
 
-        await showCandidates(ctx, candidates, skipConfirmation);
+        await showCandidates(ctx, candidates, stepInputs.skipConfirmation);
       },
     }),
     selectActor: typedMethod({

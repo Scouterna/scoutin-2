@@ -1,10 +1,11 @@
-import { ScoutButton } from "@scouterna/ui-react";
+import { CtaButton } from "@scouterna/scoutin-plugin-api/frontend";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect } from "react";
 import { create } from "@/api/session";
 import { showErrorToast } from "@/lib/errors";
+import { eventName, startText } from "@/lib/kioskConfig";
 import {
   pendingAutoRestartAtom,
   sessionCredentialsAtom,
@@ -62,23 +63,19 @@ export function StartContent() {
   return (
     <div className="flex flex-col gap-8">
       <h1 className="text-heading-lg font-semibold text-blue-700 leading-tight">
-        Välkommen till Jamboree26!
+        Välkommen till {eventName}!
       </h1>
 
-      <p className="text-body-2xl">
-        Klicka på knappen för att checka in som kår eller funktionär.
-      </p>
+      <p className="text-body-2xl">{startText}</p>
 
-      <ScoutButton
-        variant="primary"
-        onScoutClick={() => {
-          if (!createSession.isPending) {
-            createSession.mutate();
-          }
-        }}
+      <CtaButton
+        shake
+        className="mt-8"
+        disabled={createSession.isPending}
+        onClick={() => createSession.mutate()}
       >
         Checka in
-      </ScoutButton>
+      </CtaButton>
     </div>
   );
 }

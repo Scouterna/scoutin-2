@@ -13,6 +13,7 @@ export {
   SUPPORTED_LANGUAGES,
 } from "../i18n.ts";
 export { BottomSheet } from "./BottomSheet.tsx";
+export { CtaButton } from "./CtaButton.tsx";
 export {
   type Dictionary,
   LanguageContext,

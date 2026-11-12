@@ -1,4 +1,5 @@
 import { ScoutButton } from "@scouterna/ui-react";
+import { eventName } from "@/lib/kioskConfig";
 
 type Props = {
   onStart: () => void;
@@ -16,10 +17,10 @@ export function LinkLandingContent({ onStart, starting }: Props) {
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-2">
         <h1 className="text-heading-lg font-semibold text-blue-700 leading-tight">
-          Välkommen till Jamboree26!
+          Välkommen till {eventName}!
         </h1>
         <h2 className="text-heading-sm font-semibold text-blue-700 leading-tight">
-          Welcome to Jamboree26!
+          Welcome to {eventName}!
         </h2>
       </div>
       <div className="flex flex-col gap-2">
