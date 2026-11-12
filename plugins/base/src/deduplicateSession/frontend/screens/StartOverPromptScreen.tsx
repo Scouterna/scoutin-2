@@ -1,4 +1,7 @@
-import { usePluginSocket } from "@scouterna/scoutin-plugin-api/frontend";
+import {
+  ScreenActions,
+  usePluginSocket,
+} from "@scouterna/scoutin-plugin-api/frontend";
 import { ScoutButton } from "@scouterna/ui-react";
 
 export function StartOverPromptScreen() {
@@ -32,14 +35,14 @@ export function StartOverPromptScreen() {
         </p>
       </div>
 
-      <div className="flex gap-4 justify-end mt-2">
+      <ScreenActions>
         <ScoutButton variant="outlined" onClick={handleStartOver}>
           Börja om
         </ScoutButton>
         <ScoutButton variant="primary" onClick={handleContinue}>
           Fortsätt där jag var
         </ScoutButton>
-      </div>
+      </ScreenActions>
     </div>
   );
 }

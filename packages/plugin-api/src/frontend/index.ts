@@ -20,6 +20,7 @@ export {
   useLanguage,
   useTranslations,
 } from "./i18n.tsx";
+export { ScreenActions } from "./ScreenActions.tsx";
 export { ValidationError } from "./ValidationError.tsx";
 
 export interface PluginSocket {

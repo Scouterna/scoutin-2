@@ -1,4 +1,5 @@
 import {
+  ScreenActions,
   usePluginSocket,
   ValidationError,
 } from "@scouterna/scoutin-plugin-api/frontend";
@@ -125,11 +126,11 @@ export function SpecialNeedsScreen({ payload }: { payload: object }) {
         </ScoutCallout>
       ))}
 
-      <div className="flex justify-end">
+      <ScreenActions>
         <ScoutButton variant="primary" onScoutClick={handleConfirm}>
           Nästa
         </ScoutButton>
-      </div>
+      </ScreenActions>
     </div>
   );
 }

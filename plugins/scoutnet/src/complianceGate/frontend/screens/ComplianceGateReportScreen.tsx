@@ -1,4 +1,5 @@
 import {
+  ScreenActions,
   usePluginSocket,
   useTranslations,
   ValidationError,
@@ -109,7 +110,7 @@ export function ComplianceGateReportScreen({ payload }: { payload: object }) {
         </ScoutListView>
       </div>
 
-      <div className="flex justify-end">
+      <ScreenActions>
         <ScoutButton
           variant="primary"
           onScoutClick={confirm}
@@ -117,7 +118,7 @@ export function ComplianceGateReportScreen({ payload }: { payload: object }) {
         >
           {t("continue")}
         </ScoutButton>
-      </div>
+      </ScreenActions>
     </div>
   );
 }

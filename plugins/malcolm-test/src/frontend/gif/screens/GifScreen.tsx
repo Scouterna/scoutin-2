@@ -1,4 +1,7 @@
-import { usePluginSocket } from "@scouterna/scoutin-plugin-api/frontend";
+import {
+  ScreenActions,
+  usePluginSocket,
+} from "@scouterna/scoutin-plugin-api/frontend";
 import { ScoutButton } from "@scouterna/ui-react";
 
 export function GifScreen() {
@@ -19,11 +22,11 @@ export function GifScreen() {
         <img alt="cat" src="/cat.gif" />
       </div>
 
-      <div className="flex gap-4 justify-end mt-2">
+      <ScreenActions>
         <ScoutButton variant="primary" onClick={handleContinue}>
           Fortsätt
         </ScoutButton>
-      </div>
+      </ScreenActions>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import {
+  ScreenActions,
   usePluginSocket,
   useSessionRole,
   useTranslations,
@@ -66,7 +67,7 @@ export function VoteitStatusScreen({ payload }: { payload: object }) {
         <p>{t("help")}</p>
       </ScoutCallout>
 
-      <div className="flex justify-end gap-4">
+      <ScreenActions>
         {role === "staff" && (
           <ScoutButton variant="outlined" onScoutClick={() => call("skip")}>
             {t("skip")}
@@ -75,7 +76,7 @@ export function VoteitStatusScreen({ payload }: { payload: object }) {
         <ScoutButton variant="primary" onScoutClick={() => call("retry")}>
           {t("retry")}
         </ScoutButton>
-      </div>
+      </ScreenActions>
     </div>
   );
 }

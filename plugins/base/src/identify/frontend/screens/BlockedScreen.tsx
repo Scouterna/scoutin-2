@@ -1,4 +1,7 @@
-import { usePluginSocket } from "@scouterna/scoutin-plugin-api/frontend";
+import {
+  ScreenActions,
+  usePluginSocket,
+} from "@scouterna/scoutin-plugin-api/frontend";
 import { ScoutButton, ScoutCallout } from "@scouterna/ui-react";
 import { useEffect } from "react";
 
@@ -35,11 +38,11 @@ export function BlockedScreen() {
         Vänd dig till en funktionär i incheckningen så hjälper de dig vidare.
       </ScoutCallout>
 
-      <div className="flex justify-end">
+      <ScreenActions>
         <ScoutButton variant="primary" onScoutClick={handleDone}>
           Klar
         </ScoutButton>
-      </div>
+      </ScreenActions>
     </div>
   );
 }

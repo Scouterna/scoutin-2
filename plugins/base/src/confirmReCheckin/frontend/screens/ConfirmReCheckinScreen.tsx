@@ -1,4 +1,5 @@
 import {
+  ScreenActions,
   usePluginSocket,
   ValidationError,
 } from "@scouterna/scoutin-plugin-api/frontend";
@@ -44,14 +45,14 @@ export function ConfirmReCheckinScreen({ payload }: { payload: object }) {
         </p>
       </div>
 
-      <div className="flex gap-4 justify-end mt-2">
+      <ScreenActions>
         <ScoutButton variant="outlined" onScoutClick={handleCancel}>
           Avbryt
         </ScoutButton>
         <ScoutButton variant="primary" onScoutClick={handleConfirm}>
           Ja, checka in igen
         </ScoutButton>
-      </div>
+      </ScreenActions>
     </div>
   );
 }

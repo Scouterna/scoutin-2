@@ -1,4 +1,5 @@
 import {
+  ScreenActions,
   usePluginSocket,
   ValidationError,
 } from "@scouterna/scoutin-plugin-api/frontend";
@@ -56,7 +57,7 @@ export function PreviewActorScreen({ payload }: { payload: object }) {
         </tbody>
       </table>
 
-      <div className="flex gap-4 justify-end mt-2">
+      <ScreenActions>
         <ScoutButton
           onScoutClick={() =>
             socket?.send({
@@ -70,7 +71,7 @@ export function PreviewActorScreen({ payload }: { payload: object }) {
         <ScoutButton variant="primary" onClick={handleConfirm}>
           Ja, det stämmer!
         </ScoutButton>
-      </div>
+      </ScreenActions>
     </div>
   );
 }

@@ -15,6 +15,7 @@ import {
 } from "../../core/i18n/localized.ts";
 import type { Prisma } from "../../generated/prisma/client.ts";
 import type { CheckinSessionStepDataModel } from "../../generated/prisma/models.ts";
+import { dataSourceConfig } from "../participants/data.service.ts";
 
 /** What `createContext` needs loaded on the session. */
 const CONTEXT_INCLUDE = {
@@ -92,16 +93,19 @@ export type Context = typeof Context.infer;
 /**
  * Matches a step completion record against a step definition. When the
  * definition has an `id`, we match by `idInFlow` so the same implementation
- * can appear multiple times in a flow with distinct identifiers.
+ * can appear multiple times in a flow with distinct identifiers. Without one,
+ * only a record that has no `idInFlow` either matches: otherwise an earlier
+ * step of the same implementation with an id would count as this one, and the
+ * flow would skip it.
  */
-function matchesStepData(
-  data: CheckinSessionStepDataModel,
-  stepDefinition: StepDefinition,
+export function matchesStepData(
+  data: Pick<CheckinSessionStepDataModel, "stepId" | "idInFlow">,
+  stepDefinition: Pick<StepDefinition, "id" | "uses">,
 ): boolean {
   if (stepDefinition.id) {
     return data.idInFlow === stepDefinition.id;
   }
-  return data.stepId === stepDefinition.uses;
+  return data.stepId === stepDefinition.uses && !data.idInFlow;
 }
 
 /**
@@ -418,6 +422,12 @@ function createContext(
         firstName: p.firstName,
         lastName: p.lastName,
         subGroup: p.subGroup,
+        // The subgroup's `{ sv, en }` name from the data source config; step
+        // inputs resolve it to the session language.
+        subGroupName: p.subGroup
+          ? (dataSourceConfig.dataSources[p.dataSource]?.subGroups?.[p.subGroup]
+              ?.name ?? null)
+          : null,
         dataSource: p.dataSource,
         idInDataSource: p.idInDataSource,
         metadata: p.metadata,

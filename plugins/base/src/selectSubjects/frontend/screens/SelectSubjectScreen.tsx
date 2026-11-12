@@ -1,4 +1,5 @@
 import {
+  ScreenActions,
   usePluginSocket,
   useTranslations,
   ValidationError,
@@ -222,7 +223,7 @@ export function SelectSubjectScreen({ payload }: { payload: object }) {
           </div>
         </div>
 
-        <div className="flex justify-end">
+        <ScreenActions>
           <ScoutButton
             variant="primary"
             icon={ArrowRightIcon}
@@ -236,7 +237,7 @@ export function SelectSubjectScreen({ payload }: { payload: object }) {
               total: validPayload.participants.length,
             })}
           </ScoutButton>
-        </div>
+        </ScreenActions>
       </div>
     </div>
   );

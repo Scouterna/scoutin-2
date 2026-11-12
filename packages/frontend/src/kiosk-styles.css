@@ -6,6 +6,13 @@
 @source "../../../plugins/**/*.{ts,tsx}";
 @source "../../plugin-api/src/**/*.{ts,tsx}";
 
+/* Screens that are short relative to the text size: 900px at the default font
+   size. In rem (media queries measure it against the browser's default font
+   size), so kiosks with a larger font setting count as short too, e.g. 1080px
+   at 150% font size. Use for tighter spacing in content that would otherwise
+   not fit, e.g. `short:gap-y-3`. */
+@custom-variant short (@media (max-height: 56.25rem));
+
 html,
 body {
   overscroll-behavior: none;

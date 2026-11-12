@@ -1,4 +1,5 @@
 import {
+  ScreenActions,
   usePluginSocket,
   ValidationError,
 } from "@scouterna/scoutin-plugin-api/frontend";
@@ -122,14 +123,14 @@ export function RfidScreen({ payload }: { payload: object }) {
           kopplad till <span className="font-semibold">{participantName}</span>.
         </ScoutCallout>
 
-        <div className="flex justify-end">
+        <ScreenActions>
           <ScoutButton
             variant="primary"
             onScoutClick={() => callMethod("confirm")}
           >
             Fortsätt
           </ScoutButton>
-        </div>
+        </ScreenActions>
       </div>
     );
   }
@@ -187,11 +188,11 @@ export function RfidScreen({ payload }: { payload: object }) {
         </div>
       </div>
 
-      <div className="flex justify-end">
+      <ScreenActions>
         <ScoutButton variant="outlined" onScoutClick={() => callMethod("skip")}>
           Hoppa över
         </ScoutButton>
-      </div>
+      </ScreenActions>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import {
+  ScreenActions,
   usePluginSocket,
   useTranslations,
   ValidationError,
@@ -91,11 +92,11 @@ export function FilterSubjectsScreen({ payload }: { payload: object }) {
         )}
       </div>
 
-      <div className="flex justify-end">
+      <ScreenActions>
         <ScoutButton variant="primary" onScoutClick={confirm}>
           {validPayload.buttonText ?? t("continue")}
         </ScoutButton>
-      </div>
+      </ScreenActions>
     </div>
   );
 }

@@ -10,6 +10,45 @@ steps:
 
   - uses: base:setActorAsSubject
 
+  # Everything we have on the participant, for them to check before the voting
+  # right is granted and the badge prints. Rows without a value are hidden
+  # (meals for day participants, delegate number for non-delegates, ...).
+  - uses: base:message
+    id: confirmDetails
+    with:
+      title:
+        sv: Stämmer dina uppgifter?
+        en: Are your details correct?
+      message:
+        sv: Om något inte stämmer, gå till incheckningsdisken så hjälper vi dig.
+        en: If anything is wrong, go to the check-in desk and we will help you.
+      buttonText:
+        sv: Ja, allt stämmer
+        en: Yes, everything is correct
+      allowCancel: true
+      details:
+        - rows:
+          - label: { sv: Deltar som, en: Attending as }
+            value: ${{ session.subjects[0].subGroupName }}
+          - label: { sv: Roll, en: Role }
+            value: ${{ session.subjects[0].metadata.badge.role }}
+          - label: { sv: Ombudsnummer, en: Delegate number }
+            value: ${{ session.subjects[0].metadata.badge.delegateNumber }}
+          - label: { sv: Beredningsgrupp, en: Preparation group }
+            # Delegates only (others get "Ej tilldelad" or similar).
+            value: ${{ case(session.subjects[0].subGroup == 'delegate', session.subjects[0].metadata.badge.preparationGroup, '') }}
+        # Filled row by row: the two lunches on top, dinner and its seating below.
+        - title: { sv: Måltider, en: Meals }
+          rows:
+          - label: { sv: Lunch lördag, en: Lunch Saturday }
+            value: ${{ session.subjects[0].metadata.badge.lunchSaturday }}
+          - label: { sv: Lunch söndag, en: Lunch Sunday }
+            value: ${{ session.subjects[0].metadata.badge.lunchSunday }}
+          - label: { sv: Middag lördag, en: Dinner Saturday }
+            value: ${{ session.subjects[0].metadata.badge.dinnerSaturday }}
+          - label: { sv: Middagssittning, en: Dinner seating }
+            value: ${{ session.subjects[0].metadata.badge.dinnerSeating }}
+
   - if: ${{ session.subjects[0].subGroup == 'delegate' }}
     uses: voteit:grantVoterRole
     id: voteit
@@ -60,13 +99,12 @@ steps:
     required: true
 
   # Placeholder text. Delegates whose VoteIT grant went through also get a line
-  # about their voting rights (the expression language has no if/else, hence
-  # `cond && 'text' || ''`).
+  # about their voting rights.
   - uses: base:message
     with:
       title:
         sv: Klart!
         en: Done!
       message:
-        sv: "Du är incheckad${{ (steps.voteit.outputs.status == 'granted' || steps.voteit.outputs.status == 'alreadyGranted') && ' och din rösträtt är registrerad' || '' }}. Hämta din namnskylt och följ skyltarna vidare."
-        en: "You are checked in${{ (steps.voteit.outputs.status == 'granted' || steps.voteit.outputs.status == 'alreadyGranted') && ' and your voting rights are registered' || '' }}. Pick up your name badge and follow the signs."
+        sv: "Du är incheckad${{ case(steps.voteit.outputs.status == 'granted' || steps.voteit.outputs.status == 'alreadyGranted', ' och din rösträtt är registrerad', '') }}. Hämta din namnskylt och följ skyltarna vidare."
+        en: "You are checked in${{ case(steps.voteit.outputs.status == 'granted' || steps.voteit.outputs.status == 'alreadyGranted', ' and your voting rights are registered', '') }}. Pick up your name badge and follow the signs."

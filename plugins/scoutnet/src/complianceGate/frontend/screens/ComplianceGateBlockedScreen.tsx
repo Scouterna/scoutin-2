@@ -1,4 +1,5 @@
 import {
+  ScreenActions,
   usePluginSocket,
   ValidationError,
 } from "@scouterna/scoutin-plugin-api/frontend";
@@ -100,7 +101,7 @@ export function ComplianceGateBlockedScreen({ payload }: { payload: object }) {
           </ScoutButton>
         </div>
       ) : (
-        <div className="flex justify-end">
+        <ScreenActions>
           <ScoutButton
             variant="primary"
             onScoutClick={handleContinue}
@@ -108,7 +109,7 @@ export function ComplianceGateBlockedScreen({ payload }: { payload: object }) {
           >
             Fortsätt
           </ScoutButton>
-        </div>
+        </ScreenActions>
       )}
     </div>
   );

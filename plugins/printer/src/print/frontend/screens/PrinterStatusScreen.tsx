@@ -1,4 +1,5 @@
 import {
+  ScreenActions,
   usePluginSocket,
   useTranslations,
   ValidationError,
@@ -86,7 +87,7 @@ export function PrinterStatusScreen({ payload }: { payload: object }) {
           )}
         </ScoutCallout>
 
-        <div className="flex justify-end">
+        <ScreenActions>
           <ScoutButton
             variant="primary"
             onScoutClick={() =>
@@ -98,7 +99,7 @@ export function PrinterStatusScreen({ payload }: { payload: object }) {
           >
             {t("close")}
           </ScoutButton>
-        </div>
+        </ScreenActions>
       </div>
     );
   }
