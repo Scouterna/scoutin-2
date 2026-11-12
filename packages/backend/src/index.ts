@@ -36,6 +36,7 @@ async function main() {
   const { startRelaySockets, stopRelaySockets } = await import(
     "./domains/printing/relay.socket.ts"
   );
+  await startRelaySockets();
 
   const server = serve(
     {
@@ -72,7 +73,6 @@ async function main() {
   if (config.DATA_IMPORT_INTERVAL_MS > 0) {
     jobRunner.runNow(DATA_IMPORT_JOB).catch(() => {});
   }
-  startRelaySockets();
   startDispatch();
   // Template edits show up without a restart while developing.
   if (config.NODE_ENV === "development") {

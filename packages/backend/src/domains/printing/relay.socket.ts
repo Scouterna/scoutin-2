@@ -208,7 +208,7 @@ async function dropConnection(conn: Conn) {
   const requeued = await requeueLeased(leased, "relay disconnected");
   await prisma.printer.updateMany({
     where: { relayId: conn.relayId },
-    data: { state: "offline" },
+    data: { state: "offline", stateDetail: null },
   });
   if (requeued) dispatch();
 }
@@ -277,7 +277,7 @@ const handlers: Handlers = {
     withdraw(serial, conn);
     await prisma.printer.updateMany({
       where: { serial, relayId: conn.relayId },
-      data: { state: "offline", lastSeenAt: new Date() },
+      data: { state: "offline", stateDetail: null, lastSeenAt: new Date() },
     });
   },
 
@@ -490,8 +490,17 @@ async function applyResult(conn: Conn, res: RelayMessage<"job:result">) {
 
 let checker: NodeJS.Timeout | undefined;
 
-/** Starts dropping connections that went silent. */
-export function startRelaySockets() {
+/**
+ * Marks every printer offline, then starts dropping connections that went
+ * silent. Printer states are only true while their relay is connected, and no
+ * relay is connected yet at startup: a state left over from before a restart
+ * or crash would otherwise stay forever. Relays report fresh states when they
+ * reconnect. Run before the server accepts connections.
+ */
+export async function startRelaySockets() {
+  await prisma.printer.updateMany({
+    data: { state: "offline", stateDetail: null },
+  });
   checker ??= setInterval(dropSilent, CHECK_INTERVAL_MS);
 }
 
