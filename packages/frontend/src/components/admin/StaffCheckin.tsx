@@ -5,6 +5,7 @@ import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 import type { Listeners, MessageTypes } from "@scouterna/scoutin-backend";
+import { SessionRoleContext } from "@scouterna/scoutin-plugin-api/frontend";
 import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createAdminSession } from "@/api/session";
@@ -209,7 +210,9 @@ export function StaffCheckin() {
                 onBeforeClose={abortSessionOnClose}
               >
                 <Box sx={{ p: 2, height: "100%" }}>
-                  <ScreenRenderer />
+                  <SessionRoleContext.Provider value="staff">
+                    <ScreenRenderer />
+                  </SessionRoleContext.Provider>
                 </Box>
               </SocketLoader>
             )

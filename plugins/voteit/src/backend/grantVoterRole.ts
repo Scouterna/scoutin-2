@@ -11,6 +11,9 @@ import { type } from "arktype";
 import { createVoteitClient, type Invite, inviteMemberId } from "./client.ts";
 
 const SCREEN = "voteit:status";
+// The "working" screen shows at least this long, so a fast answer doesn't make
+// it blink past before the next screen.
+const MIN_WORKING_MS = 2000;
 const ROLE = "pv";
 
 const Inputs = type({ participantId: "string" });
@@ -26,11 +29,6 @@ type Reason = "notInvited" | "ambiguous" | "error";
 type State = {
   attempt?:
     | { status: "working" }
-    | {
-        status: "granted";
-        result: "granted" | "alreadyGranted";
-        invitePk: number;
-      }
     | { status: "failed"; reason: Reason; error: string };
 };
 
@@ -122,11 +120,15 @@ async function attempt(ctx: Ctx) {
   const { participantId } = ctx.getInputs() as Inputs;
   ctx.setState("attempt", { status: "working" });
   await ctx.showScreen(SCREEN, { state: "working" });
+  const minWorking = new Promise((resolve) =>
+    setTimeout(resolve, MIN_WORKING_MS),
+  );
 
   let memberId: string | undefined;
+  let result: Granted;
   try {
     memberId = await loadMemberId(participantId);
-    const result = await grant(memberId);
+    result = await grant(memberId);
     const at = new Date().toISOString();
     await recordAudit({
       actor: null,
@@ -145,12 +147,6 @@ async function attempt(ctx: Ctx) {
       invitePk: result.invite.pk,
       at,
     });
-    ctx.setState("attempt", {
-      status: "granted",
-      result: result.status,
-      invitePk: result.invite.pk,
-    });
-    await ctx.showScreen(SCREEN, { state: "granted", result: result.status });
   } catch (error) {
     const reason = error instanceof AttemptFailed ? error.reason : "error";
     const message = error instanceof Error ? error.message : String(error);
@@ -158,9 +154,17 @@ async function attempt(ctx: Ctx) {
       { participantId, memberId, reason },
       `VoteIT grant failed for member ${memberId ?? "unknown"} (${reason}): ${message}`,
     );
+    await minWorking;
     ctx.setState("attempt", { status: "failed", reason, error: message });
     await ctx.showScreen(SCREEN, { state: "failed", reason });
+    return;
   }
+
+  // Granted: go straight on, so the badge prints without waiting for a tap.
+  // Outside the try, so an error from the next step isn't reported as a
+  // VoteIT failure.
+  await minWorking;
+  await ctx.setCompleted({ status: result.status, invitePk: result.invite.pk });
 }
 
 export const grantVoterRoleStep: StepImplementation<State> = {
@@ -181,20 +185,15 @@ export const grantVoterRoleStep: StepImplementation<State> = {
         await attempt(ctx);
       },
     },
-    continue: {
-      async handler(ctx) {
-        // Ignore a double press or a stale call: only a granted step may continue.
-        const granted = ctx.getState("attempt");
-        if (granted?.status !== "granted") return;
-        ctx.setState("attempt", { status: "working" });
-        await ctx.setCompleted({
-          status: granted.result,
-          invitePk: granted.invitePk,
-        });
-      },
-    },
     skip: {
       async handler(ctx) {
+        // Staff only: the kiosk sends the delegate to the desk instead. The
+        // screen hides the button on the kiosk, but any client can send a
+        // method call, so check here too.
+        if (ctx.role !== "staff") {
+          ctx.logger.warn("Ignoring VoteIT skip from a non-staff client");
+          return;
+        }
         const failed = ctx.getState("attempt");
         if (failed?.status !== "failed") return;
         ctx.setState("attempt", { status: "working" });

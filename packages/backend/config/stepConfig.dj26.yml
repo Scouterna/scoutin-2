@@ -59,12 +59,14 @@ steps:
   - uses: base:markConfirmedCheckedIn
     required: true
 
-  # Placeholder text.
+  # Placeholder text. Delegates whose VoteIT grant went through also get a line
+  # about their voting rights (the expression language has no if/else, hence
+  # `cond && 'text' || ''`).
   - uses: base:message
     with:
       title:
         sv: Klart!
         en: Done!
       message:
-        sv: Du är incheckad. Hämta din namnskylt och följ skyltarna vidare.
-        en: You are checked in. Pick up your name badge and follow the signs.
+        sv: "Du är incheckad${{ (steps.voteit.outputs.status == 'granted' || steps.voteit.outputs.status == 'alreadyGranted') && ' och din rösträtt är registrerad' || '' }}. Hämta din namnskylt och följ skyltarna vidare."
+        en: "You are checked in${{ (steps.voteit.outputs.status == 'granted' || steps.voteit.outputs.status == 'alreadyGranted') && ' and your voting rights are registered' || '' }}. Pick up your name badge and follow the signs."

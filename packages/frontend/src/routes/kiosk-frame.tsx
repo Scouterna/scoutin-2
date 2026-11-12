@@ -1,6 +1,7 @@
 import {
   type PluginSocket,
   PluginSocketContext,
+  SessionRoleContext,
 } from "@scouterna/scoutin-plugin-api/frontend";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
@@ -79,8 +80,11 @@ function KioskFrame() {
   }
 
   return (
-    <PluginSocketContext.Provider value={pluginSocket}>
-      <screen.component payload={currentScreen.payload} />
-    </PluginSocketContext.Provider>
+    // Only the admin session overview embeds this frame, as staff.
+    <SessionRoleContext.Provider value="staff">
+      <PluginSocketContext.Provider value={pluginSocket}>
+        <screen.component payload={currentScreen.payload} />
+      </PluginSocketContext.Provider>
+    </SessionRoleContext.Provider>
   );
 }

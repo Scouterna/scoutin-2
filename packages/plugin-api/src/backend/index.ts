@@ -54,6 +54,13 @@ export type StepMethodContext<TState = Record<string, unknown>> = {
    */
   readonly language: string;
   /**
+   * The role of the connection whose message is being handled: `"kiosk"` for
+   * the kiosk itself, `"staff"` for staff who took over the session from the
+   * admin UI. Undefined when no connection is involved (for example a print job
+   * event). Check it in a public method that only staff may call.
+   */
+  readonly role: "kiosk" | "staff" | undefined;
+  /**
    * Changes the session language. Persists to the session and notifies the
    * client so its own strings switch too. Subsequent steps get their config
    * text resolved in the new language.

@@ -53,6 +53,7 @@ export function createStepContext(
     logger: getLogger(c),
     // A getter, not a captured value: `setLanguage()` can change this
     // mid-step, and the step may read it again afterwards.
+    role: c.get("wsRole"),
     get language() {
       return getStepMeta(sessionId)?.language ?? DEFAULT_LANGUAGE;
     },

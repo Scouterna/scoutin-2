@@ -25,10 +25,11 @@ vi.stubGlobal("fetch", fetchMock);
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status });
 
-function makeCtx() {
+function makeCtx(role: "kiosk" | "staff" = "staff") {
   const state: Record<string, unknown> = {};
   return {
     sessionId: "s1",
+    role,
     getInputs: () => ({ participantId: "p1" }),
     setState: (k: string, v: unknown) => {
       state[k] = v;
@@ -42,12 +43,18 @@ function makeCtx() {
     // biome-ignore lint/suspicious/noExplicitAny: minimal fake StepMethodContext for this test
   } as any;
 }
+// Attempts hold the working screen for a minimum time; fake timers skip it.
+async function settle(run: unknown) {
+  await vi.runAllTimersAsync();
+  await run;
+}
 const start = (ctx: ReturnType<typeof makeCtx>) =>
-  grantVoterRoleStep.hooks?.onStepStart?.(ctx);
+  settle(grantVoterRoleStep.hooks?.onStepStart?.(ctx));
 const call = (name: string, ctx: ReturnType<typeof makeCtx>) =>
-  grantVoterRoleStep.publicMethods?.[name].handler(ctx, undefined);
+  settle(grantVoterRoleStep.publicMethods?.[name].handler(ctx, undefined));
 
 beforeEach(() => {
+  vi.useFakeTimers();
   vi.resetAllMocks();
   vi.unstubAllEnvs();
   vi.stubEnv("VOTEIT_BASE_URL", "https://v.example");
@@ -61,6 +68,17 @@ async function failWith(ctx: ReturnType<typeof makeCtx>) {
 }
 
 describe("voteit:grantVoterRole", () => {
+  it("holds the working screen for at least two seconds", async () => {
+    fetchMock.mockResolvedValueOnce(json([mkInvite({ roles: ["pv"] })]));
+    const ctx = makeCtx();
+    const run = grantVoterRoleStep.hooks?.onStepStart?.(ctx);
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(ctx.setCompleted).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    await run;
+    expect(ctx.setCompleted).toHaveBeenCalledTimes(1);
+  });
+
   it("fails with notInvited on zero invites", async () => {
     fetchMock.mockResolvedValueOnce(json([]));
     const ctx = makeCtx();
@@ -87,7 +105,7 @@ describe("voteit:grantVoterRole", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("shows the granted screen for alreadyGranted without a POST", async () => {
+  it("completes right away for alreadyGranted without a POST", async () => {
     fetchMock.mockResolvedValueOnce(json([mkInvite({ roles: ["pa", "pv"] })]));
     const ctx = makeCtx();
     await start(ctx);
@@ -98,19 +116,14 @@ describe("voteit:grantVoterRole", () => {
         actor: null,
       }),
     );
-    expect(ctx.showScreen).toHaveBeenLastCalledWith("voteit:status", {
-      state: "granted",
-      result: "alreadyGranted",
-    });
-    expect(ctx.setCompleted).not.toHaveBeenCalled();
-    await call("continue", ctx);
+    expect(ctx.showScreen).toHaveBeenCalledTimes(1);
     expect(ctx.setCompleted).toHaveBeenCalledWith({
       status: "alreadyGranted",
       invitePk: 7,
     });
   });
 
-  it("grants, audits and writes result data, then completes on continue", async () => {
+  it("grants, audits, writes result data and completes right away", async () => {
     fetchMock
       .mockResolvedValueOnce(json([mkInvite()]))
       .mockResolvedValueOnce(json(mkInvite({ roles: ["pa", "pv"] })));
@@ -136,12 +149,7 @@ describe("voteit:grantVoterRole", () => {
       invitePk: 7,
       at: expect.any(String),
     });
-    expect(ctx.showScreen).toHaveBeenLastCalledWith("voteit:status", {
-      state: "granted",
-      result: "granted",
-    });
-    expect(ctx.setCompleted).not.toHaveBeenCalled();
-    await call("continue", ctx);
+    expect(ctx.showScreen).toHaveBeenCalledTimes(1);
     expect(ctx.setCompleted).toHaveBeenCalledWith({
       status: "granted",
       invitePk: 7,
@@ -195,11 +203,6 @@ describe("voteit:grantVoterRole", () => {
     await failWith(ctx);
     fetchMock.mockResolvedValueOnce(json([mkInvite({ roles: ["pv"] })]));
     await call("retry", ctx);
-    expect(ctx.showScreen).toHaveBeenLastCalledWith("voteit:status", {
-      state: "granted",
-      result: "alreadyGranted",
-    });
-    await call("continue", ctx);
     expect(ctx.setCompleted).toHaveBeenCalledWith({
       status: "alreadyGranted",
       invitePk: 7,
@@ -227,6 +230,15 @@ describe("voteit:grantVoterRole", () => {
     expect(ctx.setCompleted).toHaveBeenCalledWith({ status: "skipped" });
   });
 
+  it("ignores skip from the kiosk", async () => {
+    const ctx = makeCtx("kiosk");
+    await failWith(ctx);
+    await call("skip", ctx);
+    expect(recordAudit).not.toHaveBeenCalled();
+    expect(ctx.writeResultData).not.toHaveBeenCalled();
+    expect(ctx.setCompleted).not.toHaveBeenCalled();
+  });
+
   it("ignores retry and skip unless the step is failed", async () => {
     for (const attempt of [undefined, { status: "working" }]) {
       const ctx = makeCtx();
@@ -240,35 +252,13 @@ describe("voteit:grantVoterRole", () => {
     }
   });
 
-  it("ignores continue unless the step is granted", async () => {
-    const ctx = makeCtx();
-    await failWith(ctx);
-    for (const attempt of [
-      undefined,
-      { status: "working" },
-      ctx.state.attempt,
-    ]) {
-      ctx.state.attempt = attempt;
-      await call("continue", ctx);
-    }
-    expect(ctx.setCompleted).not.toHaveBeenCalled();
-  });
-
-  it("a second continue press completes only once", async () => {
-    fetchMock.mockResolvedValueOnce(json([mkInvite({ roles: ["pv"] })]));
-    const ctx = makeCtx();
-    await start(ctx);
-    await call("continue", ctx);
-    await call("continue", ctx);
-    expect(ctx.setCompleted).toHaveBeenCalledTimes(1);
-  });
-
   it("ignores retry and skip when granted", async () => {
     fetchMock.mockResolvedValueOnce(json([mkInvite({ roles: ["pv"] })]));
     const ctx = makeCtx();
     await start(ctx);
     fetchMock.mockClear();
     ctx.showScreen.mockClear();
+    ctx.setCompleted.mockClear();
     recordAudit.mockClear();
     await call("retry", ctx);
     await call("skip", ctx);

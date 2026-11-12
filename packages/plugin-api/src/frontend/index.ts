@@ -33,6 +33,20 @@ export function usePluginSocket(): PluginSocket | null {
   return useContext(PluginSocketContext);
 }
 
+/** Who is looking at the screen: the kiosk itself, or staff in the admin UI. */
+export type SessionRole = "kiosk" | "staff";
+
+export const SessionRoleContext = createContext<SessionRole>("kiosk");
+
+/**
+ * Whether the screen is shown on the kiosk or to staff. Use it to show staff-only
+ * actions; the step's method must still check `ctx.role`, since a kiosk can send
+ * any method call.
+ */
+export function useSessionRole(): SessionRole {
+  return useContext(SessionRoleContext);
+}
+
 export function usePluginMessage(
   name: string,
   handler: (payload: object) => void,
