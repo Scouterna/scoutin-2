@@ -1,9 +1,11 @@
+import { IdleContext } from "@scouterna/scoutin-plugin-api/frontend";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { showBackButton } from "@/components/kiosk/backButton";
 import { HeroLayout } from "@/components/kiosk/HeroLayout";
 import { IdleTimeout } from "@/components/kiosk/IdleTimeout";
+import { idleCountdownAtom } from "@/store/idle";
 import {
   currentScreenAtom,
   navigationAtom,
@@ -23,6 +25,7 @@ function RouteComponent() {
   const setCurrentScreen = useSetAtom(currentScreenAtom);
   const socket = useAtomValue(socketAtom);
   const navigation = useAtomValue(navigationAtom);
+  const idle = useAtomValue(idleCountdownAtom);
 
   const handleBackClick = useCallback(() => {
     if (screenHistory.length > 0) {
@@ -50,7 +53,9 @@ function RouteComponent() {
         }
         onBackClick={handleBackClick}
       >
-        <ScreenRenderer />
+        <IdleContext.Provider value={idle}>
+          <ScreenRenderer />
+        </IdleContext.Provider>
       </HeroLayout>
       <IdleTimeout />
     </>

@@ -35,6 +35,17 @@ export function usePluginSocket(): PluginSocket | null {
   return useContext(PluginSocketContext);
 }
 
+/**
+ * True while the kiosk asks whether anyone is still there (the idle countdown
+ * is showing). Use it to pause attention-grabbing animation behind the dialog.
+ * Always false outside the kiosk.
+ */
+export const IdleContext = createContext(false);
+
+export function useIsIdle(): boolean {
+  return useContext(IdleContext);
+}
+
 /** Who is looking at the screen: the kiosk itself, or staff in the admin UI. */
 export type SessionRole = "kiosk" | "staff";
 

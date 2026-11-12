@@ -1,5 +1,6 @@
 import {
   BottomSheet,
+  useIsIdle,
   usePluginMessage,
   usePluginSocket,
   useTranslations,
@@ -95,6 +96,7 @@ const Payload = type({
 export function StartScreen({ payload }: { payload: object }) {
   const socket = usePluginSocket();
   const t = useTranslations(dict);
+  const idle = useIsIdle();
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
   const [manualEntryValue, setManualEntryValue] = useState("");
   const [noResultsQuery, setNoResultsQuery] = useState<string | null>(null);
@@ -169,7 +171,12 @@ export function StartScreen({ payload }: { payload: object }) {
             <img
               src={pointerUrl}
               alt=""
-              className="h-40 w-auto rotate-180 animate-oscillate-vertical"
+              // The bounce pauses while the idle dialog asks whether anyone
+              // is there, and resumes where it left off.
+              className={cn(
+                "h-40 w-auto rotate-180 animate-oscillate-vertical",
+                idle && "[animation-play-state:paused]",
+              )}
             />
           </span>
         </div>

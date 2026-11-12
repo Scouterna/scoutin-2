@@ -73,6 +73,20 @@ body {
   color: var(--color-text-base);
 }
 
+/* The idle countdown ring: a circle with pathLength 100 drawn as one dash,
+   pushed out of view over the countdown. Outside @theme, because Tailwind
+   leaves out theme keyframes that no animate-* class uses, and this one is set
+   from an inline style. */
+@keyframes countdown-ring {
+  from {
+    stroke-dashoffset: 0;
+  }
+
+  to {
+    stroke-dashoffset: 100;
+  }
+}
+
 @theme {
   --animate-oscillate-vertical: oscillate-vertical 1.5s ease-in-out infinite;
   --animate-oscillate-horizontal: oscillate-horizontal 1.5s ease-in-out infinite;
