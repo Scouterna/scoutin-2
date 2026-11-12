@@ -1,20 +1,8 @@
 import Chip from "@mui/material/Chip";
 import Tooltip from "@mui/material/Tooltip";
+import { printerStateLabels as stateLabels } from "./printerStateLabels";
 
 type ChipColor = "default" | "success" | "info" | "warning" | "error";
-
-const stateLabels: Record<string, string> = {
-  ready: "Redo",
-  printing: "Skriver ut",
-  media_out: "Slut på etiketter",
-  head_open: "Skrivhuvudet är öppet",
-  paused: "Pausad",
-  inhibited: "Spärrad",
-  error: "Fel",
-  unresponsive: "Svarar inte",
-  offline: "Offline",
-  connecting: "Ansluter",
-};
 
 const stateColors: Record<string, ChipColor> = {
   ready: "success",

@@ -20,7 +20,11 @@ export const currentScreenAtom = atom<CurrentScreen | null>(null);
 export const screenHistoryAtom = atom<CurrentScreen[]>([]);
 
 export type SessionInfo = {
-  actor: { firstName: string; lastName: string } | null;
+  actor: {
+    firstName: string;
+    lastName: string;
+    idInDataSource: string;
+  } | null;
 };
 
 export const sessionInfoAtom = atom<SessionInfo | null>(null);

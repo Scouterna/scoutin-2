@@ -52,6 +52,7 @@ Nobody. (Format: `- <who>: <what> (<doc or file>)`)
 
 ## Recently done
 
+- Kiosk diagnostics menu: 10 quick taps in the top-right corner show kiosk, session (id, screen, actor + idInDataSource), connection and print pool/printer states, with a reload button. Read-only, no auth; backed by `GET /api/kiosk/me` (kiosk key). Tests, tsc, Biome pass; not checked in a browser.
 - Fix: `base:script` now declares its `result` output (core keeps only declared outputs, so `printBadges` got `values: null`), and errors from the next step are no longer labeled as script errors (`8b9009f`).
 - `voteit:grantVoterRole` (`plugins/voteit`): looks up the delegate's invite by `member_id`, grants `pv` with `add-roles`, checks the response, audits; on failure a kiosk screen with retry or skip (audited, recorded on the participant). Spec rewritten around the finished token API (docs/voteit-integration-spec.md); in the DJ26 step config for delegates. 22 tests, typechecks, Biome pass; read-only calls against test meeting 81 match. Uncommitted.
 - Data import now also runs once at boot (in the background, skipped when `DATA_IMPORT_INTERVAL_MS=0`), so a fresh deploy has data right away (`packages/backend/src/index.ts`).

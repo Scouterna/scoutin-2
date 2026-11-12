@@ -49,7 +49,11 @@ export const messageTypes = createMessageRegistry()
   .register(
     "session:info",
     type({
-      "actor?": type({ firstName: "string", lastName: "string" }).or("null"),
+      "actor?": type({
+        firstName: "string",
+        lastName: "string",
+        idInDataSource: "string",
+      }).or("null"),
       // The session language, so the client can localize its own strings.
       "language?": "string",
     }),

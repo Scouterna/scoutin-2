@@ -120,3 +120,34 @@ export async function listKiosks() {
     orderBy: { createdAt: "desc" },
   });
 }
+
+/**
+ * What the kiosk's diagnostics menu shows: its name and the print pool its
+ * sessions print to, with each printer's state and the badges waiting.
+ */
+export async function getKioskInfo(id: string) {
+  const kiosk = await prisma.kiosk.findUnique({
+    where: { id },
+    select: {
+      name: true,
+      printPool: {
+        select: {
+          name: true,
+          printers: {
+            select: { serial: true, name: true, state: true },
+            orderBy: { serial: "asc" },
+          },
+          _count: { select: { jobs: { where: { state: "queued" } } } },
+        },
+      },
+    },
+  });
+  if (!kiosk) return null;
+  const pool = kiosk.printPool;
+  return {
+    name: kiosk.name,
+    printPool: pool
+      ? { name: pool.name, printers: pool.printers, queued: pool._count.jobs }
+      : null,
+  };
+}

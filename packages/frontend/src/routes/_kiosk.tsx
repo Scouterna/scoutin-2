@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { KioskInfoMenu } from "../components/kiosk/KioskInfoMenu";
 import { SocketLoader } from "../socket/SocketLoader";
 
 export const Route = createFileRoute("/_kiosk")({
@@ -23,8 +24,11 @@ function RouteComponent() {
   if (!loaded) return null;
 
   return (
-    <SocketLoader>
-      <Outlet />
-    </SocketLoader>
+    <>
+      <SocketLoader>
+        <Outlet />
+      </SocketLoader>
+      <KioskInfoMenu />
+    </>
   );
 }

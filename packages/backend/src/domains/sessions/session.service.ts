@@ -215,6 +215,7 @@ export async function sendSessionInfo(
         ? {
             firstName: session.actor.participant.firstName,
             lastName: session.actor.participant.lastName,
+            idInDataSource: session.actor.participant.idInDataSource,
           }
         : null,
       language: coerceLanguage(session?.language),
