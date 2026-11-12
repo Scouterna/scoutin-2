@@ -23,6 +23,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { api } from "@/api/api";
+import { copyText } from "@/lib/clipboard";
 import { assertAdmin } from "@/lib/user-context";
 
 export const Route = createFileRoute("/admin/links")({
@@ -32,8 +33,8 @@ export const Route = createFileRoute("/admin/links")({
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
-  function handleCopy() {
-    navigator.clipboard.writeText(text);
+  async function handleCopy() {
+    if (!(await copyText(text))) return;
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }

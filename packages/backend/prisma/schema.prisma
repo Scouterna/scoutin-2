@@ -381,3 +381,20 @@ model PrintJobEvent {
 
   @@index([jobId, at])
 }
+
+// A key another system uses to call /api/public. Only the hash is stored.
+model ApiKey {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  // First characters of the key ("sci_ab12cd34"), shown in the admin list so
+  // staff can tell keys apart. Not secret.
+  prefix      String
+  keyHash     String    @unique
+  // Permission strings from API_PERMISSIONS (see 3).
+  permissions String[]
+  // Admin username who created it.
+  createdBy   String?
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+}

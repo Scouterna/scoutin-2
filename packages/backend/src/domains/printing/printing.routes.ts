@@ -7,6 +7,7 @@ import { getConnInfo } from "@hono/node-server/conninfo";
 import { type } from "arktype";
 import { Hono } from "hono";
 import config from "../../config/config.ts";
+import { readBearerToken } from "../../core/auth/secrets.ts";
 import { getLogger } from "../../core/logging/logger.ts";
 import type { AppEnv } from "../../core/websocket/types.ts";
 import { pollEnrollment, startEnrollment } from "./enrollment.service.ts";
@@ -43,7 +44,7 @@ export const printingRouter = new Hono<AppEnv>()
     return c.json(result, 201);
   })
   .get("/enroll/:id", (c) => {
-    const secret = c.req.header("authorization")?.match(/^Bearer (.+)$/)?.[1];
+    const secret = readBearerToken(c.req.header("authorization"));
     if (!secret) return c.json({ error: "missing secret" }, 401);
     const result = pollEnrollment(c.req.param("id"), secret);
     if (result === "not_found") return c.json({ error: "not found" }, 404);

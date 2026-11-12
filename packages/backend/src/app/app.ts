@@ -11,6 +11,7 @@ import { ensureDefaultAdmin } from "../domains/auth/user.service.ts";
 import { kiosksRouter } from "../domains/kiosks/kiosks.routes.ts";
 import { printingRouter } from "../domains/printing/printing.routes.ts";
 import { printRelaySocket } from "../domains/printing/relay.socket.ts";
+import { publicApiRouter } from "../domains/publicApi/publicApi.routes.ts";
 import { sessionRouter } from "../domains/sessions/session.routes.ts";
 import { sessionSocket } from "../domains/sessions/session.socket.ts";
 import { stepRouter } from "../domains/workflows/step.routes.ts";
@@ -101,6 +102,7 @@ const routes = app
   .route("/api/admin/auth", authRouter)
   .route("/api/admin", adminRouter)
   .route("/api/kiosk", kiosksRouter)
+  .route("/api/public/v1", publicApiRouter)
   .route("/api/print-relays", printingRouter)
   .route("/ws/print-relay", printRelaySocket(upgradeWebSocket))
   .route("/ws/session", sessionSocket(upgradeWebSocket));

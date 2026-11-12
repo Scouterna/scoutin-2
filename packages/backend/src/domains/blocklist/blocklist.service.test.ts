@@ -30,6 +30,7 @@ vi.mock("../../app/prisma.ts", () => ({
 
 vi.mock("../../config/config.ts", () => ({
   default: {
+    DATASOURCE_CONFIG: "dataSourceConfig.yml",
     DATASOURCE_HASHING_SECRET: "test-secret",
     DATASOURCE_HASHING_SALT: "test-salt",
     BLOCKLIST_HASHING_SECRET: "test-blocklist-secret",

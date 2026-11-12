@@ -27,6 +27,7 @@ import { Route as AdminKiosksRouteImport } from './routes/admin/kiosks'
 import { Route as AdminJobsRouteImport } from './routes/admin/jobs'
 import { Route as AdminCheckinRouteImport } from './routes/admin/checkin'
 import { Route as AdminBlocklistRouteImport } from './routes/admin/blocklist'
+import { Route as AdminApiKeysRouteImport } from './routes/admin/api-keys'
 import { Route as KioskTestRouteImport } from './routes/_kiosk/test'
 import { Route as AdminSessionsIndexRouteImport } from './routes/admin/sessions.index'
 import { Route as AdminSessionsSessionIdRouteImport } from './routes/admin/sessions.$sessionId'
@@ -120,6 +121,11 @@ const AdminBlocklistRoute = AdminBlocklistRouteImport.update({
   path: '/blocklist',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminApiKeysRoute = AdminApiKeysRouteImport.update({
+  id: '/api-keys',
+  path: '/api-keys',
+  getParentRoute: () => AdminRoute,
+} as any)
 const KioskTestRoute = KioskTestRouteImport.update({
   id: '/test',
   path: '/test',
@@ -142,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/kiosk-frame': typeof KioskFrameRoute
   '/setup': typeof SetupRoute
   '/test': typeof KioskTestRoute
+  '/admin/api-keys': typeof AdminApiKeysRoute
   '/admin/blocklist': typeof AdminBlocklistRoute
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/jobs': typeof AdminJobsRoute
@@ -162,6 +169,7 @@ export interface FileRoutesByTo {
   '/kiosk-frame': typeof KioskFrameRoute
   '/setup': typeof SetupRoute
   '/test': typeof KioskTestRoute
+  '/admin/api-keys': typeof AdminApiKeysRoute
   '/admin/blocklist': typeof AdminBlocklistRoute
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/jobs': typeof AdminJobsRoute
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   '/kiosk-frame': typeof KioskFrameRoute
   '/setup': typeof SetupRoute
   '/_kiosk/test': typeof KioskTestRoute
+  '/admin/api-keys': typeof AdminApiKeysRoute
   '/admin/blocklist': typeof AdminBlocklistRoute
   '/admin/checkin': typeof AdminCheckinRoute
   '/admin/jobs': typeof AdminJobsRoute
@@ -210,6 +219,7 @@ export interface FileRouteTypes {
     | '/kiosk-frame'
     | '/setup'
     | '/test'
+    | '/admin/api-keys'
     | '/admin/blocklist'
     | '/admin/checkin'
     | '/admin/jobs'
@@ -230,6 +240,7 @@ export interface FileRouteTypes {
     | '/kiosk-frame'
     | '/setup'
     | '/test'
+    | '/admin/api-keys'
     | '/admin/blocklist'
     | '/admin/checkin'
     | '/admin/jobs'
@@ -252,6 +263,7 @@ export interface FileRouteTypes {
     | '/kiosk-frame'
     | '/setup'
     | '/_kiosk/test'
+    | '/admin/api-keys'
     | '/admin/blocklist'
     | '/admin/checkin'
     | '/admin/jobs'
@@ -406,6 +418,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBlocklistRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/api-keys': {
+      id: '/admin/api-keys'
+      path: '/api-keys'
+      fullPath: '/admin/api-keys'
+      preLoaderRoute: typeof AdminApiKeysRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/_kiosk/test': {
       id: '/_kiosk/test'
       path: '/test'
@@ -457,6 +476,7 @@ const AdminSessionsRouteWithChildren = AdminSessionsRoute._addFileChildren(
 )
 
 interface AdminRouteChildren {
+  AdminApiKeysRoute: typeof AdminApiKeysRoute
   AdminBlocklistRoute: typeof AdminBlocklistRoute
   AdminCheckinRoute: typeof AdminCheckinRoute
   AdminJobsRoute: typeof AdminJobsRoute
@@ -472,6 +492,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminApiKeysRoute: AdminApiKeysRoute,
   AdminBlocklistRoute: AdminBlocklistRoute,
   AdminCheckinRoute: AdminCheckinRoute,
   AdminJobsRoute: AdminJobsRoute,

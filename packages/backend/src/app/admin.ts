@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../core/websocket/types.ts";
+import { apiKeysAdminRouter } from "../domains/apiKeys/apiKeys.admin.routes.ts";
 import { requireAdmin, requireStaff } from "../domains/auth/auth.service.ts";
 import { usersAdminRouter } from "../domains/auth/users.admin.routes.ts";
 import { blocklistAdminRouter } from "../domains/blocklist/blocklist.admin.routes.ts";
@@ -26,6 +27,7 @@ export const adminRouter = new Hono<AppEnv>()
   .use("/jobs/*", requireAdmin)
   .use("/participants/reimport", requireAdmin)
   .use("/printing/*", requireAdmin)
+  .use("/api-keys/*", requireAdmin)
   .get("/me", (c) => c.json({ authenticated: true, user: c.get("user") }))
   .route("/users", usersAdminRouter)
   .route("/sessions", sessionsAdminRouter)
@@ -35,4 +37,5 @@ export const adminRouter = new Hono<AppEnv>()
   .route("/jobs", jobsAdminRouter)
   .route("/reports", reportsAdminRouter)
   .route("/blocklist", blocklistAdminRouter)
-  .route("/printing", printingAdminRouter);
+  .route("/printing", printingAdminRouter)
+  .route("/api-keys", apiKeysAdminRouter);

@@ -5,13 +5,13 @@
 // backend instance. A restart forgets them; the relay's next poll gets a 404
 // and it starts over with new colors.
 import {
-  createHash,
   randomBytes,
   randomInt,
   randomUUID,
   timingSafeEqual,
 } from "node:crypto";
 import { prisma } from "../../app/prisma.ts";
+import { hashSecret } from "../../core/auth/secrets.ts";
 import type { PrinterInfo } from "./protocol.ts";
 
 // The colors that read clearly on the desk LEDs. The relay knows the
@@ -33,10 +33,6 @@ const ENROLLMENT_TTL_MS = 5 * 60 * 1000;
 const MAX_PENDING = 20;
 const MAX_PER_IP = 10;
 const PER_IP_WINDOW_MS = 10 * 60 * 1000;
-
-export function hashSecret(secret: string): string {
-  return createHash("sha256").update(secret).digest("hex");
-}
 
 function newKey(): string {
   return randomBytes(32).toString("hex");

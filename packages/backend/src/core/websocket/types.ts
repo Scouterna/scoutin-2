@@ -1,5 +1,6 @@
 import type { createNodeWebSocket } from "@hono/node-ws";
 import type { Context } from "hono";
+import type { ApiPermission } from "../../domains/apiKeys/apiKeys.service.ts";
 import type { AppUser } from "../../domains/auth/auth.service.ts";
 import type { SessionRole } from "../../domains/sessions/tokens.ts";
 import type { Logger } from "../logging/logger.ts";
@@ -31,6 +32,8 @@ export type AppEnv = {
     user?: AppUser;
     /** The print relay authenticated on a /ws/print-relay upgrade. */
     printRelayId?: string;
+    /** The API key authenticated by requireApiKey on /api/public. */
+    apiKey?: { id: string; name: string; permissions: ApiPermission[] };
   };
 };
 

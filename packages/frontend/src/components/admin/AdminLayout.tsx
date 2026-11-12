@@ -14,6 +14,7 @@ import {
   Route as RouteIcon,
   Schedule as ScheduleIcon,
   Tune as TuneIcon,
+  VpnKey as VpnKeyIcon,
 } from "@mui/icons-material";
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
@@ -55,6 +56,7 @@ function isAdvancedPath(pathname: string): boolean {
     "/admin/links",
     "/admin/blocklist",
     "/admin/users",
+    "/admin/api-keys",
     "/admin/template-studio",
   ].some((path) => pathname.startsWith(path));
 }
@@ -292,6 +294,18 @@ export function AdminLayout({ children }: Props) {
                         <ManageAccountsIcon />
                       </ListItemIcon>
                       <ListItemText primary="Användare" />
+                    </ListItemButtonLink>
+                  </ListItem>
+                  <ListItem disablePadding>
+                    <ListItemButtonLink
+                      to={"/admin/api-keys"}
+                      activeProps={{ selected: true }}
+                      sx={{ pl: 4 }}
+                    >
+                      <ListItemIcon>
+                        <VpnKeyIcon />
+                      </ListItemIcon>
+                      <ListItemText primary="API-nycklar" />
                     </ListItemButtonLink>
                   </ListItem>
                 </>

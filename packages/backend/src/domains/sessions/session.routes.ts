@@ -1,15 +1,15 @@
 import { Hono } from "hono";
 import { prisma } from "../../app/prisma.ts";
+import { readBearerToken } from "../../core/auth/secrets.ts";
 import { authenticateKioskKey } from "../kiosks/kiosk.service.ts";
 import { createSession, createSessionToken } from "./session.service.ts";
 
 export const sessionRouter = new Hono()
   .post("/", async (c) => {
-    const authHeader = c.req.header("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
+    const key = readBearerToken(c.req.header("Authorization"));
+    if (!key) {
       return c.json({ error: "Unauthorized" }, 401);
     }
-    const key = authHeader.slice(7);
     const kioskId = await authenticateKioskKey(key);
     if (!kioskId) {
       return c.json({ error: "Unauthorized" }, 401);

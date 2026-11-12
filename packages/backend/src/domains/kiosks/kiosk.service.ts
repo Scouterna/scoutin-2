@@ -1,5 +1,6 @@
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { prisma } from "../../app/prisma.ts";
+import { hashSecret } from "../../core/auth/secrets.ts";
 import { logger } from "../../core/logging/logger.ts";
 import { PrismaClientKnownRequestError } from "../../generated/prisma/internal/prismaNamespace.ts";
 
@@ -15,10 +16,6 @@ function generateSetupCode(): string {
   const bytes = randomBytes(8);
   const chars = Array.from(bytes, (b) => CODE_CHARS[b % CODE_CHARS.length]);
   return `${chars.slice(0, 4).join("")}-${chars.slice(4).join("")}`;
-}
-
-function hashKey(key: string): string {
-  return createHash("sha256").update(key).digest("hex");
 }
 
 export async function createKioskSetupToken() {
@@ -44,7 +41,7 @@ export async function activateKiosk(rawCode: string, name: string) {
     return { success: false, error: "Code expired" } as const;
 
   const key = randomBytes(32).toString("hex");
-  const keyHash = hashKey(key);
+  const keyHash = hashSecret(key);
 
   const kiosk = await prisma.$transaction(async (tx) => {
     const kiosk = await tx.kiosk.create({
@@ -67,7 +64,7 @@ export async function activateKiosk(rawCode: string, name: string) {
 export async function authenticateKioskKey(
   key: string,
 ): Promise<string | null> {
-  const keyHash = hashKey(key);
+  const keyHash = hashSecret(key);
   try {
     const kiosk = await prisma.kiosk.update({
       where: { keyHash },

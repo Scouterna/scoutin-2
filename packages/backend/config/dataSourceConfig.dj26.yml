@@ -37,6 +37,13 @@ dataSources:
             role:
               choice: "74291"
               question: "111280"
+    # What the public API returns under `fields` for a participant.
+    publicApi:
+      fields:
+        lunchSaturday: ${{ participant.metadata.badge.lunchSaturday }}
+        lunchSunday: ${{ participant.metadata.badge.lunchSunday }}
+        dinnerSaturday: ${{ participant.metadata.badge.dinnerSaturday }}
+        dinnerSeating: ${{ participant.metadata.badge.dinnerSeating }}
     subGroups:
       delegate:
         name:

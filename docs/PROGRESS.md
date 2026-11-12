@@ -13,7 +13,7 @@ sessions. Read it before you start, update it before you finish.
 - Detail belongs in the linked docs, not here. Keep this file short; trim **Recently
   done** to about ten lines.
 
-Last updated: 2026-11-09.
+Last updated: 2026-11-11.
 
 ## Now
 
@@ -53,6 +53,7 @@ Nobody. (Format: `- <who>: <what> (<doc or file>)`)
 ## Recently done
 
 - Kiosk diagnostics menu: 10 quick taps in the top-right corner show kiosk, session (id, screen, actor + idInDataSource), connection and print pool/printer states, with a reload button. Read-only, no auth; backed by `GET /api/kiosk/me` (kiosk key). Tests, tsc, Biome pass; not checked in a browser.
+- Public API + API keys (docs/public-api-spec.md): `ApiKey` table + migration, admin CRUD/revoke at `/api/admin/api-keys` and the "API-nycklar" page, `GET /api/public/v1/data-sources/:dataSource/participants/:idInDataSource` (`checkinStatus`, `subGroup`, config-driven `fields`; DJ26 meals), audit per request, OpenAPI at `/api/public/v1/openapi.json` (hono-openapi), shared `core/auth/secrets.ts`. Also fixed 3 test files broken since `7bac2c6` (missing `DATASOURCE_CONFIG` in mocks). tsc, 307 backend + 97 frontend tests, Biome on changed files pass. Not booted against a real DB. Uncommitted.
 - Fix: `base:script` now declares its `result` output (core keeps only declared outputs, so `printBadges` got `values: null`), and errors from the next step are no longer labeled as script errors (`8b9009f`).
 - `voteit:grantVoterRole` (`plugins/voteit`): looks up the delegate's invite by `member_id`, grants `pv` with `add-roles`, checks the response, audits; on failure a kiosk screen with retry or skip (audited, recorded on the participant). Spec rewritten around the finished token API (docs/voteit-integration-spec.md); in the DJ26 step config for delegates. 22 tests, typechecks, Biome pass; read-only calls against test meeting 81 match. Uncommitted.
 - Data import now also runs once at boot (in the background, skipped when `DATA_IMPORT_INTERVAL_MS=0`), so a fresh deploy has data right away (`packages/backend/src/index.ts`).
@@ -76,6 +77,7 @@ Nobody. (Format: `- <who>: <what> (<doc or file>)`)
 
 ## Where the detail is
 
+- Public API and API keys: `docs/public-api-spec.md`.
 - Relay, wire protocol and the `printer:print` step: `docs/printer-proxy-spec.md`.
 - Barrier and lock: `docs/step-navigation-spec.md`.
 - Template authoring and the studio: `docs/printing-templates.md`.

@@ -63,6 +63,20 @@ function addTo(counts: StatusCounts, bucket: StatusBucket) {
 }
 
 /**
+ * The check-in part of the classification, shared by the roster report and the
+ * public API: confirmed (the value the Scoutnet write-back pushes) wins over
+ * preliminary, else missing.
+ */
+export function checkinStatus(p: {
+  confirmedCheckedInAt: Date | null;
+  preliminaryCheckedInAt: Date | null;
+}): "confirmed" | "preliminaryOnly" | "missing" {
+  if (p.confirmedCheckedInAt != null) return "confirmed";
+  if (p.preliminaryCheckedInAt != null) return "preliminaryOnly";
+  return "missing";
+}
+
+/**
  * Single, mutually-exclusive precedence so the five buckets are disjoint and
  * sum to `total`: cancelled/import-errored participants are surfaced *for*
  * staff (mirroring getSessionContext's deliberate filter-bypass) rather than
@@ -77,9 +91,7 @@ function classifyParticipant(p: {
 }): StatusBucket {
   if (p.deletedAt != null) return "cancelled";
   if (hasImportErrors(p.importErrors)) return "importError";
-  if (p.confirmedCheckedInAt != null) return "confirmed";
-  if (p.preliminaryCheckedInAt != null) return "preliminaryOnly";
-  return "missing";
+  return checkinStatus(p);
 }
 
 export type MemberRow = {

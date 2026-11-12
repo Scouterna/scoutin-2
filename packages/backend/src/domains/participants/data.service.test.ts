@@ -25,6 +25,7 @@ vi.mock("../../app/prisma.ts", () => ({
 // Kept mutable so individual tests can flip flags like DRY_RUN; reset in
 // beforeEach.
 const mockConfig = vi.hoisted(() => ({
+  DATASOURCE_CONFIG: "dataSourceConfig.yml",
   DATASOURCE_HASHING_SECRET: "test-secret",
   DATASOURCE_HASHING_SALT: "test-salt",
   BLOCKLIST_HASHING_SECRET: "test-blocklist-secret",

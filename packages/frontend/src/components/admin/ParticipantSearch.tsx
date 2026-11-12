@@ -31,6 +31,7 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/api/api";
+import { copyText } from "@/lib/clipboard";
 import { showErrorToast } from "@/lib/errors";
 import {
   STATUS_COLORS,
@@ -106,14 +107,10 @@ function CopyMemberNumberButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // Clipboard write can fail without a secure context or user gesture; the
-      // user can always select the text manually, so we don't surface an error.
-    }
+    // On failure the user can still select the text, so no error is shown.
+    if (!(await copyText(value))) return;
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
   };
 
   return (

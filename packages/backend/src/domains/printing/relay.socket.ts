@@ -11,6 +11,7 @@ import { Hono } from "hono";
 import type { WSContext } from "hono/ws";
 import { prisma } from "../../app/prisma.ts";
 import config from "../../config/config.ts";
+import { hashSecret, readBearerToken } from "../../core/auth/secrets.ts";
 import { logger } from "../../core/logging/logger.ts";
 import type { AppEnv, UpgradeWebSocket } from "../../core/websocket/types.ts";
 import {
@@ -20,7 +21,6 @@ import {
   type RelayLink,
   withdraw,
 } from "./dispatch.service.ts";
-import { hashSecret } from "./enrollment.service.ts";
 import { requeue, requeueLeased, transition } from "./jobs.service.ts";
 import {
   type PrinterActionKind,
@@ -113,7 +113,7 @@ export function printRelaySocket(upgradeWebSocket: UpgradeWebSocket) {
 async function authenticateRelay(
   authorization: string | undefined,
 ): Promise<string | null> {
-  const key = authorization?.match(/^Bearer (.+)$/)?.[1];
+  const key = readBearerToken(authorization);
   if (!key) return null;
   const relay = await prisma.printRelay.findUnique({
     where: { keyHash: hashSecret(key) },
