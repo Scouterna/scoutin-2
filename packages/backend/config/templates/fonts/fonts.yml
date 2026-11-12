@@ -1,0 +1,18 @@
+- { file: Inter_24pt-Thin.ttf, family: Inter, weight: 100 }
+- { file: Inter_24pt-ThinItalic.ttf, family: Inter, weight: 100, style: italic }
+- { file: Inter_24pt-ExtraLight.ttf, family: Inter, weight: 200 }
+- { file: Inter_24pt-ExtraLightItalic.ttf, family: Inter, weight: 200, style: italic }
+- { file: Inter_24pt-Light.ttf, family: Inter, weight: 300 }
+- { file: Inter_24pt-LightItalic.ttf, family: Inter, weight: 300, style: italic }
+- { file: Inter_24pt-Regular.ttf, family: Inter, weight: 400 }
+- { file: Inter_24pt-Italic.ttf, family: Inter, weight: 400, style: italic }
+- { file: Inter_24pt-Medium.ttf, family: Inter, weight: 500 }
+- { file: Inter_24pt-MediumItalic.ttf, family: Inter, weight: 500, style: italic }
+- { file: Inter_24pt-SemiBold.ttf, family: Inter, weight: 600 }
+- { file: Inter_24pt-SemiBoldItalic.ttf, family: Inter, weight: 600, style: italic }
+- { file: Inter_24pt-Bold.ttf, family: Inter, weight: 700 }
+- { file: Inter_24pt-BoldItalic.ttf, family: Inter, weight: 700, style: italic }
+- { file: Inter_24pt-ExtraBold.ttf, family: Inter, weight: 800 }
+- { file: Inter_24pt-ExtraBoldItalic.ttf, family: Inter, weight: 800, style: italic }
+- { file: Inter_24pt-Black.ttf, family: Inter, weight: 900 }
+- { file: Inter_24pt-BlackItalic.ttf, family: Inter, weight: 900, style: italic }
