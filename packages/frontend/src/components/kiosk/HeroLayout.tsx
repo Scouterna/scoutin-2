@@ -111,7 +111,7 @@ export function HeroLayout({
           !progressed ? "duration-700 delay-700" : "opacity-0 duration-300",
         )}
       >
-        0.0.0
+        {import.meta.env.VITE_APP_VERSION ?? "dev"}
       </div>
       <div
         className={cn(

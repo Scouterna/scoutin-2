@@ -32,7 +32,10 @@ RUN DATABASE_URL=postgresql://build-placeholder \
     pnpm --filter @scouterna/scoutin-backend exec prisma generate
 
 # Build the frontend SPA → packages/frontend/dist/
-RUN VITE_API_URL=/ pnpm --filter frontend exec vite build && \
+# APP_VERSION is shown on the kiosk start screen: the tag for a tag build,
+# otherwise <branch>-<short sha>. Set in build-image.yml.
+ARG APP_VERSION=dev
+RUN VITE_API_URL=/ VITE_APP_VERSION=$APP_VERSION pnpm --filter frontend exec vite build && \
     pnpm --filter frontend exec tsc
 
 # Compile plugin backend TypeScript to JS so pnpm deploy can include them
