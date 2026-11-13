@@ -106,16 +106,20 @@ steps:
   - uses: base:markConfirmedCheckedIn
     required: true
 
-  # Placeholder text. Delegates whose VoteIT grant went through also get a line
-  # about their voting rights.
-  - uses: base:message
+  # Final screen: tells the participant which station to pick up their badge at
+  # (or to go to the check-in desk when no station fits). Delegates whose VoteIT
+  # grant went through also get a line about their voting rights.
+  - uses: jamboree26:pickupStation
     with:
+      participantType: ${{ session.subjects[0].subGroup }}
+      lastName: ${{ session.subjects[0].lastName }}
+      delegateNumber: ${{ session.subjects[0].metadata.badge.delegateNumber }}
       title:
         sv: Klart!
         en: Done!
       message:
-        sv: "Du är incheckad${{ case(steps.voteit.outputs.status == 'granted' || steps.voteit.outputs.status == 'alreadyGranted', ' och din rösträtt är registrerad', '') }}. Hämta din namnskylt och följ skyltarna vidare."
-        en: "You are checked in${{ case(steps.voteit.outputs.status == 'granted' || steps.voteit.outputs.status == 'alreadyGranted', ' and your voting rights are registered', '') }}. Pick up your name badge and follow the signs."
+        sv: "Du är incheckad${{ case(steps.voteit.outputs.status == 'granted' || steps.voteit.outputs.status == 'alreadyGranted', ' och din rösträtt är registrerad', '') }}."
+        en: "You are checked in${{ case(steps.voteit.outputs.status == 'granted' || steps.voteit.outputs.status == 'alreadyGranted', ' and your voting rights are registered', '') }}."
       buttonText:
         sv: "OK"
         en: "OK"
