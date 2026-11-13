@@ -908,6 +908,15 @@ badge-fanfold:
   device.languages: epl_zpl         # the factory default
 ```
 
+The server loads `config/printerProfiles.yml` once at startup. A missing file
+means no profiles. An invalid file (a non-string value, a setting name or value
+that isn't safe to put in an SGD command, `device.languages` without `zpl`)
+means none of its profiles load and an error is logged. A bad file never stops
+the server. `GET /api/admin/printing/profiles` lists the loaded profiles and any
+problems. The `applyProfile` action takes an optional `profile` name and
+otherwise uses the printer's pool's profile; admin can't send free-form
+settings.
+
 Network, Bluetooth and language changes only take effect after a printer restart
 (`! U1 do "device.reset" ""`), so applying a profile ends with one when any of them
 changed. The restart is soft (the printer comes back by itself), and with

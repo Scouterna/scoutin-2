@@ -28,6 +28,16 @@ async function main() {
     { templates: listTemplates().map((t) => t.name) },
     "Templates loaded",
   );
+  // A missing or broken profiles file never stops the server: loadProfiles
+  // reports problems instead of throwing.
+  const { loadProfiles } = await import(
+    "./domains/printing/profiles.service.ts"
+  );
+  const profilesStatus = await loadProfiles(undefined, {
+    warn: (m) => logger.warn(m),
+    error: (m) => logger.error(m),
+  });
+  logger.info({ profiles: profilesStatus.loaded }, "Printer profiles loaded");
   const { startPlugins } = await import("./domains/workflows/steps.ts");
   await startPlugins();
   const { startDispatch, stopDispatch } = await import(

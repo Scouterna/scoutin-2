@@ -38,6 +38,11 @@ import {
   updatePrinter,
 } from "./printers.service.ts";
 import { printingDevRouter } from "./printing.dev.routes.ts";
+import {
+  getProfile,
+  getProfileStatus,
+  listProfiles,
+} from "./profiles.service.ts";
 import type { PrinterActionResult, RelayActionResult } from "./protocol.ts";
 import {
   printerAction,
@@ -60,7 +65,9 @@ const NameBody = type({ name: "string > 0" });
 const RelayActionBody = type({ kind: "'reboot' | 'poweroff'" });
 const PrinterActionBody = type({
   kind: "'applyProfile' | 'calibrate' | 'cancelBuffer'",
-  "settings?": { "[string]": "string" },
+  // Only a named profile can be applied: the server never forwards settings
+  // it didn't validate itself.
+  "profile?": "string > 0",
 });
 const PrinterPatch = type({
   "name?": "string | null",
@@ -252,21 +259,60 @@ export const printingAdminRouter = new Hono<AppEnv>()
     arktypeValidator("json", PrinterActionBody),
     async (c) => {
       const body = c.req.valid("json");
-      if (body.kind === "applyProfile" && !body.settings) {
-        return c.json({ error: "applyProfile needs settings" }, 400);
-      }
       const printer = await getPrinter(c.req.param("id"));
       if (!printer) return c.json({ error: "Printer not found" }, 404);
+
+      if (body.kind !== "applyProfile") {
+        if (body.profile !== undefined) {
+          return c.json({ error: "profile only applies to applyProfile" }, 400);
+        }
+        const kind = body.kind;
+        return runAction(
+          c,
+          `printing.printer.${kind}`,
+          { printerId: printer.id },
+          () => printerAction(printer.serial, kind),
+        );
+      }
+
+      const name = body.profile ?? printer.pool?.profile;
+      if (!name) {
+        return c.json(
+          {
+            error: printer.pool
+              ? "The printer's pool has no profile; pick a profile to apply"
+              : "The printer has no pool, so there is no profile to apply; pick a profile",
+          },
+          400,
+        );
+      }
+      const settings = getProfile(name);
+      if (!settings) {
+        const { problems } = getProfileStatus();
+        return c.json(
+          {
+            error:
+              `Unknown printer profile "${name}"` +
+              (problems.length > 0
+                ? `. The profiles file has problems: ${problems.join(" ")}`
+                : ""),
+          },
+          400,
+        );
+      }
       return runAction(
         c,
-        `printing.printer.${body.kind}`,
-        { printerId: printer.id },
-        () => printerAction(printer.serial, body.kind, body.settings),
+        "printing.printer.applyProfile",
+        { printerId: printer.id, profile: name },
+        () => printerAction(printer.serial, "applyProfile", settings),
       );
     },
   )
 
   // ── Pools ──
+  .get("/profiles", (c) =>
+    c.json({ profiles: listProfiles(), problems: getProfileStatus().problems }),
+  )
   .get("/pools", async (c) => c.json({ pools: await listPools() }))
   .post("/pools", arktypeValidator("json", PoolBody), async (c) => {
     try {

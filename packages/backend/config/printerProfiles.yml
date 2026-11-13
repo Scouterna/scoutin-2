@@ -1,0 +1,26 @@
+# config/printerProfiles.yml
+# Values captured from the tuned ZD421 (2026-10-20 config dump).
+badge-fanfold:
+  ezpl.media_type: mark             # fanfold with black mark
+  media.sense_mode: bar
+  media.type: label
+  ezpl.print_method: direct thermal
+  ezpl.print_width: "800"           # dots; the badge is 800 wide
+  zpl.label_length: "2108"          # dots
+  print.tone: "15.0"                # darkness, 0.0-30.0
+  media.speed: "3.0"                # ips, 2.0-6.0; 3 chosen by test print (2026-10-23)
+  power.energy_star.enable: "off"
+  # No automatic calibration: a self-calibration while a badge is held in the
+  # buffer (e.g. reloading after media out) would bump the label counter and
+  # make an unprinted badge look printed (§7.4).
+  ezpl.head_close_action: no motion
+  ezpl.power_up_action: no motion
+  ezpl.tear_off: "34"               # tear-off position fine-tune, dots; from the tuned printer
+  # USB is the only interface. The others are off so nothing else can send
+  # jobs or change settings, and so an unused wired port doesn't show a red
+  # LED (seen on a printer straight out of the box, 2026-10-23).
+  internal_wired.enable: "off"
+  wlan.enable: "off"
+  bluetooth.enable: "off"
+  usb.mirror.auto: "off"            # no automatic firmware/config update from a USB stick
+  device.languages: epl_zpl         # the factory default

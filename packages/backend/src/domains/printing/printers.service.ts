@@ -96,7 +96,11 @@ export function getPrinter(id: string) {
   return orNull(
     prisma.printer.findUniqueOrThrow({
       where: { id },
-      select: { id: true, serial: true },
+      select: {
+        id: true,
+        serial: true,
+        pool: { select: { profile: true } },
+      },
     }),
   );
 }
