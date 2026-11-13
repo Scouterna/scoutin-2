@@ -1,4 +1,5 @@
 import { type } from "arktype";
+import { StepLayout } from "../../config/stepConfig.ts";
 import {
   createMessageRegistry,
   type InferMessageTypes,
@@ -33,6 +34,7 @@ export const messageTypes = createMessageRegistry()
     type({
       screenId: "string",
       payload: "object",
+      "layout?": StepLayout,
     }),
   )
   .register("step:started")

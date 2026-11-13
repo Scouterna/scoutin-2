@@ -1,5 +1,20 @@
 import { type } from "arktype";
 
+/**
+ * How the kiosk lays out the screens of a step. Sent to the client with every
+ * `step:showScreen`.
+ */
+export const StepLayout = type({
+  "+": "reject",
+  /**
+   * Space above the screen content. `small` suits screens with a lot of
+   * content. Defaults to `default`.
+   */
+  "topPadding?": "'none' | 'small' | 'default'",
+});
+
+export type StepLayout = typeof StepLayout.infer;
+
 export const StepDefinition = type({
   /**
    * Which step to use. Format is `<module>:<step>`.
@@ -30,6 +45,10 @@ export const StepDefinition = type({
    * checked.
    */
   "required?": "boolean",
+  /**
+   * Kiosk layout for this step's screens.
+   */
+  "layout?": StepLayout,
 });
 
 export type StepDefinition = typeof StepDefinition.infer;

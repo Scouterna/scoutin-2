@@ -138,6 +138,7 @@ export async function startStep(
     idInFlow: stepDef.id,
     evaluatedInputs,
     language: stepDef.language,
+    layout: stepDef.layout,
   });
   clearScreenTracking(sessionId);
   // A lock belongs to the step that took it; never carry it into the next one.

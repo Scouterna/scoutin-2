@@ -61,13 +61,13 @@ export function setupSocket(socket: TypedSocket<Listeners, MessageTypes>) {
     showErrorToast({ message, details: code });
   });
 
-  socket.on("step:showScreen", ({ screenId, payload }) => {
+  socket.on("step:showScreen", ({ screenId, payload, layout }) => {
     const current = store.get(currentScreenAtom);
     if (current && !stepJustStarted) {
       store.set(screenHistoryAtom, (prev) => [...prev, current]);
     }
     stepJustStarted = false;
 
-    store.set(currentScreenAtom, { screenId, payload });
+    store.set(currentScreenAtom, { screenId, payload, layout });
   });
 }

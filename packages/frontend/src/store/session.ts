@@ -11,9 +11,15 @@ export type SessionCredentials = {
 
 export const sessionCredentialsAtom = atom<SessionCredentials | null>(null);
 
+export type ScreenLayout = {
+  topPadding?: "none" | "small" | "default";
+};
+
 export type CurrentScreen = {
   screenId: string;
   payload: object;
+  /** Set from the step's `layout` in the step config. */
+  layout?: ScreenLayout;
 };
 
 export const currentScreenAtom = atom<CurrentScreen | null>(null);

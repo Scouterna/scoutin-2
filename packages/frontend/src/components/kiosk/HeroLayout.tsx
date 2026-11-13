@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import type { ScreenLayout } from "@/store/session";
 import { cn } from "@/utils";
 import ScouternaLogo from "../../../assets/scouterna_vit.svg?react";
 
@@ -14,8 +15,16 @@ export type Props = {
   children: ReactNode;
   heroContent: ReactNode;
   progressed: boolean;
+  /** Space above the content panel; `default` when not set. */
+  topPadding?: ScreenLayout["topPadding"];
   showBackButton: boolean;
   onBackClick: () => void;
+};
+
+const TOP_PADDING: Record<NonNullable<ScreenLayout["topPadding"]>, string> = {
+  none: "pt-0",
+  small: "pt-16",
+  default: "pt-40",
 };
 
 type RidgeProps = { d: string; className?: string };
@@ -48,6 +57,7 @@ export function HeroLayout({
   children,
   heroContent,
   progressed,
+  topPadding = "default",
   showBackButton,
   onBackClick,
 }: Props) {
@@ -169,7 +179,8 @@ export function HeroLayout({
       </div>
       <div
         className={cn(
-          "absolute top-0 h-full w-[75%] z-10 bg-white flex flex-col pt-40 px-32 pb-16",
+          "absolute top-0 h-full w-[75%] z-10 bg-white flex flex-col px-32 pb-16",
+          TOP_PADDING[topPadding],
           "transition-all duration-1000",
           !progressed ? "left-[125%]" : "left-[25%]",
         )}

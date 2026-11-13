@@ -42,6 +42,7 @@ function RouteComponent() {
       <HeroLayout
         heroContent={<StartContent />}
         progressed={currentScreen != null}
+        topPadding={currentScreen?.layout?.topPadding}
         showBackButton={
           currentScreen != null &&
           showBackButton({

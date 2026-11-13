@@ -21,6 +21,8 @@ steps:
   # (meals for day participants, delegate number for non-delegates, ...).
   - uses: base:message
     id: confirmDetails
+    layout:
+      topPadding: small
     with:
       title:
         sv: Stämmer dina uppgifter?

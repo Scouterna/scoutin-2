@@ -51,6 +51,7 @@ Nobody. (Format: `- <who>: <what> (<doc or file>)`)
 - First real test label on the Pi (owner's step).
 
 ## Recently done
+- Per-step kiosk layout: optional `layout: { topPadding: none | small | default }` on any step in the step config (unknown keys rejected), sent with each `step:showScreen` (so reconnect replay and back-navigation keep it) and applied to the content panel in `HeroLayout`. DJ26 `confirmDetails` uses `small`. tsc, tests, Biome pass; not checked in a browser.
 - Docker image now bakes in the kiosk texts: `EVENT_NAME` / `START_TEXT` build args → `VITE_EVENT_NAME` / `VITE_START_TEXT` (the image build fails if either is missing); values set in `build-image.yml`. Before this the image had neither, so the kiosk threw on load. Checked that a local `vite build` bakes them in; image build not run.
 - Kiosk diagnostics menu: 10 quick taps in the top-right corner show kiosk, session (id, screen, actor + idInDataSource), connection and print pool/printer states, with a reload button. Read-only, no auth; backed by `GET /api/kiosk/me` (kiosk key). Tests, tsc, Biome pass; not checked in a browser.
 - Fix: `base:script` now declares its `result` output (core keeps only declared outputs, so `printBadges` got `values: null`), and errors from the next step are no longer labeled as script errors (`8b9009f`).

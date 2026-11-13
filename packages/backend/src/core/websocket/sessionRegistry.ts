@@ -1,13 +1,16 @@
+import type { StepLayout } from "../../config/stepConfig.ts";
 import type { MessageTypes } from "./messageTypes.ts";
 
 type ConnectionSend = (message: MessageTypes) => void;
-type ScreenData = { screenId: string; payload: object };
+type ScreenData = Extract<MessageTypes, { name: "step:showScreen" }>["data"];
 
 type StepMeta = {
   idInFlow?: string;
   evaluatedInputs?: Record<string, unknown>;
   /** The session language the inputs above were resolved for. */
   language?: string;
+  /** The step's kiosk layout, sent along with each of its screens. */
+  layout?: StepLayout;
 };
 
 type SessionEntry = {

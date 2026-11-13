@@ -163,9 +163,10 @@ export function createStepContext(
     },
     async showScreen(screenId, payload = {}) {
       markScreenShown(sessionId);
+      const layout = getStepMeta(sessionId)?.layout;
       ws.send({
         name: "step:showScreen",
-        data: { screenId, payload },
+        data: { screenId, payload, ...(layout && { layout }) },
       });
     },
     async setActor(options) {
