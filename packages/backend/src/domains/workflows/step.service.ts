@@ -141,6 +141,7 @@ export async function getCurrentStep(
     uses: nextStepDefinition.uses,
     id: nextStepDefinition.id,
     language,
+    layout: nextStepDefinition.layout,
     with: nextStepDefinition.with
       ? resolveLocalizedInputs(
           recursivelyEvaluateExpressionsInObject(
