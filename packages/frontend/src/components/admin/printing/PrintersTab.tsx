@@ -15,19 +15,19 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
-import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { InferResponseType } from "hono/client";
 import { useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/api/api";
+import { ApplyProfileDialog } from "./ApplyProfileDialog";
 import { poolsQueryKey, poolsQueryOptions } from "./PoolsQuery";
 import { apiErrorMessage } from "./PrinterApiError";
 import { PrinterLastSeen } from "./PrinterLastSeen";
 import { PrinterStateChip } from "./PrinterStateChip";
 
-type Printer = InferResponseType<
+export type Printer = InferResponseType<
   typeof api.admin.printing.printers.$get
 >["printers"][number];
 
@@ -105,6 +105,7 @@ function bodyText(action: PendingAction): string {
 export function PrintersTab() {
   const queryClient = useQueryClient();
   const [pending, setPending] = useState<PendingAction | null>(null);
+  const [applyPrinterId, setApplyPrinterId] = useState<string | null>(null);
 
   const printersQuery = useQuery({
     queryKey: printersQueryKey,
@@ -202,6 +203,9 @@ export function PrintersTab() {
 
   const pools = poolsQuery.data ?? [];
   const printers = printersQuery.data ?? [];
+  const applyPrinter = printers.find((p) => p.id === applyPrinterId) ?? null;
+  const applyPoolProfile =
+    pools.find((p) => p.id === applyPrinter?.pool?.id)?.profile ?? null;
 
   if (printersQuery.isLoading) return <div>Laddar…</div>;
   if (printersQuery.isError) {
@@ -298,15 +302,13 @@ export function PrintersTab() {
                     >
                       Kalibrera
                     </Button>
-                    {/* The apply-profile action needs the profile's settings,
-                        which the admin API doesn't serve yet, so it's off. */}
-                    <Tooltip title="Profilinställningar är inte tillgängliga i admin än">
-                      <span>
-                        <Button size="small" disabled>
-                          Tillämpa profil
-                        </Button>
-                      </span>
-                    </Tooltip>
+                    <Button
+                      size="small"
+                      disabled={offline || busy || printer.state === "printing"}
+                      onClick={() => setApplyPrinterId(printer.id)}
+                    >
+                      Tillämpa profil
+                    </Button>
                     <Button
                       size="small"
                       disabled={offline || busy}
@@ -364,6 +366,17 @@ export function PrintersTab() {
           </>
         )}
       </Dialog>
+
+      {applyPrinter && (
+        <ApplyProfileDialog
+          key={applyPrinter.id}
+          printer={applyPrinter}
+          poolProfile={applyPoolProfile}
+          open
+          onClose={() => setApplyPrinterId(null)}
+          onApplied={invalidate}
+        />
+      )}
     </Box>
   );
 }

@@ -45,12 +45,13 @@ Nobody. (Format: `- <who>: <what> (<doc or file>)`)
 - Step config registry: scan `config/` once at boot and reject an unknown `configFile`
   on link and session creation (`listStepConfigs` re-reads the directory today).
 - Make `tokens.ts` the only place that knows the `urn:scoutin:*` claim names.
-- Admin UI for printer profiles: enable the "Tillämpa profil" button (`PrintersTab.tsx`), show where a printer's settings differ from its pool's profile. Relay self-update from the server, Prometheus
+- Printer profiles: apply to all deviating printers in a pool at once, and a deviation marker in the printers table. Relay self-update from the server, Prometheus
   metrics, Swedish error messages for the printing UI, and the other small items in
   the handoff, section 6.3.
 - First real test label on the Pi (owner's step).
 
 ## Recently done
+- "Tillämpa profil" in admin (v0.3.1): dialog picks a profile (default: the pool's), shows profile vs reported settings with differences highlighted, applies to one printer and shows per-setting results (`ApplyProfileDialog.tsx`). Not checked in a browser.
 - Printer profiles on the server (v0.3.0): `config/printerProfiles.yml` loaded at startup (missing = none, invalid = none + error log, never stops the server), `GET /api/admin/printing/profiles`, `applyProfile` takes an optional `profile` name, else the pool's; free-form `settings` removed. Prod: copy the file into the `/app/config` mount. Not yet run against a real printer.
 - Per-step kiosk layout: optional `layout: { topPadding: none | small | default }` on any step in the step config (unknown keys rejected), sent with each `step:showScreen` (so reconnect replay and back-navigation keep it) and applied to the content panel in `HeroLayout`. DJ26 `confirmDetails` uses `small`. tsc, tests, Biome pass; not checked in a browser.
 - Docker image now bakes in the kiosk texts: `EVENT_NAME` / `START_TEXT` build args → `VITE_EVENT_NAME` / `VITE_START_TEXT` (the image build fails if either is missing); values set in `build-image.yml`. Before this the image had neither, so the kiosk threw on load. Checked that a local `vite build` bakes them in; image build not run.
