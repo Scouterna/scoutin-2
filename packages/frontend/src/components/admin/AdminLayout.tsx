@@ -202,6 +202,18 @@ export function AdminLayout({ children }: Props) {
           </ListItem>
           <Collapse in={advancedOpen} timeout="auto" unmountOnExit>
             <List disablePadding>
+              <ListItem disablePadding>
+                <ListItemButtonLink
+                  to={"/admin/jobs"}
+                  activeProps={{ selected: true }}
+                  sx={{ pl: 4 }}
+                >
+                  <ListItemIcon>
+                    <ScheduleIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Jobb" />
+                </ListItemButtonLink>
+              </ListItem>
               {isAdmin && (
                 <>
                   <ListItem disablePadding>
@@ -214,18 +226,6 @@ export function AdminLayout({ children }: Props) {
                         <BlockIcon />
                       </ListItemIcon>
                       <ListItemText primary="Blockering" />
-                    </ListItemButtonLink>
-                  </ListItem>
-                  <ListItem disablePadding>
-                    <ListItemButtonLink
-                      to={"/admin/jobs"}
-                      activeProps={{ selected: true }}
-                      sx={{ pl: 4 }}
-                    >
-                      <ListItemIcon>
-                        <ScheduleIcon />
-                      </ListItemIcon>
-                      <ListItemText primary="Jobb" />
                     </ListItemButtonLink>
                   </ListItem>
                   {import.meta.env.DEV && (

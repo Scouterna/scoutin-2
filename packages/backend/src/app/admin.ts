@@ -11,10 +11,10 @@ import { printingAdminRouter } from "../domains/printing/printing.admin.routes.t
 import { linksAdminRouter } from "../domains/sessions/links.admin.routes.ts";
 import { sessionsAdminRouter } from "../domains/sessions/sessions.admin.routes.ts";
 
-// Two roles: "operator" (day-to-day check-in: reports, sessions, undo-checkin)
-// and "admin" (everything, incl. user/kiosk/link management, data reimport, and
-// the anonymity-sensitive blocklist). requireStaff gates the whole API to any
-// logged-in panel user; the extra requireAdmin guards below narrow the sensitive
+// Two roles: "operator" (day-to-day check-in: reports, sessions, undo-checkin,
+// jobs and data reimport) and "admin" (everything, incl. user/kiosk/link
+// management, printing, and the anonymity-sensitive blocklist). requireStaff
+// gates the whole API to any logged-in panel user; the extra requireAdmin guards below narrow the sensitive
 // paths to admins. Authentication is local (username/password → session cookie);
 // the unguarded /api/admin/auth/me endpoint tells the frontend when to log in.
 export const adminRouter = new Hono<AppEnv>()
@@ -23,8 +23,6 @@ export const adminRouter = new Hono<AppEnv>()
   .use("/kiosks/*", requireAdmin)
   .use("/links/*", requireAdmin)
   .use("/blocklist/*", requireAdmin)
-  .use("/jobs/*", requireAdmin)
-  .use("/participants/reimport", requireAdmin)
   .use("/printing/*", requireAdmin)
   .get("/me", (c) => c.json({ authenticated: true, user: c.get("user") }))
   .route("/users", usersAdminRouter)

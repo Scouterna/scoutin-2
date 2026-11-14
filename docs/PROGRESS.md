@@ -13,7 +13,7 @@ sessions. Read it before you start, update it before you finish.
 - Detail belongs in the linked docs, not here. Keep this file short; trim **Recently
   done** to about ten lines.
 
-Last updated: 2026-11-13.
+Last updated: 2026-11-14.
 
 ## Now
 
@@ -45,12 +45,14 @@ Nobody. (Format: `- <who>: <what> (<doc or file>)`)
 - Step config registry: scan `config/` once at boot and reject an unknown `configFile`
   on link and session creation (`listStepConfigs` re-reads the directory today).
 - Make `tokens.ts` the only place that knows the `urn:scoutin:*` claim names.
+- Remove the unused `POST /api/admin/participants/reimport` (no callers since the Jobs page replaced the Data page in `725762d`; `POST /jobs/data-import/run` does the same). Also drop its case in `app/admin.test.ts` and the "manual reimport" mentions in `jobRunner.ts`, `data.service.ts`, `config.ts`, `.env.example`. Owner: not now.
 - Printer profiles: apply to all deviating printers in a pool at once, and a deviation marker in the printers table. Relay self-update from the server, Prometheus
   metrics, Swedish error messages for the printing UI, and the other small items in
   the handoff, section 6.3.
 - First real test label on the Pi (owner's step).
 
 ## Recently done
+- v0.3.5: Operators can now see the Jobs page and run every job (incl. data reimport): dropped the `requireAdmin` guards on `/jobs/*` and `/participants/reimport` in `app/admin.ts`, moved the "Jobb" link out of the admin-only block. Route guard test in `app/admin.test.ts`. Not checked in a browser.
 - `jamboree26:pickupStation`: final DJ26 screen shows the badge pickup station in big text (Dagsdeltagare / Ombud by delegate number / Övriga by last name; gaps → "Leta upp en funktionär"). Replaces the final `base:message` in `stepConfig.dj26.yml` (v0.3.2). Tests, tsc, Biome pass; not checked in a browser.
 - "Tillämpa profil" in admin (v0.3.1): dialog picks a profile (default: the pool's), shows profile vs reported settings with differences highlighted, applies to one printer and shows per-setting results (`ApplyProfileDialog.tsx`). Not checked in a browser.
 - Printer profiles on the server (v0.3.0): `config/printerProfiles.yml` loaded at startup (missing = none, invalid = none + error log, never stops the server), `GET /api/admin/printing/profiles`, `applyProfile` takes an optional `profile` name, else the pool's; free-form `settings` removed. Prod: copy the file into the `/app/config` mount. Not yet run against a real printer.
